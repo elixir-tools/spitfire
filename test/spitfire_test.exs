@@ -310,7 +310,6 @@ defmodule SpitfireTest do
     end
   end
 
-  @tag :skip
   test "parses anon functions" do
     codes = [
       {~s'''
@@ -325,12 +324,12 @@ defmodule SpitfireTest do
        fn one ->
          one
        end
-       ''', {:fn, [], [{:->, [], [[{:one, [], []}], {:__block__, [], [{:one, [], []}]}]}]}},
+       ''', {:fn, [], [{:->, [], [[{:one, [], Elixir}], {:__block__, [], [{:one, [], Elixir}]}]}]}},
       {~s'''
        fn(one) ->
          one
        end
-       ''', {:fn, [], [{:->, [], [[{:one, [], []}], {:__block__, [], [{:one, [], []}]}]}]}}
+       ''', {:fn, [], [{:->, [], [[{:one, [], Elixir}], {:__block__, [], [{:one, [], Elixir}]}]}]}}
     ]
 
     for {code, expected} <- codes do

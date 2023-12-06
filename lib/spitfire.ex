@@ -139,7 +139,7 @@ defmodule Spitfire do
         :int -> &parse_int/1
         :atom -> &parse_atom/1
         :bin_string -> &parse_string/1
-        # :fn -> &parse_anon_function/1
+        :fn -> &parse_anon_function/1
         :"[" -> &parse_list_literal/1
         :%{} -> &parse_map_literal/1
         nil -> &parse_nil_literal/1
@@ -170,7 +170,7 @@ defmodule Spitfire do
           precedence < power
         end
 
-        while peek_token(parser) not in [:",", :assoc_op, :eol, :eof] && calc_prec.(parser) <-
+        while peek_token(parser) not in [:",", :assoc_op, :eol, :eof, :->] && calc_prec.(parser) <-
                 {left, parser} do
           infix =
             case peek_token_type(parser) do
@@ -271,60 +271,55 @@ defmodule Spitfire do
     end
   end
 
-  # defp parse_anon_function(%{current_token: {:fn, _}} = parser) do
-  #   dbg(parser)
-  #   parameters = []
+  defp parse_anon_function(%{current_token: {:fn, _}} = parser) do
+    parameters = []
 
-  #   {parameters, parser} =
-  #     while peek_token(parser) != :-> <- {parameters, parser} do
-  #       parser = next_token(parser)
-  #       {parameter, parser} = parse_expression(parser)
+    parser =
+      if peek_token(parser) == :"(" do
+        next_token(parser)
+      else
+        parser
+      end
 
-  #       {List.wrap(parameter) ++ parameters, parser}
-  #     end
+    {parameters, parser} =
+      while peek_token(parser) != :-> && peek_token(parser) != :")" <- {parameters, parser} do
+        parser = next_token(parser)
+        {parameter, parser} = parse_expression(parser)
 
-  #   dbg(parameters)
+        {List.wrap(parameter) ++ parameters, parser}
+      end
 
-  #   dbg(parser)
+    parser =
+      cond do
+        current_token(parser) == :fn and peek_token(parser) == :-> ->
+          parser |> next_token() |> next_token() |> eat_eol()
 
-  #   parser =
-  #     cond do
-  #       current_token(parser) == :fn and peek_token(parser) == :-> ->
-  #         parser |> next_token() |> next_token() |> eat_eol()
+        peek_token(parser) == :")" and peek_token(next_token(parser)) == :-> ->
+          parser |> next_token() |> next_token() |> next_token() |> eat_eol()
 
-  #       peek_token(parser) == :-> ->
-  #         parser |> next_token() |> eat_eol()
+        peek_token(parser) == :-> ->
+          parser |> next_token() |> next_token() |> eat_eol()
 
-  #       true ->
-  #         raise "boom"
-  #     end
+        true ->
+          raise "boom"
+      end
 
-  #   dbg(parser)
+    asts = []
 
-  #   asts = []
+    {asts, parser} =
+      while current_token(parser) != :end <- {asts, parser} do
+        {ast, parser} = parse_expression(parser)
 
-  #   {asts, parser} =
-  #     while current_token(parser) != :end <- {asts, parser} do
-  #       dbg(parser)
-  #       dbg(parser)
-  #       {ast, parser} = parse_expression(parser)
+        {[ast | asts], eat_eol(next_token(parser))}
+      end
 
-  #       dbg(ast)
-  #       dbg(parser)
+    parser = next_token(parser)
 
-  #       {[ast | asts], eat_eol(next_token(parser))}
-  #     end
+    ast =
+      {:fn, [], [{:->, [], [Enum.reverse(parameters), {:__block__, [], Enum.reverse(asts)}]}]}
 
-  #   parser = next_token(parser) |> next_token()
-
-  #   ast =
-  #     {:fn, [], [{:->, [], [Enum.reverse(parameters), {:__block__, [], Enum.reverse(asts)}]}]}
-
-  #   dbg(parser)
-  #   dbg(ast)
-
-  #   {ast, parser}
-  # end
+    {ast, parser}
+  end
 
   defp parse_atom(%{current_token: {:atom, _, atom}} = parser) do
     {atom, parser}
@@ -438,8 +433,6 @@ defmodule Spitfire do
   # end
 
   defp parse_identifier(%{current_token: {:paren_identifier, _, token}} = parser) do
-    # currently on an identifier, might be a variable or a function/macro
-    # if it is paren_identifier, definitely a function/macro
     args = []
 
     parser = parser |> next_token()
@@ -461,6 +454,7 @@ defmodule Spitfire do
 
   @operators [
     :"=>",
+    :->,
     :+,
     :-,
     :/,
