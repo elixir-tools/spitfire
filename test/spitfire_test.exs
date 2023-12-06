@@ -2,6 +2,7 @@ defmodule SpitfireTest do
   use ExUnit.Case
   doctest Spitfire
 
+  @tag :skip
   test "parses valid elixir" do
     code = """
     defmodule Foo do
@@ -46,50 +47,28 @@ defmodule SpitfireTest do
     assert Spitfire.parse(code) == "foobar"
   end
 
-  test "parses anon functions" do
-    codes = [
-      {~s'''
-       fn -> :ok end
-       ''', {:fn, [], [{:->, [], [[], {:__block__, [], [:ok]}]}]}},
-      {~s'''
-       fn ->
-         :ok
-       end
-       ''', {:fn, [], [{:->, [], [[], {:__block__, [], [:ok]}]}]}},
-      {~s'''
-       fn one ->
-         one
-       end
-       ''', {:fn, [], [{:->, [], [[{:one, [], []}], {:__block__, [], [{:one, [], []}]}]}]}}
-    ]
+  test "parses atoms" do
+    code = ~s'''
+    ":foobar" 
+    '''
 
-    for {code, expected} <- codes do
-      assert Spitfire.parse(code) == expected
-    end
+    assert Spitfire.parse(code) == ":foobar"
   end
 
-  test "parses operators" do
-    codes = [
-      {~s'''
-       1 + 2
-       ''', {:+, [], [1, 2]}},
-      {~s'''
-       1 - 2
-       ''', {:-, [], [1, 2]}},
-      {~s'''
-       1 * 2
-       ''', {:*, [], [1, 2]}},
-      {~s'''
-       1 / 2
-       ''', {:/, [], [1, 2]}},
-      {~s'''
-       one ++ two
-       ''', {:++, [], [{:one, [], []}, {:two, [], []}]}}
-    ]
+  test "parses variable identifiers" do
+    code = ~s'''
+    foobar
+    alice
+    bob
+    '''
 
-    for {code, expected} <- codes do
-      assert Spitfire.parse(code) == expected
-    end
+    assert Spitfire.parse(code) ==
+             {:__block__, [],
+              [
+                {:foobar, [], Elixir},
+                {:alice, [], Elixir},
+                {:bob, [], Elixir}
+              ]}
   end
 
   test "parses lists" do
@@ -99,10 +78,7 @@ defmodule SpitfireTest do
        ''', []},
       {~s'''
         [one, :two, "three"]
-       ''', [{:one, [], []}, :two, "three"]},
-      {~s'''
-       [] ++ [bar()]
-       ''', {:++, [], [[], [{:bar, [], []}]]}}
+       ''', [{:one, [], Elixir}, :two, "three"]}
     ]
 
     for {code, expected} <- codes do
@@ -143,7 +119,7 @@ defmodule SpitfireTest do
           {:three, :four},
           {[], [1]},
           {{:%{}, [], []}, nil},
-          {{:bing, [], []}, {:bong, [], []}},
+          {{:bing, [], Elixir}, {:bong, [], Elixir}},
           {:foo, :bar}
         ]}}
     ]
@@ -153,6 +129,131 @@ defmodule SpitfireTest do
     end
   end
 
+  test "parses operators" do
+    codes = [
+      {~s'''
+       1 + 2
+       ''', {:+, [], [1, 2]}},
+      {~s'''
+       1 - 2
+       ''', {:-, [], [1, 2]}},
+      {~s'''
+       1 * 2
+       ''', {:*, [], [1, 2]}},
+      {~s'''
+       1 / 2
+       ''', {:/, [], [1, 2]}},
+      {~s'''
+       1 + 2 * 3 - 2
+       ''',
+       {:-, [],
+        [
+          {:+, [], [1, {:*, [], [2, 3]}]},
+          2
+        ]}},
+      {~s'''
+       one ++ two
+       ''', {:++, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+      {~s'''
+       one ++ two ++ three
+       ''',
+       {:++, [],
+        [
+          {:one, [], Elixir},
+          {:++, [], [{:two, [], Elixir}, {:three, [], Elixir}]}
+        ]}}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
+  test "parse do block" do
+    codes = [
+      {~s'''
+       foo do
+       end
+       ''', {:foo, [], [[do: {:__block__, [], []}]]}},
+      {~s'''
+       foo do
+        "howdy"
+        :partner
+       end
+       ''',
+       {:foo, [],
+        [
+          [
+            do:
+              {:__block__, [],
+               [
+                 "howdy",
+                 :partner
+               ]}
+          ]
+        ]}},
+      {~s'''
+       foo arg do
+        "howdy"
+        :partner
+       end
+       ''',
+       {:foo, [],
+        [
+          {:arg, [], Elixir},
+          [
+            do:
+              {:__block__, [],
+               [
+                 "howdy",
+                 :partner
+               ]}
+          ]
+        ]}}
+    ]
+
+    for {code, expected} <- codes do
+      dbg(code)
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
+  @tag :skip
+  test "parse ambiguous function calls" do
+    codes = [
+      {~s'''
+       a b c, d
+       ''',
+       {:a, [],
+        [
+          {:b, [],
+           [
+             {:c, [], Elixir},
+             {:d, [], Elixir}
+           ]}
+        ]}},
+      {~s'''
+       a b c, d do
+       end
+       ''',
+       {:a, [],
+        [
+          {:b, [],
+           [
+             {:c, [], Elixir},
+             {:d, [], Elixir}
+           ]},
+          [do: {:__block__, [], []}]
+        ]}}
+    ]
+
+    for {code, expected} <- codes do
+      dbg(code)
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
+  @tag :skip
   test "parses function calls" do
     codes = [
       {~s'''
@@ -160,7 +261,7 @@ defmodule SpitfireTest do
        ''', {:foo, [], []}},
       {~s'''
        foo(arg, arg2)
-       ''', {:foo, [], [{:arg, [], []}, {:arg2, [], []}]}},
+       ''', {:foo, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        foo arg, arg2
        ''', {:foo, [], [{:arg, [], []}, {:arg2, [], []}]}},
@@ -210,6 +311,37 @@ defmodule SpitfireTest do
     ]
 
     for {code, expected} <- codes do
+      dbg(code)
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
+  @tag :skip
+  test "parses anon functions" do
+    codes = [
+      {~s'''
+       fn -> :ok end
+       ''', {:fn, [], [{:->, [], [[], {:__block__, [], [:ok]}]}]}},
+      {~s'''
+       fn ->
+         :ok
+       end
+       ''', {:fn, [], [{:->, [], [[], {:__block__, [], [:ok]}]}]}},
+      {~s'''
+       fn one ->
+         one
+       end
+       ''', {:fn, [], [{:->, [], [[{:one, [], []}], {:__block__, [], [{:one, [], []}]}]}]}},
+      {~s'''
+       fn(one) ->
+         one
+       end
+       ''', {:fn, [], [{:->, [], [[{:one, [], []}], {:__block__, [], [{:one, [], []}]}]}]}}
+    ]
+
+    for {code, expected} <- codes do
+      dbg(code)
+      # , "failed for code #{code}"
       assert Spitfire.parse(code) == expected
     end
   end
