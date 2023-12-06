@@ -249,7 +249,6 @@ defmodule SpitfireTest do
     end
   end
 
-  @tag :skip
   test "parses function calls" do
     codes = [
       {~s'''
@@ -260,7 +259,7 @@ defmodule SpitfireTest do
        ''', {:foo, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        foo arg, arg2
-       ''', {:foo, [], [{:arg, [], []}, {:arg2, [], []}]}},
+       ''', {:foo, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        Remote.foo
        ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], []}},
@@ -270,11 +269,11 @@ defmodule SpitfireTest do
       {~s'''
        Remote.foo(arg, arg2)
        ''',
-       {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], []}, {:arg2, [], []}]}},
+       {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        Remote.foo arg, arg2
        ''',
-       {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], []}, {:arg2, [], []}]}},
+       {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        :erlang.foo
        ''', {{:., [], [:erlang, :foo]}, [], []}},
@@ -283,31 +282,30 @@ defmodule SpitfireTest do
        ''', {{:., [], [:erlang, :foo]}, [], []}},
       {~s'''
        :erlang.foo(arg, arg2)
-       ''', {{:., [], [:erlang, :foo]}, [], [{:arg, [], []}, {:arg2, [], []}]}},
+       ''', {{:., [], [:erlang, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        :erlang.foo arg, arg2
-       ''', {{:., [], [:erlang, :foo]}, [], [{:arg, [], []}, {:arg2, [], []}]}},
+       ''', {{:., [], [:erlang, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        somevar.foo
-       ''', {{:., [], [{:somevar, [], []}, :foo]}, [], []}},
+       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], []}},
       {~s'''
        somevar.foo()
-       ''', {{:., [], [{:somevar, [], []}, :foo]}, [], []}},
+       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], []}},
       {~s'''
        :elixir_tokenizer.tokenize(String.to_charlist(code), 1, [])
        ''',
        {{:., [], [:elixir_tokenizer, :tokenize]}, [],
-        [{{:., [], [{:__aliases__, [], [:String]}, :to_charlist]}, [], [{:code, [], []}]}, 1, []]}},
+        [{{:., [], [{:__aliases__, [], [:String]}, :to_charlist]}, [], [{:code, [], Elixir}]}, 1, []]}},
       {~s'''
        somevar.foo(arg, arg2)
-       ''', {{:., [], [{:somevar, [], []}, :foo]}, [], [{:arg, [], []}, {:arg2, [], []}]}},
+       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        somevar.foo arg, arg2
-       ''', {{:., [], [{:somevar, [], []}, :foo]}, [], [{:arg, [], []}, {:arg2, [], []}]}}
+       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}}
     ]
 
     for {code, expected} <- codes do
-      dbg(code)
       assert Spitfire.parse(code) == expected
     end
   end
@@ -336,8 +334,6 @@ defmodule SpitfireTest do
     ]
 
     for {code, expected} <- codes do
-      dbg(code)
-      # , "failed for code #{code}"
       assert Spitfire.parse(code) == expected
     end
   end

@@ -62,6 +62,7 @@ defmodule Spitfire do
 
   @precedences %{
     :"," => @comma,
+    :. => @dot_call_op,
     do: @doo,
     stab_op: @stab_op,
     leftstab_op: @leftstab_op,
@@ -85,7 +86,6 @@ defmodule Spitfire do
     mult_op: @mult_op,
     power_op: @power_op,
     unary_op: @unary_op,
-    dot_call_op: @dot_call_op,
     dot_op: @dot_op,
     at_op: @at_op,
     dot_identifier: @dot_identifier
@@ -178,7 +178,7 @@ defmodule Spitfire do
               :mult_op -> &parse_infix_expression/2
               :concat_op -> &parse_infix_expression/2
               :do -> &parse_do_block/2
-              # :. -> &parse_dot_expression/2
+              :. -> &parse_dot_expression/2
               _ -> nil
             end
 
@@ -242,24 +242,34 @@ defmodule Spitfire do
     {ast, parser}
   end
 
-  # defp parse_dot_expression(parser, lhs) do
-  #   token = current_token(parser)
-  #   parser = parser |> next_token()
+  defp parse_dot_expression(parser, lhs) do
+    token = current_token(parser)
+    # parser = parser |> next_token()
 
-  #   case current_token_type(parser) do
-  #     type when type in [:identifier, :paren_identifier] ->
-  #       {{rhs, _, args}, parser} = parse_expression(parser)
-  #       ast = {{token, [], [lhs, rhs]}, [], args}
+    case peek_token_type(parser) do
+      type when type in [:identifier, :paren_identifier] ->
+        parser = next_token(parser)
+        {{rhs, _, args}, parser} = parse_expression(parser)
 
-  #       {ast, eat_eol(parser)}
+        args =
+          if args == Elixir do
+            []
+          else
+            args
+          end
 
-  #     _ ->
-  #       {rhs, parser} = parse_expression(parser)
-  #       ast = {{token, [], [lhs, rhs]}, [], []}
+        ast = {{token, [], [lhs, rhs]}, [], args}
 
-  #       {ast, eat_eol(parser)}
-  #   end
-  # end
+        {ast, eat_eol(parser)}
+
+      _ ->
+        parser = next_token(parser)
+        {rhs, parser} = parse_expression(parser)
+        ast = {{token, [], [lhs, rhs]}, [], []}
+
+        {ast, eat_eol(parser)}
+    end
+  end
 
   # defp parse_anon_function(%{current_token: {:fn, _}} = parser) do
   #   dbg(parser)
@@ -329,16 +339,17 @@ defmodule Spitfire do
   end
 
   defp parse_alias(%{current_token: {:alias, _, alias}} = parser) do
-    parser = next_token(parser)
+    # parser = next_token(parser)
 
     aliases = [alias]
 
     {aliases, parser} =
-      while current_token(parser) == :. and peek_token(parser) == :alias <- {aliases, parser} do
-        parser = next_token(parser)
+      while peek_token(parser) == :. and peek_token(next_token(parser)) == :alias <-
+              {aliases, parser} do
+        parser = next_token(parser) |> next_token()
         %{current_token: {:alias, _, alias}} = parser
 
-        {[alias | aliases], next_token(parser)}
+        {[alias | aliases], parser}
       end
 
     {{:__aliases__, [], Enum.reverse(aliases)}, parser}
@@ -468,13 +479,13 @@ defmodule Spitfire do
   defp parse_identifier(%{current_token: {type, _, token}} = parser)
        when type in [:identifier, :do_identifier] do
     cond do
-      peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do] ++ @operators) ->
+      peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do, :.] ++ @operators) ->
         {{token, [], Elixir}, parser}
 
       true ->
         parser = next_token(parser)
 
-        parser = push_nesting(parser, 1) |> dbg
+        parser = push_nesting(parser, 1)
         {first_arg, parser} = parse_expression(parser, @comma)
 
         args = [first_arg]
