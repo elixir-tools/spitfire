@@ -212,7 +212,6 @@ defmodule SpitfireTest do
     ]
 
     for {code, expected} <- codes do
-      dbg(code)
       assert Spitfire.parse(code) == expected
     end
   end
@@ -246,7 +245,6 @@ defmodule SpitfireTest do
     ]
 
     for {code, expected} <- codes do
-      dbg(code)
       assert Spitfire.parse(code) == expected
     end
   end
