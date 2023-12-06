@@ -2,7 +2,6 @@ defmodule SpitfireTest do
   use ExUnit.Case
   doctest Spitfire
 
-  @tag :skip
   test "parses valid elixir" do
     code = """
     defmodule Foo do
@@ -23,7 +22,7 @@ defmodule SpitfireTest do
                      [
                        {:def, [],
                         [
-                          {:run, [], [{:arg, [], []}]},
+                          {:run, [], [{:arg, [], Elixir}]},
                           [do: {:__block__, [], [{:bar, [], []}, :ok]}]
                         ]}
                      ]}
@@ -218,7 +217,6 @@ defmodule SpitfireTest do
     end
   end
 
-  @tag :skip
   test "parse ambiguous function calls" do
     codes = [
       {~s'''

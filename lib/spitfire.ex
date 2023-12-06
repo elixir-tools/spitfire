@@ -182,9 +182,14 @@ defmodule Spitfire do
               _ -> nil
             end
 
+          do_block = &parse_do_block/2
+
           case infix do
             nil ->
               {left, parser}
+
+            ^do_block when parser.nestings != [] ->
+              {left, next_token(parser)}
 
             _ ->
               infix.(next_token(parser), left)
@@ -469,6 +474,7 @@ defmodule Spitfire do
       true ->
         parser = next_token(parser)
 
+        parser = push_nesting(parser, 1) |> dbg
         {first_arg, parser} = parse_expression(parser, @comma)
 
         args = [first_arg]
@@ -476,12 +482,19 @@ defmodule Spitfire do
         {args, parser} =
           while peek_token(parser) == :"," <- {args, parser} do
             parser = parser |> next_token() |> next_token()
+            parser = inc_nesting(parser)
             {arg, parser} = parse_expression(parser)
 
             {[arg | args], parser}
           end
 
-        {{token, [], Enum.reverse(args)}, parser}
+        parser = pop_nesting(parser)
+
+        if parser.nestings == [] && current_token(parser) == :do do
+          parse_do_block(parser, {token, [], Enum.reverse(args)})
+        else
+          {{token, [], Enum.reverse(args)}, parser}
+        end
     end
   end
 
@@ -502,7 +515,8 @@ defmodule Spitfire do
     %{
       tokens: tokenize(code),
       current_token: nil,
-      peek_token: nil
+      peek_token: nil,
+      nestings: []
     }
   end
 
@@ -639,5 +653,17 @@ defmodule Spitfire do
 
   defp peek_precedence(parser) do
     Map.get(@precedences, peek_token_type(parser), @lowest)
+  end
+
+  defp inc_nesting(%{nestings: [top | rest]} = parser) do
+    %{parser | nestings: [top + 1 | rest]}
+  end
+
+  defp pop_nesting(%{nestings: [_top | rest]} = parser) do
+    %{parser | nestings: rest}
+  end
+
+  defp push_nesting(%{nestings: nestings} = parser, nesting) do
+    %{parser | nestings: [nesting | nestings]}
   end
 end
