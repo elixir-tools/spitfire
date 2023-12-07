@@ -143,6 +143,82 @@ defmodule SpitfireTest do
        1 / 2
        ''', {:/, [], [1, 2]}},
       {~s'''
+       1 || foo()
+       ''', {:||, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 ||| foo()
+       ''', {:|||, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 or foo()
+       ''', {:or, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 == foo()
+       ''', {:==, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 != foo()
+       ''', {:!=, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 =~ foo()
+       ''', {:=~, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 === foo()
+       ''', {:===, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 !== foo()
+       ''', {:!==, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 < foo()
+       ''', {:<, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 > foo()
+       ''', {:>, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 <= foo()
+       ''', {:<=, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 >= foo()
+       ''', {:>=, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 |> foo()
+       ''', {:|>, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 <|> foo()
+       ''', {:"<|>", [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 <<< foo()
+       ''', {:<<<, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 >>> foo()
+       ''', {:>>>, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 <<~ foo()
+       ''', {:<<~, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 ~>> foo()
+       ''', {:~>>, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 <~ foo()
+       ''', {:<~, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 ~> foo()
+       ''', {:~>, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 <~> foo()
+       ''', {:<~>, [], [1, {:foo, [], []}]}},
+      {~s'''
+       1 in foo()
+       ''', {:in, [], [1, {:foo, [], []}]}},
+      {~s'''
+       foo not in bar
+       ''',
+       {:not, [],
+        [
+          {:in, [], [{:foo, [], Elixir}, {:bar, [], Elixir}]}
+        ]}},
+      {~s'''
+       1 ^^^ foo()
+       ''', {:"^^^", [], [1, {:foo, [], []}]}},
+      {~s'''
        1 + 2 * 3 - 2
        ''',
        {:-, [],
@@ -151,8 +227,26 @@ defmodule SpitfireTest do
           2
         ]}},
       {~s'''
+       one..two
+       ''', {:.., [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+      {~s'''
+       one..two//2
+       ''', {:"..//", [], [{:one, [], Elixir}, {:two, [], Elixir}, 2]}},
+      {~s'''
+       one <> two
+       ''', {:<>, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+      {~s'''
        one ++ two
        ''', {:++, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+      {~s'''
+       one -- two
+       ''', {:--, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+      {~s'''
+       one +++ two
+       ''', {:+++, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+      {~s'''
+       one --- two
+       ''', {:---, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
       {~s'''
        one ++ two ++ three
        ''',
@@ -160,7 +254,16 @@ defmodule SpitfireTest do
         [
           {:one, [], Elixir},
           {:++, [], [{:two, [], Elixir}, {:three, [], Elixir}]}
-        ]}}
+        ]}},
+      {~s'''
+       @foo
+       ''', {:@, [], [{:foo, [], Elixir}]}},
+      {~s'''
+       !foo
+       ''', {:!, [], [{:foo, [], Elixir}]}},
+      {~s'''
+       not foo
+       ''', {:not, [], [{:foo, [], Elixir}]}}
     ]
 
     for {code, expected} <- codes do
@@ -269,11 +372,13 @@ defmodule SpitfireTest do
       {~s'''
        Remote.foo(arg, arg2)
        ''',
-       {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [],
+        [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        Remote.foo arg, arg2
        ''',
-       {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [],
+        [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        :erlang.foo
        ''', {{:., [], [:erlang, :foo]}, [], []}},
@@ -296,13 +401,19 @@ defmodule SpitfireTest do
        :elixir_tokenizer.tokenize(String.to_charlist(code), 1, [])
        ''',
        {{:., [], [:elixir_tokenizer, :tokenize]}, [],
-        [{{:., [], [{:__aliases__, [], [:String]}, :to_charlist]}, [], [{:code, [], Elixir}]}, 1, []]}},
+        [
+          {{:., [], [{:__aliases__, [], [:String]}, :to_charlist]}, [], [{:code, [], Elixir}]},
+          1,
+          []
+        ]}},
       {~s'''
        somevar.foo(arg, arg2)
-       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''',
+       {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        somevar.foo arg, arg2
-       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}}
+       ''',
+       {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}}
     ]
 
     for {code, expected} <- codes do
@@ -324,12 +435,14 @@ defmodule SpitfireTest do
        fn one ->
          one
        end
-       ''', {:fn, [], [{:->, [], [[{:one, [], Elixir}], {:__block__, [], [{:one, [], Elixir}]}]}]}},
+       ''',
+       {:fn, [], [{:->, [], [[{:one, [], Elixir}], {:__block__, [], [{:one, [], Elixir}]}]}]}},
       {~s'''
        fn(one) ->
          one
        end
-       ''', {:fn, [], [{:->, [], [[{:one, [], Elixir}], {:__block__, [], [{:one, [], Elixir}]}]}]}}
+       ''',
+       {:fn, [], [{:->, [], [[{:one, [], Elixir}], {:__block__, [], [{:one, [], Elixir}]}]}]}}
     ]
 
     for {code, expected} <- codes do

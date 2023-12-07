@@ -140,6 +140,8 @@ defmodule Spitfire do
         :atom -> &parse_atom/1
         :bin_string -> &parse_string/1
         :fn -> &parse_anon_function/1
+        :at_op -> &parse_prefix_expression/1
+        :unary_op -> &parse_prefix_expression/1
         :"[" -> &parse_list_literal/1
         :%{} -> &parse_map_literal/1
         nil -> &parse_nil_literal/1
@@ -177,6 +179,15 @@ defmodule Spitfire do
               :dual_op -> &parse_infix_expression/2
               :mult_op -> &parse_infix_expression/2
               :concat_op -> &parse_infix_expression/2
+              :arrow_op -> &parse_infix_expression/2
+              :ternary_op -> &parse_infix_expression/2
+              :or_op -> &parse_infix_expression/2
+              :and_op -> &parse_infix_expression/2
+              :comp_op -> &parse_infix_expression/2
+              :rel_op -> &parse_infix_expression/2
+              :in_op -> &parse_infix_expression/2
+              :xor_op -> &parse_infix_expression/2
+              :range_op -> &parse_range_expression/2
               :do -> &parse_do_block/2
               :. -> &parse_dot_expression/2
               _ -> nil
@@ -198,14 +209,48 @@ defmodule Spitfire do
     end
   end
 
+  defp parse_prefix_expression(parser) do
+    token = current_token(parser)
+    precedence = current_precedence(parser)
+    parser = parser |> next_token()
+    {rhs, parser} = parse_expression(parser, precedence)
+    ast = {token, [], [rhs]}
+
+    {ast, eat_eol(parser)}
+  end
+
   defp parse_infix_expression(parser, lhs) do
     token = current_token(parser)
     precedence = current_precedence(parser)
     parser = parser |> next_token()
     {rhs, parser} = parse_expression(parser, precedence)
-    ast = {token, [], [lhs, rhs]}
+
+    ast =
+      case token do
+        :"not in" ->
+          {:not, [], [{:in, [], [lhs, rhs]}]}
+
+        _ ->
+          {token, [], [lhs, rhs]}
+      end
 
     {ast, eat_eol(parser)}
+  end
+
+  defp parse_range_expression(parser, lhs) do
+    token = current_token(parser)
+    precedence = current_precedence(parser)
+    parser = parser |> next_token()
+    {rhs, parser} = parse_expression(parser, precedence)
+
+    if peek_token(parser) == :ternary_op do
+      parser = next_token(parser) |> next_token()
+      {rrhs, parser} = parse_expression(parser, precedence)
+
+      {{:"..//", [], [lhs, rhs, rrhs]}, eat_eol(parser)}
+    else
+      {{token, [], [lhs, rhs]}, eat_eol(parser)}
+    end
   end
 
   defp parse_do_block(%{current_token: {:do, _}} = parser, lhs) do
@@ -466,9 +511,12 @@ defmodule Spitfire do
     :and,
     :or,
     :**,
+    :range_op,
     :assoc_op,
     :concat_op,
-    :dual_op
+    :dual_op,
+    :ternary_op,
+    :in_op
   ]
   defp parse_identifier(%{current_token: {type, _, token}} = parser)
        when type in [:identifier, :do_identifier] do
@@ -506,7 +554,7 @@ defmodule Spitfire do
   def tokenize(code) do
     tokens =
       case :elixir_tokenizer.tokenize(String.to_charlist(code), 1, []) do
-        {:ok, _, _, [], tokens} ->
+        {:ok, _, _, _, tokens} ->
           tokens
 
         {:error, _, _, [], tokens} ->
@@ -635,11 +683,22 @@ defmodule Spitfire do
 
   def current_token(%{current_token: {op, _, token}})
       when op in [
-             :stab_op,
+             :arrow_op,
+             :ternary_op,
+             :range_op,
+             :xor_op,
+             :in_op,
+             :or_op,
+             :and_op,
+             :comp_op,
+             :rel_op,
+             :assoc_op,
+             :at_op,
+             :concat_op,
              :dual_op,
              :mult_op,
-             :assoc_op,
-             :concat_op
+             :stab_op,
+             :unary_op
            ] do
     token
   end
