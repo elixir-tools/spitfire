@@ -6,7 +6,7 @@ defmodule Spitfire do
   @doo {:left, 5}
   @stab_op {:right, 10}
   @comma {:left, 20}
-  @leftstab_op {:left, 50}
+  @in_match_op {:left, 40}
   @whenn {:right, 50}
   @type_op {:right, 60}
   @pipe_op {:right, 70}
@@ -65,7 +65,7 @@ defmodule Spitfire do
     :. => @dot_call_op,
     do: @doo,
     stab_op: @stab_op,
-    leftstab_op: @leftstab_op,
+    in_match_op: @in_match_op,
     when: @whenn,
     type_op: @type_op,
     pipe_op: @pipe_op,
@@ -143,6 +143,7 @@ defmodule Spitfire do
         :at_op -> &parse_prefix_expression/1
         :unary_op -> &parse_prefix_expression/1
         :"[" -> &parse_list_literal/1
+        :"{" -> &parse_tuple_literal/1
         :%{} -> &parse_map_literal/1
         nil -> &parse_nil_literal/1
         _ -> nil
@@ -187,6 +188,7 @@ defmodule Spitfire do
               :rel_op -> &parse_infix_expression/2
               :in_op -> &parse_infix_expression/2
               :xor_op -> &parse_infix_expression/2
+              :in_match_op -> &parse_infix_expression/2
               :range_op -> &parse_range_expression/2
               :do -> &parse_do_block/2
               :. -> &parse_dot_expression/2
@@ -278,10 +280,24 @@ defmodule Spitfire do
     ast =
       case lhs do
         {token, meta, Elixir} ->
-          {token, meta, [[do: {:__block__, [], exprs}]]}
+          exprs =
+            if length(exprs) == 1 do
+              exprs |> List.first()
+            else
+              {:__block__, [], exprs}
+            end
+
+          {token, meta, [[do: exprs]]}
 
         {token, meta, args} when is_list(args) ->
-          {token, meta, args ++ [[do: {:__block__, [], exprs}]]}
+          exprs =
+            if length(exprs) == 1 do
+              exprs |> List.first()
+            else
+              {:__block__, [], exprs}
+            end
+
+          {token, meta, args ++ [[do: exprs]]}
       end
 
     {ast, parser}
@@ -435,13 +451,11 @@ defmodule Spitfire do
     {{:%{}, [], Enum.reverse(pairs)}, next_token(parser)}
   end
 
-  defp parse_list_literal(%{current_token: {:"[", _}} = parser) do
-    if peek_token(parser) == :"]" do
-      {[], next_token(parser)}
+  defp parse_tuple_literal(%{current_token: {:"{", _}} = parser) do
+    if peek_token(parser) == :"}" do
+      {{:{}, [], []}, next_token(parser)}
     else
-      # dbg(parser)
       parser = next_token(parser) |> eat_eol()
-      # dbg(parser)
 
       {first_expr, parser} = parse_expression(parser)
 
@@ -449,9 +463,7 @@ defmodule Spitfire do
 
       {exprs, parser} =
         while peek_token(parser) == :"," <- {exprs, parser} do
-          # dbg(parser)
           parser = parser |> next_token() |> eat_eol() |> next_token()
-          # dbg(parser)
           {expr, parser} = parse_expression(parser)
 
           {[expr | exprs], parser}
@@ -464,7 +476,45 @@ defmodule Spitfire do
           parser
         end
 
-      dbg(parser)
+      cond do
+        peek_token(parser) == :"}" ->
+          if Enum.count(exprs) == 2 do
+            {Enum.reverse(exprs) |> List.to_tuple(), next_token(parser)}
+          else
+            {{:{}, [], Enum.reverse(exprs)}, next_token(parser)}
+          end
+
+        true ->
+          # TODO: collect error/fix
+          raise "boom"
+      end
+    end
+  end
+
+  defp parse_list_literal(%{current_token: {:"[", _}} = parser) do
+    if peek_token(parser) == :"]" do
+      {[], next_token(parser)}
+    else
+      parser = next_token(parser) |> eat_eol()
+
+      {first_expr, parser} = parse_expression(parser)
+
+      exprs = [first_expr]
+
+      {exprs, parser} =
+        while peek_token(parser) == :"," <- {exprs, parser} do
+          parser = parser |> next_token() |> eat_eol() |> next_token()
+          {expr, parser} = parse_expression(parser)
+
+          {[expr | exprs], parser}
+        end
+
+      parser =
+        if peek_token(parser) == :eol do
+          parser |> next_token()
+        else
+          parser
+        end
 
       cond do
         peek_token(parser) == :"]" ->
@@ -516,12 +566,13 @@ defmodule Spitfire do
     :concat_op,
     :dual_op,
     :ternary_op,
-    :in_op
+    :in_op,
+    :in_match_op
   ]
   defp parse_identifier(%{current_token: {type, _, token}} = parser)
        when type in [:identifier, :do_identifier] do
     cond do
-      peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do, :.] ++ @operators) ->
+      peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do, :., :"}"] ++ @operators) ->
         {{token, [], Elixir}, parser}
 
       true ->
@@ -687,6 +738,7 @@ defmodule Spitfire do
              :ternary_op,
              :range_op,
              :xor_op,
+             :in_match_op,
              :in_op,
              :or_op,
              :and_op,

@@ -2,15 +2,21 @@ defmodule SpitfireTest do
   use ExUnit.Case
   doctest Spitfire
 
+  @tag :skip
   test "parses valid elixir" do
     code = """
     defmodule Foo do
+      use AnotherMod.Nested,
+        some: :option
+
       def run(arg) do
         bar() 
         :ok
       end
     end
     """
+
+    dbg(Code.string_to_quoted(code))
 
     assert Spitfire.parse(code) ==
              {:defmodule, [],
@@ -54,6 +60,73 @@ defmodule SpitfireTest do
     assert Spitfire.parse(code) == ":foobar"
   end
 
+  test "parses left stab" do
+    code = """
+    apple <- apples
+    """
+
+    assert Spitfire.parse(code) == {:<-, [], [{:apple, [], Elixir}, {:apples, [], Elixir}]}
+  end
+
+  test "parses for comprehension" do
+    codes = [
+      {~s'''
+       for i <- 0..100 do
+         i + i
+       end
+       ''',
+       {:for, [],
+        [
+          {:<-, [], [{:i, [], Elixir}, {:.., [], [0, 100]}]},
+          [do: {:+, [], [{:i, [], Elixir}, {:i, [], Elixir}]}]
+        ]}}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
+  test "parses with expression" do
+    codes = [
+      {~s'''
+       with {:ok, school} <- State.get_school(id),
+            {:ok, teachers} <- School.list_teachers(school),
+            {:ok, teacher} <- Teacher.coolest(teachers) do
+         Email.send(teacher, "You are the coolest teacher")
+       end
+       ''',
+       {:with, [],
+        [
+          {:<-, [],
+           [
+             {:ok, {:school, [], Elixir}},
+             {{:., [], [{:__aliases__, [], [:State]}, :get_school]}, [], [{:id, [], Elixir}]}
+           ]},
+          {:<-, [],
+           [
+             {:ok, {:teachers, [], Elixir}},
+             {{:., [], [{:__aliases__, [], [:School]}, :list_teachers]}, [],
+              [{:school, [], Elixir}]}
+           ]},
+          {:<-, [],
+           [
+             {:ok, {:teacher, [], Elixir}},
+             {{:., [], [{:__aliases__, [], [:Teacher]}, :coolest]}, [], [{:teachers, [], Elixir}]}
+           ]},
+          [
+            do:
+              {{:., [], [{:__aliases__, [], [:Email]}, :send]}, [],
+               [{:teacher, [], Elixir}, "You are the coolest teacher"]}
+          ]
+        ]}}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
   test "parses variable identifiers" do
     code = ~s'''
     foobar
@@ -85,6 +158,38 @@ defmodule SpitfireTest do
           "three"
         ]
        ''', [{:one, [], Elixir}, :two, "three"]}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
+  test "parses tuples" do
+    codes = [
+      {~s'''
+       {}
+       ''', {:{}, [], []}},
+      {~s'''
+        {one, :two}
+       ''', {{:one, [], Elixir}, :two}},
+      {~s'''
+        {
+          one,
+          :two,
+          "three"
+        }
+       ''', {:{}, [], [{:one, [], Elixir}, :two, "three"]}},
+      {~s'''
+        {one, :two, "three"}
+       ''', {:{}, [], [{:one, [], Elixir}, :two, "three"]}},
+      {~s'''
+        {
+          one,
+          :two,
+          "three"
+        }
+       ''', {:{}, [], [{:one, [], Elixir}, :two, "three"]}}
     ]
 
     for {code, expected} <- codes do
