@@ -109,7 +109,34 @@ defmodule SpitfireTest do
        %{}
        ''', {:%{}, [], []}},
       {~s'''
+       %{
+         "foo" => "bar",
+         "alice" => "bob"
+        }
+       ''', {:%{}, [], [{"foo", "bar"}, {"alice", "bob"}]}},
+      {~s'''
         %{"foo" => "bar", 1 => 2, :three => :four, [] => [1], %{} => nil, bing => bong, foo: :bar}
+       ''',
+       {:%{}, [],
+        [
+          {"foo", "bar"},
+          {1, 2},
+          {:three, :four},
+          {[], [1]},
+          {{:%{}, [], []}, nil},
+          {{:bing, [], Elixir}, {:bong, [], Elixir}},
+          {:foo, :bar}
+        ]}},
+      {~s'''
+        %{
+          "foo" => "bar",
+          1 => 2,
+          :three => :four,
+          [] => [1],
+          %{} => nil,
+          bing => bong,
+          foo: :bar
+        }
        ''',
        {:%{}, [],
         [
@@ -263,7 +290,30 @@ defmodule SpitfireTest do
        ''', {:!, [], [{:foo, [], Elixir}]}},
       {~s'''
        not foo
-       ''', {:not, [], [{:foo, [], Elixir}]}}
+       ''', {:not, [], [{:foo, [], Elixir}]}},
+      {~s'''
+       ^foo
+       ''', {:^, [], [{:foo, [], Elixir}]}},
+      {~s'''
+       ~~~foo
+       ''', {:"~~~", [], [{:foo, [], Elixir}]}}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
+  test "parses setting module attr" do
+    codes = [
+      {~s'''
+       @foo bar()
+       ''', {:@, [], [{:foo, [], [{:bar, [], []}]}]}},
+      {~s'''
+       @foo %{
+         foo: :bar
+       }
+       ''', {:@, [], [{:foo, [], [{:%{}, [], [foo: :bar]}]}]}}
     ]
 
     for {code, expected} <- codes do

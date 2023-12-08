@@ -401,32 +401,34 @@ defmodule Spitfire do
 
     {pairs, parser} =
       while peek_token(parser) != :"}" <- {pairs, parser} do
-        parser = next_token(parser)
+        parser = next_token(parser) |> eat_eol()
         {key, parser} = parse_expression(parser)
         key_token_type = current_token_type(parser)
 
-        cond do
-          key_token_type == :kw_identifier ->
-            {value, parser} = parse_expression(parser |> next_token())
-            {[{key, value} | pairs], parser}
+        parser =
+          cond do
+            key_token_type == :kw_identifier ->
+              parser |> next_token()
 
-          peek_token(parser) == :assoc_op ->
-            parser = parser |> next_token() |> next_token()
-            {value, parser} = parse_expression(parser)
+            peek_token(parser) == :assoc_op ->
+              parser |> next_token() |> next_token()
 
-            case {not (peek_token(parser) == :"}"), peek_token(parser) == :","} do
-              {true, true} ->
-                {[{key, value} | pairs], next_token(parser)}
+            true ->
+              # TODO: collect errors/fix code
+              raise "boom"
+          end
 
-              {false, false} ->
-                {[{key, value} | pairs], parser}
+        {value, parser} = parse_expression(parser)
 
-              {_, true} ->
-                {[{key, value} | pairs], parser}
-            end
+        case {peek_token(parser) == :"}", peek_token(parser) == :","} do
+          {false, true} ->
+            {[{key, value} | pairs], next_token(parser) |> eat_eol()}
 
-          true ->
-            {[:error | pairs], parser}
+          {true, false} ->
+            {[{key, value} | pairs], eat_eol(parser)}
+
+          {false, false} ->
+            {[{key, value} | pairs], next_token(parser)}
         end
       end
 
