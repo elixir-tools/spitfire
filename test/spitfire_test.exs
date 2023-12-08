@@ -77,6 +77,13 @@ defmodule SpitfireTest do
        ''', []},
       {~s'''
         [one, :two, "three"]
+       ''', [{:one, [], Elixir}, :two, "three"]},
+      {~s'''
+        [
+          one,
+          :two,
+          "three"
+        ]
        ''', [{:one, [], Elixir}, :two, "three"]}
     ]
 

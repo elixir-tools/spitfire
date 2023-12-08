@@ -439,7 +439,9 @@ defmodule Spitfire do
     if peek_token(parser) == :"]" do
       {[], next_token(parser)}
     else
-      parser = next_token(parser)
+      # dbg(parser)
+      parser = next_token(parser) |> eat_eol()
+      # dbg(parser)
 
       {first_expr, parser} = parse_expression(parser)
 
@@ -447,37 +449,33 @@ defmodule Spitfire do
 
       {exprs, parser} =
         while peek_token(parser) == :"," <- {exprs, parser} do
-          parser = parser |> next_token() |> next_token()
+          # dbg(parser)
+          parser = parser |> next_token() |> eat_eol() |> next_token()
+          # dbg(parser)
           {expr, parser} = parse_expression(parser)
 
           {[expr | exprs], parser}
         end
 
-      {Enum.reverse(exprs), next_token(parser)}
+      parser =
+        if peek_token(parser) == :eol do
+          parser |> next_token()
+        else
+          parser
+        end
+
+      dbg(parser)
+
+      cond do
+        peek_token(parser) == :"]" ->
+          {Enum.reverse(exprs), next_token(parser)}
+
+        true ->
+          # TODO: collect error/fix
+          raise "boom"
+      end
     end
   end
-
-  # defp parse_identifier(%{current_token: {:do_identifier, _, token}} = parser) do
-  #   parser = next_token(parser)
-
-  #   # if token is do, then eat the do token and a possible eol token
-  #   parser = parser |> next_token() |> eat_eol()
-
-  #   asts = []
-
-  #   # parse each expression in do block
-  #   {asts, parser} =
-  #     while current_token(parser) not in [:end, :eot] <- {asts, parser} do
-  #       {ast, parser} = parse_expression(parser)
-  #       {[ast | asts], eat_eol(parser)}
-  #     end
-
-  #   # do blocks are a separate keyword list argument, so args are `list, kw`
-  #   args = [[do: {:__block__, [], Enum.reverse(asts)}]]
-  #   parser = next_token(parser) |> eat_eol()
-
-  #   {{token, [], args}, parser}
-  # end
 
   defp parse_identifier(%{current_token: {:paren_identifier, _, token}} = parser) do
     args = []
