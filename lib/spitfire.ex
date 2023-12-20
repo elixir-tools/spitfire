@@ -120,6 +120,18 @@ defmodule Spitfire do
     end
   end
 
+  defp parse_grouped_expression(parser) do
+    parser = next_token(parser)
+
+    {expression, parser} = parse_expression(parser, @lowest)
+
+    if peek_token(parser) == :")" do
+      {expression, next_token(parser)}
+    else
+      {:error, parser}
+    end
+  end
+
   defp parse_nil_literal(parser) do
     {nil, parser}
   end
@@ -143,6 +155,7 @@ defmodule Spitfire do
         :at_op -> &parse_prefix_expression/1
         :unary_op -> &parse_prefix_expression/1
         :"[" -> &parse_list_literal/1
+        :"(" -> &parse_grouped_expression/1
         :"{" -> &parse_tuple_literal/1
         :%{} -> &parse_map_literal/1
         nil -> &parse_nil_literal/1

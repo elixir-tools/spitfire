@@ -68,6 +68,27 @@ defmodule SpitfireTest do
     assert Spitfire.parse(code) == {:<-, [], [{:apple, [], Elixir}, {:apples, [], Elixir}]}
   end
 
+  test "parses grouped expressions" do
+    codes = [
+      {~s'''
+       1 + 2 + 3
+       ''', {:+, [], [{:+, [], [1, 2]}, 3]}},
+      {~s'''
+       (1 + 2) + 3
+       ''', {:+, [], [{:+, [], [1, 2]}, 3]}},
+      {~s'''
+       ((1 + 2) + 3)
+       ''', {:+, [], [{:+, [], [1, 2]}, 3]}},
+      {~s'''
+       1 + (2 + 3)
+       ''', {:+, [], [1, {:+, [], [2, 3]}]}}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
   test "parses for comprehension" do
     codes = [
       {~s'''
