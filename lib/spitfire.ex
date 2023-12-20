@@ -257,47 +257,56 @@ defmodule Spitfire do
 
   defp parse_do_block(%{current_token: {:do, _}} = parser, lhs) do
     parser = next_token(parser) |> eat_eol()
-    exprs = []
+    exprs = [do: []]
 
     {exprs, parser} =
       while current_token(parser) != :end <- {exprs, parser} do
-        {ast, parser} = parse_expression(parser)
+        [{type, current_exprs} | rest] = exprs
 
-        parser = next_token(parser)
+        {exprs, parser} =
+          while current_token(parser) not in [:end, :block_identifier] <- {current_exprs, parser} do
+            {ast, parser} = parse_expression(parser)
 
-        parser =
-          if current_token(parser) == :end do
-            parser
-          else
-            parser |> next_token() |> eat_eol()
+            parser = next_token(parser)
+
+            parser =
+              if current_token(parser) == :end do
+                parser
+              else
+                parser |> next_token() |> eat_eol()
+              end
+
+            {[ast | current_exprs], parser}
           end
 
-        {[ast | exprs], parser}
+        case parser do
+          %{current_token: {:block_identifier, _, token}} ->
+            {[{token, []}, {type, exprs} | rest], next_token(parser) |> eat_eol()}
+
+          _ ->
+            {[{type, exprs} | rest], parser}
+        end
       end
 
-    exprs = Enum.reverse(exprs)
+    exprs =
+      for {type, expr} <- Enum.reverse(exprs) do
+        expr =
+          if length(expr) == 1 do
+            expr |> List.first()
+          else
+            {:__block__, [], Enum.reverse(expr)}
+          end
+
+        {type, expr}
+      end
 
     ast =
       case lhs do
         {token, meta, Elixir} ->
-          exprs =
-            if length(exprs) == 1 do
-              exprs |> List.first()
-            else
-              {:__block__, [], exprs}
-            end
-
-          {token, meta, [[do: exprs]]}
+          {token, meta, [exprs]}
 
         {token, meta, args} when is_list(args) ->
-          exprs =
-            if length(exprs) == 1 do
-              exprs |> List.first()
-            else
-              {:__block__, [], exprs}
-            end
-
-          {token, meta, args ++ [[do: exprs]]}
+          {token, meta, args ++ [exprs]}
       end
 
     {ast, parser}

@@ -473,7 +473,14 @@ defmodule SpitfireTest do
                  :partner
                ]}
           ]
-        ]}}
+        ]}},
+      {~s'''
+       if arg do
+        "howdy"
+        else
+        :partner
+       end
+       ''', {:if, [], [{:arg, [], Elixir}, [do: "howdy", else: :partner]]}}
     ]
 
     for {code, expected} <- codes do
