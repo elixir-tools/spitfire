@@ -13,7 +13,7 @@ The goal of the project is to make it easier for editor tooling to provide code 
 
 ## Scope
 
-It is not clear yet the scope of this Spitfire, but at a minimum it will be an independent parser and library.
+It is not clear yet the scope of Spitfire, but at a minimum it will be an independent parser and library.
 
 For more information, please see [elixir-lang/elixir#12645](https://github.com/elixir-lang/elixir/issues/12645#issuecomment-1837629952).
 
