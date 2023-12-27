@@ -10,6 +10,13 @@ The goal of the project is to make it easier for editor tooling to provide code 
 - [ ] Error tolerance
 - [ ] Environment querying API
 
+
+## Scope
+
+It is not clear yet the scope of this Spitfire, but at a minimum it will be an independent parser and library.
+
+For more information, please see [elixir-lang/elixir#12645](https://github.com/elixir-lang/elixir/issues/12645#issuecomment-1837629952).
+
 ## Design
 
 The project is a handwritten Pratt parser (a type of recursive descent parser). A hand written parser allows for better error tolerance as well as (hopefully) better error messages.
