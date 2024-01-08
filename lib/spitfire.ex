@@ -572,8 +572,6 @@ defmodule Spitfire do
   end
 
   defp parse_alias(%{current_token: {:alias, _, alias}} = parser) do
-    # parser = next_token(parser)
-
     aliases = [alias]
 
     {aliases, parser} =
