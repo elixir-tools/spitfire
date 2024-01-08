@@ -179,6 +179,8 @@ defmodule Spitfire do
         :kw_identifier -> &parse_kw_identifier/1
         :int -> &parse_int/1
         :atom -> &parse_atom/1
+        true -> &parse_boolean/1
+        false -> &parse_boolean/1
         :atom_quoted -> &parse_atom/1
         :bin_string -> &parse_string/1
         :fn -> &parse_anon_function/1
@@ -564,6 +566,10 @@ defmodule Spitfire do
 
   defp parse_atom(%{current_token: {:atom_quoted, _, atom}} = parser) do
     {atom, parser}
+  end
+
+  defp parse_boolean(%{current_token: {bool, _}} = parser) do
+    {bool, parser}
   end
 
   defp parse_int(%{current_token: {:int, {_, _, int}, _}} = parser) do

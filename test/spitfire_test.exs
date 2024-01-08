@@ -751,4 +751,12 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == expected
     end
   end
+  test "parses booleans" do
+    code = "false"
+    assert Spitfire.parse(code) == false
+
+    code = "true"
+    assert Spitfire.parse(code) == true
+  end
+
 end
