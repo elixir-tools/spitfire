@@ -170,8 +170,8 @@ defmodule Spitfire do
 
   defp parse_expression(parser, opts \\ []) do
     {associativity, precedence} = Keyword.get(opts, :precedence, @lowest)
+    # NOTE: the root of an expression list is the only place where a comma is treated like an infix operator
     is_top = Keyword.get(opts, :top, false)
-    # NOTE: if we're not in the root of a comma list, make the comma an infix operator
     prefix =
       case current_token_type(parser) do
         :identifier -> &parse_identifier/1
