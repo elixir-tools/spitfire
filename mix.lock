@@ -1,0 +1,3 @@
+%{
+  "styler": {:hex, :styler, "0.11.2", "43e758dc8e98e146096e56d52d0d93aa0ee273c6160d2041b84a7de798c330f3", [:mix], [], "hexpm", "363f41246a53d03d6caf1dbdd2b69456cbb3f8bb946d490b2b3cc3b8abf1b514"},
+}

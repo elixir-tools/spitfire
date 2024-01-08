@@ -1,5 +1,6 @@
 defmodule SpitfireTest do
   use ExUnit.Case
+
   doctest Spitfire
 
   @tag :skip
@@ -149,8 +150,7 @@ defmodule SpitfireTest do
     """
 
     assert Spitfire.parse(code) == [
-             {:->, [depth: 0],
-              [[{:foo, [], Elixir}], {:__block__, [], [:ok, {:baz, [], Elixir}]}]},
+             {:->, [depth: 0], [[{:foo, [], Elixir}], {:__block__, [], [:ok, {:baz, [], Elixir}]}]},
              {:->, [depth: 0],
               [
                 [{:alice, [], Elixir}, {:bob, [], Elixir}, {:carol, [], Elixir}],
@@ -218,8 +218,7 @@ defmodule SpitfireTest do
           {:<-, [],
            [
              {:ok, {:teachers, [], Elixir}},
-             {{:., [], [{:__aliases__, [], [:School]}, :list_teachers]}, [],
-              [{:school, [], Elixir}]}
+             {{:., [], [{:__aliases__, [], [:School]}, :list_teachers]}, [], [{:school, [], Elixir}]}
            ]},
           {:<-, [],
            [
@@ -679,14 +678,10 @@ defmodule SpitfireTest do
        ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], []}},
       {~s'''
        Remote.foo(arg, arg2)
-       ''',
-       {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [],
-        [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        Remote.foo arg, arg2
-       ''',
-       {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [],
-        [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        :erlang.foo
        ''', {{:., [], [:erlang, :foo]}, [], []}},
@@ -716,12 +711,10 @@ defmodule SpitfireTest do
         ]}},
       {~s'''
        somevar.foo(arg, arg2)
-       ''',
-       {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        somevar.foo arg, arg2
-       ''',
-       {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}}
+       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}}
     ]
 
     for {code, expected} <- codes do
@@ -795,8 +788,7 @@ defmodule SpitfireTest do
         [
           [
             do: [
-              {:->, [depth: 1],
-               [[{:==, [], [{:prefix, [], Elixir}, nil]}], {:__block__, [], [:foo]}]},
+              {:->, [depth: 1], [[{:==, [], [{:prefix, [], Elixir}, nil]}], {:__block__, [], [:foo]}]},
               {:->, [depth: 1], [[true], :bar]}
             ]
           ]

@@ -1,4 +1,5 @@
 defmodule Spitfire.While do
+  @moduledoc false
   def do_while(acc, predicate) do
     {condition, wrapped_body} = predicate.(acc)
 
