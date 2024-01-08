@@ -707,29 +707,26 @@ defmodule SpitfireTest do
     end
   end
 
-  @tag skip: true
   test "parses anon functions" do
     codes = [
       {~s'''
        fn -> :ok end
-       ''', {:fn, [], [{:->, [], [[], {:__block__, [], [:ok]}]}]}}
-      # {~s'''
-      #  fn ->
-      #    :ok
-      #  end
-      #  ''', {:fn, [], [{:->, [], [[], {:__block__, [], [:ok]}]}]}},
-      # {~s'''
-      #  fn one ->
-      #    one
-      #  end
-      #  ''',
-      #  {:fn, [], [{:->, [], [[{:one, [], Elixir}], {:__block__, [], [{:one, [], Elixir}]}]}]}},
-      # {~s'''
-      #  fn(one) ->
-      #    one
-      #  end
-      #  ''',
-      #  {:fn, [], [{:->, [], [[{:one, [], Elixir}], {:__block__, [], [{:one, [], Elixir}]}]}]}}
+       ''', {:fn, [], [{:->, [], [[], :ok]}]}},
+      {~s'''
+       fn ->
+         :ok
+       end
+       ''', {:fn, [], [{:->, [], [[], :ok]}]}},
+      {~s'''
+       fn one ->
+         one
+       end
+       ''', {:fn, [], [{:->, [depth: 0], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}},
+      {~s'''
+       fn(one) ->
+         one
+       end
+       ''', {:fn, [], [{:->, [depth: 0], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}}
     ]
 
     for {code, expected} <- codes do

@@ -307,11 +307,18 @@ defmodule Spitfire do
     {exprs, parser} =
       while peek_token(parser) not in [:eof, :end] <- {exprs, parser} do
         parser = next_token(parser)
-        {ast, parser} = parse_expression(parser)
+        {ast, parser} = parse_expression(parser, top: true)
 
         parser = eat_at(parser, :eol, 1)
 
         {[ast | exprs], eat_eol(parser)}
+      end
+
+    parser =
+      if peek_token(parser) == :end do
+        next_token(parser)
+      else
+        parser
       end
 
     rhs =
@@ -542,55 +549,11 @@ defmodule Spitfire do
   end
 
   defp parse_anon_function(%{current_token: {:fn, _}} = parser) do
-    # parameters = []
-
-    # parser =
-    #   if peek_token(parser) == :"(" do
-    #     next_token(parser)
-    #   else
-    #     parser
-    #   end
-
-    # {parameters, parser} =
-    #   while peek_token(parser) != :-> && peek_token(parser) != :")" <- {parameters, parser} do
-    #     parser = next_token(parser)
-    #     {parameter, parser} = parse_expression(parser)
-
-    #     {List.wrap(parameter) ++ parameters, parser}
-    #   end
-
-    # parser =
-    #   cond do
-    #     current_token(parser) == :fn and peek_token(parser) == :-> ->
-    #       parser |> next_token() |> next_token() |> eat_eol()
-
-    #     peek_token(parser) == :")" and peek_token(next_token(parser)) == :-> ->
-    #       parser |> next_token() |> next_token() |> next_token() |> eat_eol()
-
-    #     peek_token(parser) == :-> ->
-    #       parser |> next_token() |> next_token() |> eat_eol()
-
-    #     true ->
-    #       raise "boom"
-    #   end
-
-    # asts = []
-
-    # {asts, parser} =
-    #   while current_token(parser) != :end <- {asts, parser} do
-    #     {ast, parser} = parse_expression(parser)
-
-    #     {[ast | asts], eat_eol(next_token(parser))}
-    #   end
-
     parser = next_token(parser)
 
-    {body, parser} = parse_expression(parser)
+    {ast, parser} = parse_expression(parser, top: true)
 
-    ast =
-      {:fn, [], body}
-
-    {ast, parser}
+    {{:fn, [], ast}, parser}
   end
 
   defp parse_atom(%{current_token: {:atom, _, atom}} = parser) do
