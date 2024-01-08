@@ -2,35 +2,37 @@ defmodule Spitfire do
   require Logger
   import Spitfire.While
 
-  @lowest {:left, 1}
-  @doo {:left, 5}
-  @stab_op {:right, 10}
-  @comma {:left, 20}
-  @in_match_op {:left, 40}
-  @whenn {:right, 50}
-  @type_op {:right, 60}
-  @pipe_op {:right, 70}
-  @assoc_op {:right, 80}
-  @capture_op {:nonassoc, 90}
-  @match_op {:right, 100}
-  @or_op {:left, 120}
-  @and_op {:left, 130}
-  @comp_op {:left, 140}
-  @rel_op {:left, 150}
-  @arrow_op {:left, 160}
-  @in_op {:left, 170}
-  @xor_op {:left, 180}
-  @ternary_op {:right, 190}
-  @concat_op {:right, 200}
-  @range_op {:right, 200}
-  @dual_op {:left, 210}
-  @mult_op {:left, 220}
-  @power_op {:left, 230}
-  @unary_op {:unassoc, 300}
-  @dot_call_op {:left, 310}
-  @dot_op {:left, 310}
-  @at_op {:unassoc, 320}
-  @dot_identifier {:unassoc, 330}
+  @lowest {:left, 2}
+  @doo {:left, 4}
+  @stab_op {:right, 6}
+  @comma {:left, 8}
+  @kw_identifier {:left, 10}
+  @in_match_op {:left, 12}
+  @whenn {:right, 14}
+  @type_op {:right, 16}
+  @pipe_op {:right, 18}
+  @assoc_op {:right, 20}
+  @capture_op {:nonassoc, 22}
+  @match_op {:right, 24}
+  @or_op {:left, 26}
+  @and_op {:left, 28}
+  @comp_op {:left, 30}
+  @rel_op {:left, 32}
+  @arrow_op {:left, 34}
+  @in_op {:left, 36}
+  @xor_op {:left, 38}
+  @ternary_op {:right, 40}
+  @concat_op {:right, 42}
+  @range_op {:right, 44}
+  @dual_op {:left, 46}
+  @mult_op {:left, 48}
+  @power_op {:left, 50}
+  @left_paren {:left, 52}
+  @unary_op {:unassoc, 54}
+  @dot_call_op {:left, 56}
+  @dot_op {:left, 58}
+  @at_op {:unassoc, 60}
+  @dot_identifier {:unassoc, 62}
   # Left       5 do.
   # Right     10 stab_op_eol.     %% ->
   # Left      20 ','.
@@ -63,7 +65,9 @@ defmodule Spitfire do
   @precedences %{
     :"," => @comma,
     :. => @dot_call_op,
+    :"(" => @left_paren,
     do: @doo,
+    kw_identifier: @kw_identifier,
     stab_op: @stab_op,
     in_match_op: @in_match_op,
     when: @whenn,
@@ -102,13 +106,23 @@ defmodule Spitfire do
 
     {exprs, _parser} =
       while current_token(parser) != :eof <- {exprs, parser} do
-        {ast, parser} = parse_expression(parser)
+        {ast, parser} = parse_expression(parser, top: true)
 
         parser =
-          if peek_token(parser) == :eol do
+          if peek_token(parser) in [:eol, :eof] and parser.tokens != :eot do
             next_token(parser)
           else
             parser
+          end
+
+        {ast, exprs} =
+          case ast do
+            {:",", _meta, [arg]} ->
+              [last | rest] = exprs
+              {[last, arg], rest}
+
+            _ ->
+              {ast, exprs}
           end
 
         {[ast | exprs], eat_eol(parser)}
@@ -123,7 +137,7 @@ defmodule Spitfire do
   defp parse_grouped_expression(parser) do
     parser = next_token(parser)
 
-    {expression, parser} = parse_expression(parser, @lowest)
+    {expression, parser} = parse_expression(parser)
 
     if peek_token(parser) == :")" do
       {expression, next_token(parser)}
@@ -137,10 +151,25 @@ defmodule Spitfire do
   end
 
   defp parse_kw_identifier(%{current_token: {:kw_identifier, _, token}} = parser) do
-    {token, parser}
+    parser = next_token(parser)
+    {expr, parser} = parse_expression(parser, precedence: @kw_identifier)
+
+    pair = {token, expr}
+    {pair, parser}
   end
 
-  defp parse_expression(parser, {associativity, precedence} \\ @lowest) do
+  defp parse_assoc_op(%{current_token: {:assoc_op, _, _token}} = parser, key) do
+    parser = next_token(parser)
+    {expr, parser} = parse_expression(parser, precedence: @assoc_op)
+
+    pair = {key, expr}
+    {pair, parser}
+  end
+
+  defp parse_expression(parser, opts \\ []) do
+    {associativity, precedence} = Keyword.get(opts, :precedence, @lowest)
+    is_top = Keyword.get(opts, :top, false)
+    # NOTE: if we're not in the root of a comma list, make the comma an infix operator
     prefix =
       case current_token_type(parser) do
         :identifier -> &parse_identifier/1
@@ -154,6 +183,7 @@ defmodule Spitfire do
         :fn -> &parse_anon_function/1
         :at_op -> &parse_prefix_expression/1
         :unary_op -> &parse_prefix_expression/1
+        :stab_op -> &parse_stab_expression/1
         :"[" -> &parse_list_literal/1
         :"(" -> &parse_grouped_expression/1
         :"{" -> &parse_tuple_literal/1
@@ -186,13 +216,22 @@ defmodule Spitfire do
           precedence < power
         end
 
-        while peek_token(parser) not in [:",", :assoc_op, :eol, :eof, :->] && calc_prec.(parser) <-
-                {left, parser} do
+        terminals = [:eol, :eof, :"}", :")"]
+
+        terminals =
+          if not is_top do
+            [:"," | terminals]
+          else
+            terminals
+          end
+
+        while peek_token(parser) not in terminals && calc_prec.(parser) <- {left, parser} do
           infix =
             case peek_token_type(parser) do
               :dual_op -> &parse_infix_expression/2
               :mult_op -> &parse_infix_expression/2
               :concat_op -> &parse_infix_expression/2
+              :assoc_op -> &parse_assoc_op/2
               :arrow_op -> &parse_infix_expression/2
               :ternary_op -> &parse_infix_expression/2
               :or_op -> &parse_infix_expression/2
@@ -203,8 +242,10 @@ defmodule Spitfire do
               :xor_op -> &parse_infix_expression/2
               :in_match_op -> &parse_infix_expression/2
               :range_op -> &parse_range_expression/2
+              :stab_op -> &parse_stab_expression/2
               :do -> &parse_do_block/2
               :. -> &parse_dot_expression/2
+              :"," when is_top -> &parse_comma/2
               _ -> nil
             end
 
@@ -224,26 +265,171 @@ defmodule Spitfire do
     end
   end
 
+  defp parse_comma_list(parser) do
+    {expr, parser} = parse_expression(parser, precedence: @comma)
+    items = [expr]
+
+    {items, parser} =
+      while peek_token(parser) == :"," <- {items, parser} do
+        parser = next_token(parser) |> next_token()
+
+        {item, parser} = parse_expression(parser, precedence: @comma)
+
+        {[item | items], parser}
+      end
+
+    {Enum.reverse(items), parser}
+  end
+
   defp parse_prefix_expression(parser) do
     token = current_token(parser)
     precedence = current_precedence(parser)
     parser = parser |> next_token()
-    {rhs, parser} = parse_expression(parser, precedence)
+    {rhs, parser} = parse_expression(parser, precedence: precedence)
     ast = {token, [], [rhs]}
 
     {ast, eat_eol(parser)}
   end
 
+  # """
+  # A stab expression without a lhs is only possible as the argument to an anonymous function
+
+  # ```elixir
+  # fn -> :ok end
+  # ```
+  # """
+
+  defp parse_stab_expression(parser) do
+    token = current_token(parser)
+    parser = parser |> eat_at(:eol, 1)
+    exprs = []
+
+    {exprs, parser} =
+      while peek_token(parser) not in [:eof, :end] <- {exprs, parser} do
+        parser = next_token(parser)
+        {ast, parser} = parse_expression(parser)
+
+        parser = eat_at(parser, :eol, 1)
+
+        {[ast | exprs], eat_eol(parser)}
+      end
+
+    rhs =
+      case exprs do
+        [ast] -> ast
+        exprs -> {:__block__, [], Enum.reverse(exprs)}
+      end
+
+    ast =
+      [{token, [], [[], rhs]}]
+
+    {ast, eat_eol(parser)}
+  end
+
+  # """
+  # A stab expression with a lhs is present in case, cond, and try blocks, as well as macros.
+
+  # The rhs of a stab expression can be a single expression or a block of expressions. The end of the
+  # block is denoted by either the `end` keyword or by the start of another "bare" stab expression.
+
+  # ```elixir
+  # case foo do
+  #   :bar ->
+  #     Some.thing()
+  #     :ok
+
+  #   :baz ->
+  #     Another.thing()
+  #     :error
+  # end
+  # ```
+  # """
+
+  defp parse_stab_expression(parser, lhs) do
+    case current_token(parser) do
+      :<- ->
+        parse_infix_expression(parser, lhs)
+
+      :-> ->
+        token = current_token(parser)
+        current_sd = parser.stab_depth
+        parser = parser |> next_token() |> eat_eol()
+        exprs = []
+
+        {exprs, parser} =
+          while current_token(parser) not in [:eof, :end] <- {exprs, parser} do
+            {ast, parser} = parse_expression(parser, top: true)
+
+            parser =
+              if peek_token(parser) == :eol do
+                next_token(parser)
+              else
+                parser
+              end
+
+            {[ast | exprs], eat_eol(parser)}
+          end
+
+        rhs =
+          case exprs do
+            [ast] -> ast
+            exprs -> {:__block__, [], Enum.reverse(exprs)}
+          end
+
+        {rhs, stabs} =
+          Macro.traverse(
+            rhs,
+            [],
+            fn node, acc ->
+              case node do
+                {:->, meta, _args} ->
+                  if meta[:depth] == current_sd do
+                    {:__remove_me__, [node | acc]}
+                  else
+                    {node, acc}
+                  end
+
+                _ ->
+                  {node, acc}
+              end
+            end,
+            fn
+              {node, meta, args}, acc when is_list(args) ->
+                args = List.delete(args, [:__remove_me__])
+                {{node, meta, args}, acc}
+
+              node, acc ->
+                {node, acc}
+            end
+          )
+
+        ast =
+          [{token, [depth: parser.stab_depth], [List.wrap(lhs), rhs]}] ++ stabs
+
+        {ast, eat_eol(parser)}
+    end
+  end
+
+  defp parse_comma(parser, lhs) do
+    parser = parser |> next_token() |> eat_eol()
+    {exprs, parser} = parse_comma_list(parser)
+
+    {[lhs | exprs], eat_eol(parser)}
+  end
+
   defp parse_infix_expression(parser, lhs) do
     token = current_token(parser)
     precedence = current_precedence(parser)
-    parser = parser |> next_token()
-    {rhs, parser} = parse_expression(parser, precedence)
+    parser = parser |> next_token() |> eat_eol()
+    {rhs, parser} = parse_expression(parser, precedence: precedence)
 
     ast =
       case token do
         :"not in" ->
           {:not, [], [{:in, [], [lhs, rhs]}]}
+
+        # :-> ->
+        #   [{token, [], [List.wrap(lhs), rhs]}]
 
         _ ->
           {token, [], [lhs, rhs]}
@@ -256,11 +442,11 @@ defmodule Spitfire do
     token = current_token(parser)
     precedence = current_precedence(parser)
     parser = parser |> next_token()
-    {rhs, parser} = parse_expression(parser, precedence)
+    {rhs, parser} = parse_expression(parser, precedence: precedence)
 
     if peek_token(parser) == :ternary_op do
       parser = next_token(parser) |> next_token()
-      {rrhs, parser} = parse_expression(parser, precedence)
+      {rrhs, parser} = parse_expression(parser, precedence: precedence)
 
       {{:"..//", [], [lhs, rhs, rrhs]}, eat_eol(parser)}
     else
@@ -278,7 +464,7 @@ defmodule Spitfire do
 
         {exprs, parser} =
           while current_token(parser) not in [:end, :block_identifier] <- {current_exprs, parser} do
-            {ast, parser} = parse_expression(parser)
+            {ast, parser} = parse_expression(inc_stab_depth(parser), top: true)
 
             parser = next_token(parser)
 
@@ -291,6 +477,8 @@ defmodule Spitfire do
 
             {[ast | current_exprs], parser}
           end
+
+        parser = dec_stab_depth(parser)
 
         case parser do
           %{current_token: {:block_identifier, _, token}} ->
@@ -327,7 +515,6 @@ defmodule Spitfire do
 
   defp parse_dot_expression(parser, lhs) do
     token = current_token(parser)
-    # parser = parser |> next_token()
 
     case peek_token_type(parser) do
       type when type in [:identifier, :paren_identifier] ->
@@ -355,51 +542,53 @@ defmodule Spitfire do
   end
 
   defp parse_anon_function(%{current_token: {:fn, _}} = parser) do
-    parameters = []
+    # parameters = []
 
-    parser =
-      if peek_token(parser) == :"(" do
-        next_token(parser)
-      else
-        parser
-      end
+    # parser =
+    #   if peek_token(parser) == :"(" do
+    #     next_token(parser)
+    #   else
+    #     parser
+    #   end
 
-    {parameters, parser} =
-      while peek_token(parser) != :-> && peek_token(parser) != :")" <- {parameters, parser} do
-        parser = next_token(parser)
-        {parameter, parser} = parse_expression(parser)
+    # {parameters, parser} =
+    #   while peek_token(parser) != :-> && peek_token(parser) != :")" <- {parameters, parser} do
+    #     parser = next_token(parser)
+    #     {parameter, parser} = parse_expression(parser)
 
-        {List.wrap(parameter) ++ parameters, parser}
-      end
+    #     {List.wrap(parameter) ++ parameters, parser}
+    #   end
 
-    parser =
-      cond do
-        current_token(parser) == :fn and peek_token(parser) == :-> ->
-          parser |> next_token() |> next_token() |> eat_eol()
+    # parser =
+    #   cond do
+    #     current_token(parser) == :fn and peek_token(parser) == :-> ->
+    #       parser |> next_token() |> next_token() |> eat_eol()
 
-        peek_token(parser) == :")" and peek_token(next_token(parser)) == :-> ->
-          parser |> next_token() |> next_token() |> next_token() |> eat_eol()
+    #     peek_token(parser) == :")" and peek_token(next_token(parser)) == :-> ->
+    #       parser |> next_token() |> next_token() |> next_token() |> eat_eol()
 
-        peek_token(parser) == :-> ->
-          parser |> next_token() |> next_token() |> eat_eol()
+    #     peek_token(parser) == :-> ->
+    #       parser |> next_token() |> next_token() |> eat_eol()
 
-        true ->
-          raise "boom"
-      end
+    #     true ->
+    #       raise "boom"
+    #   end
 
-    asts = []
+    # asts = []
 
-    {asts, parser} =
-      while current_token(parser) != :end <- {asts, parser} do
-        {ast, parser} = parse_expression(parser)
+    # {asts, parser} =
+    #   while current_token(parser) != :end <- {asts, parser} do
+    #     {ast, parser} = parse_expression(parser)
 
-        {[ast | asts], eat_eol(next_token(parser))}
-      end
+    #     {[ast | asts], eat_eol(next_token(parser))}
+    #   end
 
     parser = next_token(parser)
 
+    {body, parser} = parse_expression(parser)
+
     ast =
-      {:fn, [], [{:->, [], [Enum.reverse(parameters), {:__block__, [], Enum.reverse(asts)}]}]}
+      {:fn, [], body}
 
     {ast, parser}
   end
@@ -435,138 +624,54 @@ defmodule Spitfire do
 
   defp parse_map_literal(%{current_token: {:%{}, _}} = parser) do
     parser = next_token(parser)
-    pairs = []
+    parser = next_token(parser) |> eat_eol()
 
-    {pairs, parser} =
-      while peek_token(parser) != :"}" <- {pairs, parser} do
-        parser = next_token(parser) |> eat_eol()
-        {key, parser} = parse_expression(parser)
-        key_token_type = current_token_type(parser)
-
-        parser =
-          cond do
-            key_token_type == :kw_identifier ->
-              parser |> next_token()
-
-            peek_token(parser) == :assoc_op ->
-              parser |> next_token() |> next_token()
-
-            true ->
-              # TODO: collect errors/fix code
-              raise "boom"
-          end
-
-        {value, parser} = parse_expression(parser)
-
-        case {peek_token(parser) == :"}", peek_token(parser) == :","} do
-          {false, true} ->
-            {[{key, value} | pairs], next_token(parser) |> eat_eol()}
-
-          {true, false} ->
-            {[{key, value} | pairs], eat_eol(parser)}
-
-          {false, false} ->
-            {[{key, value} | pairs], next_token(parser)}
-        end
-      end
-
-    {{:%{}, [], Enum.reverse(pairs)}, next_token(parser)}
+    if current_token(parser) == :"}" do
+      {{:%{}, [], []}, parser}
+    else
+      {pairs, parser} = parse_comma_list(parser)
+      {{:%{}, [], pairs}, next_token(parser) |> eat_eol()}
+    end
   end
 
   defp parse_tuple_literal(%{current_token: {:"{", _}} = parser) do
-    if peek_token(parser) == :"}" do
-      {{:{}, [], []}, next_token(parser)}
+    parser = next_token(parser) |> eat_eol()
+
+    if current_token(parser) == :"}" do
+      {{:{}, [], []}, parser}
     else
-      parser = next_token(parser) |> eat_eol()
-
-      {first_expr, parser} = parse_expression(parser)
-
-      exprs = [first_expr]
-
-      {exprs, parser} =
-        while peek_token(parser) == :"," <- {exprs, parser} do
-          parser = parser |> next_token() |> eat_eol() |> next_token()
-          {expr, parser} = parse_expression(parser)
-
-          {[expr | exprs], parser}
-        end
-
-      parser =
-        if peek_token(parser) == :eol do
-          parser |> next_token()
-        else
-          parser
-        end
+      {pairs, parser} = parse_comma_list(parser)
 
       cond do
-        peek_token(parser) == :"}" ->
-          if Enum.count(exprs) == 2 do
-            {Enum.reverse(exprs) |> List.to_tuple(), next_token(parser)}
-          else
-            {{:{}, [], Enum.reverse(exprs)}, next_token(parser)}
-          end
+        length(pairs) == 2 ->
+          {List.wrap(pairs) |> List.to_tuple(), next_token(parser) |> eat_eol()}
 
         true ->
-          # TODO: collect error/fix
-          raise "boom"
+          {{:{}, [], List.wrap(pairs)}, next_token(parser) |> eat_eol()}
       end
     end
   end
 
   defp parse_list_literal(%{current_token: {:"[", _}} = parser) do
-    if peek_token(parser) == :"]" do
-      {[], next_token(parser)}
+    parser = next_token(parser) |> eat_eol()
+
+    if current_token(parser) == :"]" do
+      {[], parser}
     else
-      parser = next_token(parser) |> eat_eol()
-
-      {first_expr, parser} = parse_expression(parser)
-
-      exprs = [first_expr]
-
-      {exprs, parser} =
-        while peek_token(parser) == :"," <- {exprs, parser} do
-          parser = parser |> next_token() |> eat_eol() |> next_token()
-          {expr, parser} = parse_expression(parser)
-
-          {[expr | exprs], parser}
-        end
-
-      parser =
-        if peek_token(parser) == :eol do
-          parser |> next_token()
-        else
-          parser
-        end
-
-      cond do
-        peek_token(parser) == :"]" ->
-          {Enum.reverse(exprs), next_token(parser)}
-
-        true ->
-          # TODO: collect error/fix
-          raise "boom"
-      end
+      {pairs, parser} = parse_comma_list(parser)
+      {List.wrap(pairs), next_token(parser) |> eat_eol()}
     end
   end
 
   defp parse_identifier(%{current_token: {:paren_identifier, _, token}} = parser) do
-    args = []
+    parser = next_token(parser) |> eat_eol()
 
-    parser = parser |> next_token()
-
-    {args, parser} =
-      while peek_token(parser) != :")" <- {args, parser} do
-        parser = parser |> next_token() |> then(&eat(:",", &1))
-        # parse arguments
-        {arg, parser} = parse_expression(parser)
-
-        # eat comma
-        {[arg | args], parser}
-      end
-
-    parser = next_token(parser)
-
-    {{token, [], Enum.reverse(args)}, parser}
+    if peek_token(parser) == :")" do
+      {{token, [], []}, next_token(parser)}
+    else
+      {pairs, parser} = parse_comma_list(next_token(parser))
+      {{token, [], List.wrap(pairs)}, next_token(parser) |> eat_eol()}
+    end
   end
 
   @operators [
@@ -593,6 +698,10 @@ defmodule Spitfire do
   ]
   defp parse_identifier(%{current_token: {type, _, token}} = parser)
        when type in [:identifier, :do_identifier] do
+    # if token == :alice do
+    #   raise "boom"
+    # end
+
     cond do
       peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do, :., :"}"] ++ @operators) ->
         {{token, [], Elixir}, parser}
@@ -601,7 +710,7 @@ defmodule Spitfire do
         parser = next_token(parser)
 
         parser = push_nesting(parser, 1)
-        {first_arg, parser} = parse_expression(parser, @comma)
+        {first_arg, parser} = parse_expression(parser, top: true, precedence: @comma)
 
         args = [first_arg]
 
@@ -609,7 +718,7 @@ defmodule Spitfire do
           while peek_token(parser) == :"," <- {args, parser} do
             parser = parser |> next_token() |> next_token()
             parser = inc_nesting(parser)
-            {arg, parser} = parse_expression(parser)
+            {arg, parser} = parse_expression(parser, top: true, precedence: @comma)
 
             {[arg | args], parser}
           end
@@ -642,7 +751,8 @@ defmodule Spitfire do
       tokens: tokenize(code),
       current_token: nil,
       peek_token: nil,
-      nestings: []
+      nestings: [],
+      stab_depth: 0
     }
   end
 
@@ -710,6 +820,39 @@ defmodule Spitfire do
     eat(:eol, parser)
   end
 
+  def eat_at(parser, token, 0) do
+    eat(token, parser)
+  end
+
+  def eat_at(%{peek_token: peek_token, tokens: [next | rest]} = parser, token, 1) do
+    case peek_token do
+      {^token, _} ->
+        %{parser | peek_token: next, tokens: rest}
+
+      {^token, _, _} ->
+        %{parser | peek_token: next, tokens: rest}
+
+      _ ->
+        parser
+    end
+  end
+
+  def eat_at(%{tokens: tokens} = parser, token, idx) do
+    tokens =
+      case Enum.at(tokens, idx) do
+        {^token, _, _} ->
+          List.delete_at(tokens, idx)
+
+        {^token, _} ->
+          List.delete_at(tokens, idx)
+
+        _ ->
+          tokens
+      end
+
+    %{parser | tokens: tokens}
+  end
+
   def peek_token(%{peek_token: {:stab_op, _, token}}) do
     token
   end
@@ -723,6 +866,10 @@ defmodule Spitfire do
   end
 
   def peek_token(%{peek_token: :eof}) do
+    :eof
+  end
+
+  def peek_token(%{tokens: :eot}) do
     :eof
   end
 
@@ -803,5 +950,13 @@ defmodule Spitfire do
 
   defp push_nesting(%{nestings: nestings} = parser, nesting) do
     %{parser | nestings: [nesting | nestings]}
+  end
+
+  defp inc_stab_depth(%{stab_depth: depth} = parser) do
+    %{parser | stab_depth: depth + 1}
+  end
+
+  defp dec_stab_depth(%{stab_depth: depth} = parser) do
+    %{parser | stab_depth: depth - 1}
   end
 end
