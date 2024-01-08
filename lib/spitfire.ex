@@ -172,6 +172,7 @@ defmodule Spitfire do
     {associativity, precedence} = Keyword.get(opts, :precedence, @lowest)
     # NOTE: the root of an expression list is the only place where a comma is treated like an infix operator
     is_top = Keyword.get(opts, :top, false)
+
     prefix =
       case current_token_type(parser) do
         :identifier -> &parse_identifier/1
@@ -198,9 +199,11 @@ defmodule Spitfire do
       end
 
     if prefix == nil do
+      {row, col} = token_loc(parser.current_token)
+
       IO.puts(
         IO.ANSI.red() <>
-          "#{__ENV__.line}: unknown prefix: #{current_token_type(parser)}" <> IO.ANSI.reset()
+          "#{row}:#{col}: unknown prefix: #{current_token_type(parser)}" <> IO.ANSI.reset()
       )
 
       {:error, next_token(parser)}
@@ -219,7 +222,7 @@ defmodule Spitfire do
         precedence < power
       end
 
-      terminals = [:eol, :eof, :"}", :")"]
+      terminals = [:eol, :eof, :"}", :")", :"]"]
 
       terminals =
         if is_top do
@@ -677,6 +680,7 @@ defmodule Spitfire do
     :or,
     :**,
     :range_op,
+    :arrow_op,
     :assoc_op,
     :concat_op,
     :dual_op,
@@ -687,7 +691,7 @@ defmodule Spitfire do
     :match_op
   ]
   defp parse_identifier(%{current_token: {type, _, token}} = parser) when type in [:identifier, :do_identifier] do
-    if peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do, :., :"}"] ++ @operators) do
+    if peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do, :., :"}", :"]"] ++ @operators) do
       {{token, [], Elixir}, parser}
     else
       parser = next_token(parser)
@@ -914,6 +918,14 @@ defmodule Spitfire do
 
   def current_token(%{current_token: {token, _}}) do
     token
+  end
+
+  def token_loc({_, {row, col, _}, _}) do
+    {row, col}
+  end
+
+  def token_loc({_, {row, col, _}}) do
+    {row, col}
   end
 
   defp current_precedence(parser) do

@@ -260,6 +260,9 @@ defmodule SpitfireTest do
        []
        ''', []},
       {~s'''
+       [arg]
+       ''', [{:arg, [], Elixir}]},
+      {~s'''
         [one, :two, "three"]
        ''', [{:one, [], Elixir}, :two, "three"]},
       {~s'''
@@ -798,5 +801,41 @@ defmodule SpitfireTest do
     for {code, expected} <- codes do
       assert Spitfire.parse(code) == expected
     end
+  end
+
+  test "this" do
+    code = ~S'''
+    def parse(code) do
+      parser = code |> new() |> next_token() |> next_token()
+
+      parse_program(parser)
+    end
+    '''
+
+    assert Spitfire.parse(code) ==
+             {:def, [],
+              [
+                {:parse, [], [{:code, [], Elixir}]},
+                [
+                  do:
+                    {:__block__, [],
+                     [
+                       {:=, [],
+                        [
+                          {:parser, [], Elixir},
+                          {:|>, [],
+                           [
+                             {:|>, [],
+                              [
+                                {:|>, [], [{:code, [], Elixir}, {:new, [], []}]},
+                                {:next_token, [], []}
+                              ]},
+                             {:next_token, [], []}
+                           ]}
+                        ]},
+                       {:parse_program, [], [{:parser, [], Elixir}]}
+                     ]}
+                ]
+              ]}
   end
 end
