@@ -50,6 +50,24 @@ defmodule SpitfireTest do
     assert Spitfire.parse(code) == "foobar"
   end
 
+  test "parses string interpolation" do
+    code = ~S'''
+    "foo#{alice}bar"
+    '''
+
+    assert Spitfire.parse(code) ==
+             {:<<>>, [],
+              [
+                "foo",
+                {:"::", [],
+                 [
+                   {{:., [], [Kernel, :to_string]}, [], [{:alice, [], Elixir}]},
+                   {:binary, [], Elixir}
+                 ]},
+                "bar"
+              ]}
+  end
+
   test "parses atoms" do
     code = ~s'''
     :foobar

@@ -571,6 +571,32 @@ defmodule Spitfire do
     {string, parser}
   end
 
+  defp parse_string(%{current_token: {:bin_string, _, tokens}} = parser) do
+    args =
+      for token <- tokens do
+        case token do
+          token when is_binary(token) ->
+            token
+
+          {_start, _stop, tokens} ->
+            # construct a new parser
+            parser = %{
+              tokens: tokens ++ [:eof],
+              current_token: nil,
+              peek_token: nil,
+              nestings: [],
+              stab_depth: 0
+            }
+
+            {ast, _parser} = parse_expression(parser |> next_token() |> next_token())
+
+            {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [ast]}, {:binary, [], Elixir}]}
+        end
+      end
+
+    {{:<<>>, [], args}, parser}
+  end
+
   defp parse_alias(%{current_token: {:alias, _, alias}} = parser) do
     aliases = [alias]
 
