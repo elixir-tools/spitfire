@@ -80,7 +80,7 @@ defmodule SpitfireTest do
     assert Spitfire.parse(code) == [{:->, [], [[], {:bar, [], Elixir}]}]
 
     code = """
-    -> :ok end
+    -> :ok
     """
 
     assert Spitfire.parse(code) == [{:->, [], [[], :ok]}]
@@ -107,7 +107,6 @@ defmodule SpitfireTest do
     alice, bob, carol ->
       :error
       bar
-    end
     """
 
     # if we get a prefix comma operator, that means we might need to backtrack and then
@@ -129,7 +128,6 @@ defmodule SpitfireTest do
     alice, bob, carol ->
       :error
       bar
-    end
     """
 
     assert Spitfire.parse(code) == [
@@ -765,4 +763,30 @@ defmodule SpitfireTest do
     assert Spitfire.parse(code) == true
   end
 
+  test "parses cond expression" do
+    codes = [
+      {~s'''
+       cond do
+          prefix == nil ->
+            :foo
+          true ->
+            :bar
+        end
+       ''',
+       {:cond, [],
+        [
+          [
+            do: [
+              {:->, [depth: 1],
+               [[{:==, [], [{:prefix, [], Elixir}, nil]}], {:__block__, [], [:foo]}]},
+              {:->, [depth: 1], [[true], :bar]}
+            ]
+          ]
+        ]}}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
 end

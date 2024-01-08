@@ -318,13 +318,6 @@ defmodule Spitfire do
         {[ast | exprs], eat_eol(parser)}
       end
 
-    parser =
-      if peek_token(parser) == :end do
-        next_token(parser)
-      else
-        parser
-      end
-
     rhs =
       case exprs do
         [ast] -> ast
@@ -364,19 +357,15 @@ defmodule Spitfire do
       :-> ->
         token = current_token(parser)
         current_sd = parser.stab_depth
-        parser = parser |> next_token() |> eat_eol()
+        parser = parser |> eat_at(:eol, 1)
         exprs = []
 
         {exprs, parser} =
-          while current_token(parser) not in [:eof, :end] <- {exprs, parser} do
+          while peek_token(parser) not in [:eof, :end] <- {exprs, parser} do
+            parser = next_token(parser)
             {ast, parser} = parse_expression(parser, top: true)
 
-            parser =
-              if peek_token(parser) == :eol do
-                next_token(parser)
-              else
-                parser
-              end
+            parser = eat_at(parser, :eol, 1)
 
             {[ast | exprs], eat_eol(parser)}
           end
@@ -557,6 +546,8 @@ defmodule Spitfire do
 
     {ast, parser} = parse_expression(parser, top: true)
 
+    parser = next_token(parser)
+
     {{:fn, [], ast}, parser}
   end
 
@@ -670,14 +661,11 @@ defmodule Spitfire do
     :ternary_op,
     :in_op,
     :in_match_op,
+    :comp_op,
     :match_op
   ]
   defp parse_identifier(%{current_token: {type, _, token}} = parser)
        when type in [:identifier, :do_identifier] do
-    # if token == :alice do
-    #   raise "boom"
-    # end
-
     cond do
       peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do, :., :"}"] ++ @operators) ->
         {{token, [], Elixir}, parser}
