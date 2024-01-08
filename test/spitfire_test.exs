@@ -751,6 +751,12 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == expected
     end
   end
+
+  test "parses nil" do
+    code = "nil"
+    assert Spitfire.parse(code) == nil
+  end
+
   test "parses booleans" do
     code = "false"
     assert Spitfire.parse(code) == false
