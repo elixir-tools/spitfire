@@ -179,6 +179,7 @@ defmodule Spitfire do
         :kw_identifier -> &parse_kw_identifier/1
         :int -> &parse_int/1
         :atom -> &parse_atom/1
+        :atom_quoted -> &parse_atom/1
         :bin_string -> &parse_string/1
         :fn -> &parse_anon_function/1
         :at_op -> &parse_prefix_expression/1
@@ -228,6 +229,7 @@ defmodule Spitfire do
         while peek_token(parser) not in terminals && calc_prec.(parser) <- {left, parser} do
           infix =
             case peek_token_type(parser) do
+              :match_op -> &parse_infix_expression/2
               :dual_op -> &parse_infix_expression/2
               :mult_op -> &parse_infix_expression/2
               :concat_op -> &parse_infix_expression/2
@@ -560,6 +562,10 @@ defmodule Spitfire do
     {atom, parser}
   end
 
+  defp parse_atom(%{current_token: {:atom_quoted, _, atom}} = parser) do
+    {atom, parser}
+  end
+
   defp parse_int(%{current_token: {:int, {_, _, int}, _}} = parser) do
     {int, parser}
   end
@@ -657,7 +663,8 @@ defmodule Spitfire do
     :dual_op,
     :ternary_op,
     :in_op,
-    :in_match_op
+    :in_match_op,
+    :match_op
   ]
   defp parse_identifier(%{current_token: {type, _, token}} = parser)
        when type in [:identifier, :do_identifier] do
@@ -882,6 +889,7 @@ defmodule Spitfire do
              :dual_op,
              :mult_op,
              :stab_op,
+             :match_op,
              :unary_op
            ] do
     token

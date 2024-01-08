@@ -52,10 +52,16 @@ defmodule SpitfireTest do
 
   test "parses atoms" do
     code = ~s'''
-    ":foobar" 
+    :foobar
     '''
 
-    assert Spitfire.parse(code) == ":foobar"
+    assert Spitfire.parse(code) == :foobar
+
+    code = ~s'''
+    :","
+    '''
+
+    assert Spitfire.parse(code) == :","
   end
 
   test "parses left stab" do
@@ -727,6 +733,18 @@ defmodule SpitfireTest do
          one
        end
        ''', {:fn, [], [{:->, [depth: 0], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
+  test "parses match operator" do
+    codes = [
+      {~s'''
+       foo = :bar
+       ''', {:=, [], [{:foo, [], Elixir}, :bar]}}
     ]
 
     for {code, expected} <- codes do
