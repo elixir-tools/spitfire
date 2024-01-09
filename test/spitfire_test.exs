@@ -279,6 +279,26 @@ defmodule SpitfireTest do
     end
   end
 
+  test "parses pattern matching in list" do
+    codes = [
+      {~s'''
+       [one | rest] = my_list
+       ''', {:=, [], [[{:|, [], [{:one, [], Elixir}, {:rest, [], Elixir}]}], {:my_list, [], Elixir}]}},
+      {~s'''
+       [one, two | rest] = my_list
+       ''',
+       {:=, [],
+        [
+          [{:one, [], Elixir}, {:|, [], [{:two, [], Elixir}, {:rest, [], Elixir}]}],
+          {:my_list, [], Elixir}
+        ]}}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
   test "parses tuples" do
     codes = [
       {~s'''

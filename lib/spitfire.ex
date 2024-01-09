@@ -235,6 +235,7 @@ defmodule Spitfire do
         infix =
           case peek_token_type(parser) do
             :match_op -> &parse_infix_expression/2
+            :pipe_op -> &parse_infix_expression/2
             :dual_op -> &parse_infix_expression/2
             :mult_op -> &parse_infix_expression/2
             :concat_op -> &parse_infix_expression/2
@@ -650,6 +651,7 @@ defmodule Spitfire do
       {[], parser}
     else
       {pairs, parser} = parse_comma_list(parser)
+
       {List.wrap(pairs), parser |> next_token() |> eat_eol()}
     end
   end
@@ -682,6 +684,7 @@ defmodule Spitfire do
     :range_op,
     :arrow_op,
     :assoc_op,
+    :pipe_op,
     :concat_op,
     :dual_op,
     :ternary_op,
@@ -891,6 +894,7 @@ defmodule Spitfire do
   def current_token(%{current_token: {op, _, token}})
       when op in [
              :arrow_op,
+             :pipe_op,
              :ternary_op,
              :range_op,
              :xor_op,
