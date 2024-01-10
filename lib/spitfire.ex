@@ -14,7 +14,7 @@ defmodule Spitfire do
   @type_op {:right, 16}
   @pipe_op {:right, 18}
   @assoc_op {:right, 20}
-  @capture_op {:nonassoc, 22}
+  @capture_op {:unassoc, 22}
   @match_op {:right, 24}
   @or_op {:left, 26}
   @and_op {:left, 28}
@@ -189,6 +189,7 @@ defmodule Spitfire do
         :fn -> &parse_anon_function/1
         :at_op -> &parse_prefix_expression/1
         :unary_op -> &parse_prefix_expression/1
+        :capture_op -> &parse_prefix_expression/1
         :stab_op -> &parse_stab_expression/1
         :"[" -> &parse_list_literal/1
         :"(" -> &parse_grouped_expression/1
@@ -216,6 +217,7 @@ defmodule Spitfire do
         precedence =
           case associativity do
             :left -> precedence
+            :unassoc -> 0
             :right -> precedence - 1
           end
 
@@ -531,11 +533,13 @@ defmodule Spitfire do
 
   defp parse_dot_expression(parser, lhs) do
     token = current_token(parser)
+    precedence = current_precedence(parser)
 
     case peek_token_type(parser) do
       type when type in [:identifier, :paren_identifier] ->
         parser = next_token(parser)
-        {{rhs, _, args}, parser} = parse_expression(parser)
+
+        {{rhs, _, args}, parser} = parse_expression(parser, precedence: precedence)
 
         args =
           if args == Elixir do
@@ -695,6 +699,7 @@ defmodule Spitfire do
     :or,
     :**,
     :range_op,
+    :mult_op,
     :arrow_op,
     :assoc_op,
     :pipe_op,
@@ -914,6 +919,7 @@ defmodule Spitfire do
              :range_op,
              :xor_op,
              :in_match_op,
+             :capture_op,
              :in_op,
              :or_op,
              :and_op,

@@ -919,4 +919,19 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == expected
     end
   end
+
+  test "capture operator" do
+    codes = [
+      {~s'''
+       &foo/1
+       ''', {:&, [], [{:/, [], [{:foo, [], Elixir}, 1]}]}},
+      {~s'''
+       &Foo.foo/1
+       ''', {:&, [], [{:/, [], [{{:., [], [{:__aliases__, [], [:Foo]}, :foo]}, [], []}, 1]}]}}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
 end
