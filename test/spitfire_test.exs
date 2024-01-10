@@ -691,6 +691,12 @@ defmodule SpitfireTest do
        foo(arg, arg2)
        ''', {:foo, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
+       foo(
+         arg,
+         arg2
+       )
+       ''', {:foo, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+      {~s'''
        foo arg, arg2
        ''', {:foo, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
@@ -701,6 +707,12 @@ defmodule SpitfireTest do
        ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], []}},
       {~s'''
        Remote.foo(arg, arg2)
+       ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+      {~s'''
+       Remote.foo(
+         arg,
+         arg2
+       )
        ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
       {~s'''
        Remote.foo arg, arg2

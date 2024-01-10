@@ -678,7 +678,7 @@ defmodule Spitfire do
     if peek_token(parser) == :")" do
       {{token, [], []}, next_token(parser)}
     else
-      {pairs, parser} = parse_comma_list(next_token(parser))
+      {pairs, parser} = parse_comma_list(parser |> next_token() |> eat_eol())
 
       {{token, [], List.wrap(pairs)}, parser |> next_token() |> eat_eol()}
     end
