@@ -8,9 +8,9 @@ defmodule Spitfire do
   @doo {:left, 4}
   @stab_op {:right, 6}
   @comma {:left, 8}
+  @whenn {:right, 8}
   @kw_identifier {:left, 10}
   @in_match_op {:left, 12}
-  @whenn {:right, 14}
   @type_op {:right, 16}
   @pipe_op {:right, 18}
   @assoc_op {:right, 20}
@@ -72,7 +72,7 @@ defmodule Spitfire do
     kw_identifier: @kw_identifier,
     stab_op: @stab_op,
     in_match_op: @in_match_op,
-    when: @whenn,
+    when_op: @whenn,
     type_op: @type_op,
     pipe_op: @pipe_op,
     assoc_op: @assoc_op,
@@ -235,6 +235,7 @@ defmodule Spitfire do
         infix =
           case peek_token_type(parser) do
             :match_op -> &parse_infix_expression/2
+            :when_op -> &parse_infix_expression/2
             :pipe_op -> &parse_infix_expression/2
             :dual_op -> &parse_infix_expression/2
             :mult_op -> &parse_infix_expression/2
@@ -294,6 +295,7 @@ defmodule Spitfire do
     precedence = current_precedence(parser)
     parser = next_token(parser)
     {rhs, parser} = parse_expression(parser, precedence: precedence)
+
     ast = {token, [], [rhs]}
 
     {ast, eat_eol(parser)}
@@ -407,6 +409,13 @@ defmodule Spitfire do
             end
           )
 
+        rhs =
+          case rhs do
+            {:__block__, _, [ast]} -> ast
+            [ast] -> ast
+            block -> block
+          end
+
         ast =
           [{token, [depth: parser.stab_depth], [List.wrap(lhs), rhs]}] ++ stabs
 
@@ -432,8 +441,8 @@ defmodule Spitfire do
         :"not in" ->
           {:not, [], [{:in, [], [lhs, rhs]}]}
 
-        # :-> ->
-        #   [{token, [], [List.wrap(lhs), rhs]}]
+        :when ->
+          {token, [], List.wrap(lhs) ++ [rhs]}
 
         _ ->
           {token, [], [lhs, rhs]}
@@ -509,6 +518,9 @@ defmodule Spitfire do
       case lhs do
         {token, meta, Elixir} ->
           {token, meta, [exprs]}
+
+        # {token, meta, [[{:<-, _, _} | _] = stabs]} ->
+        #   {token, meta, stabs ++ [exprs]}
 
         {token, meta, args} when is_list(args) ->
           {token, meta, args ++ [exprs]}
@@ -663,6 +675,7 @@ defmodule Spitfire do
       {{token, [], []}, next_token(parser)}
     else
       {pairs, parser} = parse_comma_list(next_token(parser))
+
       {{token, [], List.wrap(pairs)}, parser |> next_token() |> eat_eol()}
     end
   end
@@ -691,7 +704,8 @@ defmodule Spitfire do
     :in_op,
     :in_match_op,
     :comp_op,
-    :match_op
+    :match_op,
+    :when_op
   ]
   defp parse_identifier(%{current_token: {type, _, token}} = parser) when type in [:identifier, :do_identifier] do
     if peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do, :., :"}", :"]"] ++ @operators) do
@@ -700,7 +714,7 @@ defmodule Spitfire do
       parser = next_token(parser)
 
       parser = push_nesting(parser, 1)
-      {first_arg, parser} = parse_expression(parser, top: true, precedence: @comma)
+      {first_arg, parser} = parse_expression(parser)
 
       args = [first_arg]
 
@@ -708,7 +722,7 @@ defmodule Spitfire do
         while peek_token(parser) == :"," <- {args, parser} do
           parser = parser |> next_token() |> next_token()
           parser = inc_nesting(parser)
-          {arg, parser} = parse_expression(parser, top: true, precedence: @comma)
+          {arg, parser} = parse_expression(parser)
 
           {[arg | args], parser}
         end
@@ -895,6 +909,7 @@ defmodule Spitfire do
       when op in [
              :arrow_op,
              :pipe_op,
+             :when_op,
              :ternary_op,
              :range_op,
              :xor_op,

@@ -811,7 +811,7 @@ defmodule SpitfireTest do
         [
           [
             do: [
-              {:->, [depth: 1], [[{:==, [], [{:prefix, [], Elixir}, nil]}], {:__block__, [], [:foo]}]},
+              {:->, [depth: 1], [[{:==, [], [{:prefix, [], Elixir}, nil]}], :foo]},
               {:->, [depth: 1], [[true], :bar]}
             ]
           ]
@@ -823,7 +823,7 @@ defmodule SpitfireTest do
     end
   end
 
-  test "this" do
+  test "|> operator" do
     code = ~S'''
     def parse(code) do
       parser = code |> new() |> next_token() |> next_token()
@@ -857,5 +857,66 @@ defmodule SpitfireTest do
                      ]}
                 ]
               ]}
+  end
+
+  test "when operator" do
+    codes = [
+      {~s'''
+       foo when is_binary(foo) ->
+         :ok
+       ''', [{:->, [depth: 0], [[{:when, [], [{:foo, [], Elixir}, {:is_binary, [], [{:foo, [], Elixir}]}]}], :ok]}]},
+      {~s'''
+       foo when is_binary(foo) ->
+         :ok
+
+       bar when is_number(bar) ->
+         :ok
+       ''',
+       [
+         {:->, [depth: 0], [[{:when, [], [{:foo, [], Elixir}, {:is_binary, [], [{:foo, [], Elixir}]}]}], :ok]},
+         {:->, [depth: 0], [[{:when, [], [{:bar, [], Elixir}, {:is_number, [], [{:bar, [], Elixir}]}]}], :ok]}
+       ]},
+      {~s'''
+       def foo(bar) when is_binary(bar) do
+         :ok
+       end
+       ''',
+       {:def, [], [{:when, [], [{:foo, [], [{:bar, [], Elixir}]}, {:is_binary, [], [{:bar, [], Elixir}]}]}, [do: :ok]]}},
+      {~s'''
+       fn foo when is_binary(foo) ->
+         :ok
+       end
+       ''',
+       {:fn, [], [{:->, [depth: 0], [[{:when, [], [{:foo, [], Elixir}, {:is_binary, [], [{:foo, [], Elixir}]}]}], :ok]}]}},
+      {~s'''
+       fn foo, bar, _baz when is_binary(foo) and bar in [:alice, :bob] ->
+         :ok
+       end
+       ''',
+       {:fn, [],
+        [
+          {:->, [depth: 0],
+           [
+             [
+               {:when, [],
+                [
+                  {:foo, [], Elixir},
+                  {:bar, [], Elixir},
+                  {:_baz, [], Elixir},
+                  {:and, [],
+                   [
+                     {:is_binary, [], [{:foo, [], Elixir}]},
+                     {:in, [], [{:bar, [], Elixir}, [:alice, :bob]]}
+                   ]}
+                ]}
+             ],
+             :ok
+           ]}
+        ]}}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
   end
 end
