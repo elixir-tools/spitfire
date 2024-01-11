@@ -234,7 +234,8 @@ defmodule Spitfire do
           [:"," | terminals]
         end
 
-      while peek_token(parser) not in terminals && calc_prec.(parser) <- {left, parser} do
+      while parser.last_parsed not in [:unary_op, :at_op] && peek_token(parser) not in terminals && calc_prec.(parser) <-
+              {left, parser} do
         infix =
           case peek_token_type(parser) do
             :match_op -> &parse_infix_expression/2
@@ -297,8 +298,11 @@ defmodule Spitfire do
   defp parse_prefix_expression(parser) do
     token = current_token(parser)
     precedence = current_precedence(parser)
+    parser = Map.put(parser, :last_parsed, current_token_type(parser))
     parser = next_token(parser)
     {rhs, parser} = parse_expression(parser, precedence: precedence)
+
+    parser = Map.put(parser, :last_parsed, nil)
 
     ast = {token, [], [rhs]}
 
@@ -405,7 +409,7 @@ defmodule Spitfire do
             end,
             fn
               {node, meta, args}, acc when is_list(args) ->
-                args = List.delete(args, [:__remove_me__])
+                args = Enum.reject(args, &(is_list(&1) && Enum.member?(&1, :__remove_me__)))
                 {{node, meta, args}, acc}
 
               node, acc ->
@@ -421,10 +425,18 @@ defmodule Spitfire do
           end
 
         ast =
-          [{token, [depth: parser.stab_depth], [List.wrap(lhs), rhs]}] ++ stabs
+          [{token, [depth: parser.stab_depth], [wrap(lhs), rhs]}] ++ Enum.reverse(stabs)
 
         {ast, eat_eol(parser)}
     end
+  end
+
+  defp wrap(nil) do
+    [nil]
+  end
+
+  defp wrap(other) do
+    List.wrap(other)
   end
 
   defp parse_comma(parser, lhs) do
@@ -621,7 +633,8 @@ defmodule Spitfire do
               current_token: nil,
               peek_token: nil,
               nestings: [],
-              stab_depth: 0
+              stab_depth: 0,
+              last_parsed: nil
             }
 
             {ast, _parser} = parse_expression(parser |> next_token() |> next_token())
@@ -715,6 +728,8 @@ defmodule Spitfire do
     :or,
     :**,
     :range_op,
+    :rel_op,
+    :and_op,
     :mult_op,
     :arrow_op,
     :assoc_op,
@@ -778,7 +793,8 @@ defmodule Spitfire do
       current_token: nil,
       peek_token: nil,
       nestings: [],
-      stab_depth: 0
+      stab_depth: 0,
+      last_parsed: nil
     }
   end
 

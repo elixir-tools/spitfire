@@ -40,6 +40,14 @@ defmodule SpitfireTest do
               ]}
   end
 
+  test "parses unary operators" do
+    code = ~S'''
+    ^foo
+    '''
+
+    assert Spitfire.parse(code) == {:^, [], [{:foo, [], Elixir}]}
+  end
+
   test "parses numbers" do
     code = """
     111_111
@@ -162,6 +170,20 @@ defmodule SpitfireTest do
                 {:__block__, [], [:error, {:bar, [], Elixir}]}
               ]}
            ]
+
+    code = ~S'''
+    ^foo ->
+      :ok
+    '''
+
+    assert Spitfire.parse(code) == [{:->, [depth: 0], [[{:^, [], [{:foo, [], Elixir}]}], :ok]}]
+
+    code = ~S'''
+    @foo ->
+      :ok
+    '''
+
+    assert Spitfire.parse(code) == [{:->, [depth: 0], [[{:@, [], [{:foo, [], Elixir}]}], :ok]}]
   end
 
   test "parses grouped expressions" do
@@ -683,6 +705,47 @@ defmodule SpitfireTest do
               {:->, [depth: 1], [[{:_, [], Elixir}], :error]}
             ]
           ]
+        ]}},
+      {~s'''
+       case infix do
+         nil ->
+           {left, parser}
+                                                 
+         ^do_block when parser.nestings != [] ->
+           {left, next_token(parser)}
+                                                 
+         _ ->
+           infix.(next_token(parser), left)
+       end
+       ''',
+       {:case, [],
+        [
+          {:infix, [], Elixir},
+          [
+            do: [
+              {:->, [depth: 1], [[nil], {{:left, [], Elixir}, {:parser, [], Elixir}}]},
+              {:->, [depth: 1],
+               [
+                 [
+                   {:when, [],
+                    [
+                      {:^, [], [{:do_block, [], Elixir}]},
+                      {:!=, [],
+                       [
+                         {{:., [], [{:parser, [], Elixir}, :nestings]}, [], []},
+                         []
+                       ]}
+                    ]}
+                 ],
+                 {{:left, [], Elixir}, {:next_token, [], [{:parser, [], Elixir}]}}
+               ]},
+              {:->, [depth: 1],
+               [
+                 [{:_, [], Elixir}],
+                 {{:., [], [{:infix, [], Elixir}]}, [], [{:next_token, [], [{:parser, [], Elixir}]}, {:left, [], Elixir}]}
+               ]}
+            ]
+          ]
         ]}}
     ]
 
@@ -1002,11 +1065,464 @@ defmodule SpitfireTest do
          one,
          two
        )
-       ''', {{:., [], [{:foo, [], Elixir}]}, [], [{:one, [], Elixir}, {:two, [], Elixir}]}}
+       ''', {{:., [], [{:foo, [], Elixir}]}, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+      {~s'''
+       infix.(next_token(parser), left)
+       ''', {{:., [], [{:infix, [], Elixir}]}, [], [{:next_token, [], [{:parser, [], Elixir}]}, {:left, [], Elixir}]}}
     ]
 
     for {code, expected} <- codes do
       assert Spitfire.parse(code) == expected
     end
+  end
+
+  test "big test" do
+    code = ~S'''
+    if prefix == nil do
+      {row, col} = token_loc(parser.current_token)
+
+      IO.puts(
+        IO.ANSI.red() <>
+          "#{row}:#{col}: unknown prefix: #{current_token_type(parser)}" <> IO.ANSI.reset()
+      )
+
+      {:error, next_token(parser)}
+    else
+      {left, parser} = prefix.(parser)
+
+      calc_prec = fn parser ->
+        {_associativity, power} = peek_precedence(parser)
+
+        precedence =
+          case associativity do
+            :left -> precedence
+            :unassoc -> 0
+            :right -> precedence - 1
+          end
+
+        precedence < power
+      end
+
+      terminals = [:eol, :eof, :"}", :")", :"]"]
+
+      terminals =
+        if is_top do
+          terminals
+        else
+          [:"," | terminals]
+        end
+
+      while peek_token(parser) not in terminals && calc_prec.(parser) <- {left, parser} do
+        infix =
+          case peek_token_type(parser) do
+            :match_op -> &parse_infix_expression/2
+            :when_op -> &parse_infix_expression/2
+            :pipe_op -> &parse_infix_expression/2
+            :dual_op -> &parse_infix_expression/2
+            :mult_op -> &parse_infix_expression/2
+            :concat_op -> &parse_infix_expression/2
+            :assoc_op -> &parse_assoc_op/2
+            :arrow_op -> &parse_infix_expression/2
+            :ternary_op -> &parse_infix_expression/2
+            :or_op -> &parse_infix_expression/2
+            :and_op -> &parse_infix_expression/2
+            :comp_op -> &parse_infix_expression/2
+            :rel_op -> &parse_infix_expression/2
+            :in_op -> &parse_infix_expression/2
+            :xor_op -> &parse_infix_expression/2
+            :in_match_op -> &parse_infix_expression/2
+            :range_op -> &parse_range_expression/2
+            :stab_op -> &parse_stab_expression/2
+            :do -> &parse_do_block/2
+            :dot_call_op -> &parse_dot_call_expression/2
+            :. -> &parse_dot_expression/2
+            :"," when is_top -> &parse_comma/2
+            _ -> nil
+          end
+
+        do_block = &parse_do_block/2
+
+        case infix do
+          nil ->
+            {left, parser}
+
+          ^do_block when parser.nestings != [] ->
+            {left, next_token(parser)}
+
+          _ ->
+            infix.(next_token(parser), left)
+        end
+      end
+    end
+    '''
+
+    assert Spitfire.parse(code) ==
+             {:if, [],
+              [
+                {:==, [], [{:prefix, [], Elixir}, nil]},
+                [
+                  do:
+                    {:__block__, [],
+                     [
+                       {:=, [],
+                        [
+                          {{:row, [], Elixir}, {:col, [], Elixir}},
+                          {:token_loc, [],
+                           [
+                             {{:., [], [{:parser, [], Elixir}, :current_token]}, [], []}
+                           ]}
+                        ]},
+                       {{:., [], [{:__aliases__, [], [:IO]}, :puts]}, [],
+                        [
+                          {:<>, [],
+                           [
+                             {{:., [], [{:__aliases__, [], [:IO, :ANSI]}, :red]}, [], []},
+                             {:<>, [],
+                              [
+                                {:<<>>, [],
+                                 [
+                                   {:"::", [],
+                                    [
+                                      {{:., [], [Kernel, :to_string]}, [], [{:row, [], Elixir}]},
+                                      {:binary, [], Elixir}
+                                    ]},
+                                   ":",
+                                   {:"::", [],
+                                    [
+                                      {{:., [], [Kernel, :to_string]}, [], [{:col, [], Elixir}]},
+                                      {:binary, [], Elixir}
+                                    ]},
+                                   ": unknown prefix: ",
+                                   {:"::", [],
+                                    [
+                                      {{:., [], [Kernel, :to_string]}, [],
+                                       [{:current_token_type, [], [{:parser, [], Elixir}]}]},
+                                      {:binary, [], Elixir}
+                                    ]}
+                                 ]},
+                                {{:., [], [{:__aliases__, [], [:IO, :ANSI]}, :reset]}, [], []}
+                              ]}
+                           ]}
+                        ]},
+                       {:error, {:next_token, [], [{:parser, [], Elixir}]}}
+                     ]},
+                  else:
+                    {:__block__, [],
+                     [
+                       {:=, [],
+                        [
+                          {{:left, [], Elixir}, {:parser, [], Elixir}},
+                          {{:., [], [{:prefix, [], Elixir}]}, [], [{:parser, [], Elixir}]}
+                        ]},
+                       {:=, [],
+                        [
+                          {:calc_prec, [], Elixir},
+                          {:fn, [],
+                           [
+                             {:->, [depth: 4],
+                              [
+                                [{:parser, [], Elixir}],
+                                {:__block__, [],
+                                 [
+                                   {:=, [],
+                                    [
+                                      {{:_associativity, [], Elixir}, {:power, [], Elixir}},
+                                      {:peek_precedence, [], [{:parser, [], Elixir}]}
+                                    ]},
+                                   {:=, [],
+                                    [
+                                      {:precedence, [], Elixir},
+                                      {:case, [],
+                                       [
+                                         {:associativity, [], Elixir},
+                                         [
+                                           do: [
+                                             {:->, [depth: 5], [[:left], {:precedence, [], Elixir}]},
+                                             {:->, [depth: 5], [[:unassoc], 0]},
+                                             {:->, [depth: 5],
+                                              [
+                                                [:right],
+                                                {:-, [], [{:precedence, [], Elixir}, 1]}
+                                              ]}
+                                           ]
+                                         ]
+                                       ]}
+                                    ]},
+                                   {:<, [], [{:precedence, [], Elixir}, {:power, [], Elixir}]}
+                                 ]}
+                              ]}
+                           ]}
+                        ]},
+                       {:=, [], [{:terminals, [], Elixir}, [:eol, :eof, :"}", :")", :"]"]]},
+                       {:=, [],
+                        [
+                          {:terminals, [], Elixir},
+                          {:if, [],
+                           [
+                             {:is_top, [], Elixir},
+                             [
+                               do: {:terminals, [], Elixir},
+                               else: [{:|, [], [:",", {:terminals, [], Elixir}]}]
+                             ]
+                           ]}
+                        ]},
+                       {:while, [],
+                        [
+                          {:<-, [],
+                           [
+                             {:&&, [],
+                              [
+                                {:not, [],
+                                 [
+                                   {:in, [],
+                                    [
+                                      {:peek_token, [], [{:parser, [], Elixir}]},
+                                      {:terminals, [], Elixir}
+                                    ]}
+                                 ]},
+                                {{:., [], [{:calc_prec, [], Elixir}]}, [], [{:parser, [], Elixir}]}
+                              ]},
+                             {{:left, [], Elixir}, {:parser, [], Elixir}}
+                           ]},
+                          [
+                            do:
+                              {:__block__, [],
+                               [
+                                 {:=, [],
+                                  [
+                                    {:infix, [], Elixir},
+                                    {:case, [],
+                                     [
+                                       {:peek_token_type, [], [{:parser, [], Elixir}]},
+                                       [
+                                         do: [
+                                           {:->, [depth: 9],
+                                            [
+                                              [:match_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:when_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:pipe_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:dual_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:mult_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:concat_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:assoc_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_assoc_op, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:arrow_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:ternary_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:or_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:and_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:comp_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:rel_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:in_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:xor_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:in_match_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:range_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_range_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:stab_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_stab_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:do],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_do_block, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:dot_call_op],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_dot_call_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [:.],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_dot_expression, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9],
+                                            [
+                                              [{:when, [], [:",", {:is_top, [], Elixir}]}],
+                                              {:&, [],
+                                               [
+                                                 {:/, [], [{:parse_comma, [], Elixir}, 2]}
+                                               ]}
+                                            ]},
+                                           {:->, [depth: 9], [[{:_, [], Elixir}], nil]}
+                                         ]
+                                       ]
+                                     ]}
+                                  ]},
+                                 {:=, [],
+                                  [
+                                    {:do_block, [], Elixir},
+                                    {:&, [],
+                                     [
+                                       {:/, [], [{:parse_do_block, [], Elixir}, 2]}
+                                     ]}
+                                  ]},
+                                 {:case, [],
+                                  [
+                                    {:infix, [], Elixir},
+                                    [
+                                      do: [
+                                        {:->, [depth: 11], [[nil], {{:left, [], Elixir}, {:parser, [], Elixir}}]},
+                                        {:->, [depth: 11],
+                                         [
+                                           [
+                                             {:when, [],
+                                              [
+                                                {:^, [], [{:do_block, [], Elixir}]},
+                                                {:!=, [],
+                                                 [
+                                                   {{:., [], [{:parser, [], Elixir}, :nestings]}, [], []},
+                                                   []
+                                                 ]}
+                                              ]}
+                                           ],
+                                           {{:left, [], Elixir}, {:next_token, [], [{:parser, [], Elixir}]}}
+                                         ]},
+                                        {:->, [depth: 11],
+                                         [
+                                           [{:_, [], Elixir}],
+                                           {{:., [], [{:infix, [], Elixir}]}, [],
+                                            [
+                                              {:next_token, [], [{:parser, [], Elixir}]},
+                                              {:left, [], Elixir}
+                                            ]}
+                                         ]}
+                                      ]
+                                    ]
+                                  ]}
+                               ]}
+                          ]
+                        ]}
+                     ]}
+                ]
+              ]}
   end
 end
