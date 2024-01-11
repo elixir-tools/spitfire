@@ -583,7 +583,7 @@ defmodule Spitfire do
   end
 
   defp parse_anon_function(%{current_token: {:fn, _}} = parser) do
-    parser = next_token(parser)
+    parser = parser |> next_token() |> eat_eol()
 
     {ast, parser} = parse_expression(parser, top: true)
 

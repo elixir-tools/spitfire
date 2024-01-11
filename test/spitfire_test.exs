@@ -889,6 +889,12 @@ defmodule SpitfireTest do
        end
        ''', {:fn, [], [{:->, [depth: 0], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}},
       {~s'''
+       fn
+        one ->
+         one
+       end
+       ''', {:fn, [], [{:->, [depth: 0], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}},
+      {~s'''
        fn(one) ->
          one
        end
