@@ -44,6 +44,11 @@ defmodule SpitfireTest do
     code = "foo[:bar]"
 
     assert Spitfire.parse(code) == {{:., [], [Access, :get]}, [], [{:foo, [], Elixir}, :bar]}
+
+    code = "%{bar: :foo}[:bar]"
+
+    assert Spitfire.parse(code) ==
+             {{:., [], [Access, :get]}, [], [{:%{}, [], [bar: :foo]}, :bar]}
   end
 
   test "parses unary operators" do

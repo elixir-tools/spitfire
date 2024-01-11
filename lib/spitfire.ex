@@ -30,11 +30,12 @@ defmodule Spitfire do
   @mult_op {:left, 48}
   @power_op {:left, 50}
   @left_paren {:left, 52}
-  @unary_op {:left, 54}
-  @dot_call_op {:left, 56}
-  @dot_op {:left, 58}
-  @at_op {:left, 60}
-  @dot_identifier {:unassoc, 62}
+  @left_bracket {:left, 54}
+  @unary_op {:left, 56}
+  @dot_call_op {:left, 58}
+  @dot_op {:left, 60}
+  @at_op {:left, 62}
+  @dot_identifier {:unassoc, 64}
   # Left       5 do.
   # Right     10 stab_op_eol.     %% ->
   # Left      20 ','.
@@ -68,6 +69,7 @@ defmodule Spitfire do
     :"," => @comma,
     :. => @dot_call_op,
     :"(" => @left_paren,
+    :"[" => @left_bracket,
     dot_call_op: @dot_call_op,
     do: @doo,
     kw_identifier: @kw_identifier,
@@ -211,6 +213,7 @@ defmodule Spitfire do
             :pipe_op -> &parse_infix_expression/2
             :dual_op -> &parse_infix_expression/2
             :mult_op -> &parse_infix_expression/2
+            :"[" -> &parse_access_expression/2
             :concat_op -> &parse_infix_expression/2
             :assoc_op -> &parse_assoc_op/2
             :arrow_op -> &parse_infix_expression/2
@@ -462,6 +465,16 @@ defmodule Spitfire do
       end
 
     {ast, eat_eol(parser)}
+  end
+
+  defp parse_access_expression(parser, lhs) do
+    precedence = current_precedence(parser)
+    parser = parser |> next_token() |> eat_eol()
+    {rhs, parser} = parse_expression(parser, precedence: precedence)
+
+    ast = {{:., [], [Access, :get]}, [], [lhs, rhs]}
+
+    {ast, eat_eol(next_token(parser))}
   end
 
   defp parse_range_expression(parser, lhs) do
