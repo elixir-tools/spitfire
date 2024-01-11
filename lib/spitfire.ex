@@ -14,7 +14,7 @@ defmodule Spitfire do
   @type_op {:right, 16}
   @pipe_op {:right, 18}
   @assoc_op {:right, 20}
-  @capture_op {:unassoc, 22}
+  @capture_op {:left, 22}
   @match_op {:right, 24}
   @or_op {:left, 26}
   @and_op {:left, 28}
@@ -30,10 +30,10 @@ defmodule Spitfire do
   @mult_op {:left, 48}
   @power_op {:left, 50}
   @left_paren {:left, 52}
-  @unary_op {:unassoc, 54}
+  @unary_op {:left, 54}
   @dot_call_op {:left, 56}
   @dot_op {:left, 58}
-  @at_op {:unassoc, 60}
+  @at_op {:left, 60}
   @dot_identifier {:unassoc, 62}
   # Left       5 do.
   # Right     10 stab_op_eol.     %% ->
@@ -137,38 +137,6 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_grouped_expression(parser) do
-    parser = next_token(parser)
-
-    {expression, parser} = parse_expression(parser)
-
-    if peek_token(parser) == :")" do
-      {expression, next_token(parser)}
-    else
-      {:error, parser}
-    end
-  end
-
-  defp parse_nil_literal(parser) do
-    {nil, parser}
-  end
-
-  defp parse_kw_identifier(%{current_token: {:kw_identifier, _, token}} = parser) do
-    parser = next_token(parser)
-    {expr, parser} = parse_expression(parser, precedence: @kw_identifier)
-
-    pair = {token, expr}
-    {pair, parser}
-  end
-
-  defp parse_assoc_op(%{current_token: {:assoc_op, _, _token}} = parser, key) do
-    parser = next_token(parser)
-    {expr, parser} = parse_expression(parser, precedence: @assoc_op)
-
-    pair = {key, expr}
-    {pair, parser}
-  end
-
   defp parse_expression(parser, opts \\ []) do
     {associativity, precedence} = Keyword.get(opts, :precedence, @lowest)
     # NOTE: the root of an expression list is the only place where a comma is treated like an infix operator
@@ -234,8 +202,7 @@ defmodule Spitfire do
           [:"," | terminals]
         end
 
-      while parser.last_parsed not in [:unary_op, :at_op] && peek_token(parser) not in terminals && calc_prec.(parser) <-
-              {left, parser} do
+      while peek_token(parser) not in terminals && calc_prec.(parser) <- {left, parser} do
         infix =
           case peek_token_type(parser) do
             :match_op -> &parse_infix_expression/2
@@ -279,6 +246,38 @@ defmodule Spitfire do
     end
   end
 
+  defp parse_grouped_expression(parser) do
+    parser = next_token(parser)
+
+    {expression, parser} = parse_expression(parser)
+
+    if peek_token(parser) == :")" do
+      {expression, next_token(parser)}
+    else
+      {:error, parser}
+    end
+  end
+
+  defp parse_nil_literal(parser) do
+    {nil, parser}
+  end
+
+  defp parse_kw_identifier(%{current_token: {:kw_identifier, _, token}} = parser) do
+    parser = next_token(parser)
+    {expr, parser} = parse_expression(parser, precedence: @kw_identifier)
+
+    pair = {token, expr}
+    {pair, parser}
+  end
+
+  defp parse_assoc_op(%{current_token: {:assoc_op, _, _token}} = parser, key) do
+    parser = next_token(parser)
+    {expr, parser} = parse_expression(parser, precedence: @assoc_op)
+
+    pair = {key, expr}
+    {pair, parser}
+  end
+
   defp parse_comma_list(parser) do
     {expr, parser} = parse_expression(parser, precedence: @comma)
     items = [expr]
@@ -298,11 +297,8 @@ defmodule Spitfire do
   defp parse_prefix_expression(parser) do
     token = current_token(parser)
     precedence = current_precedence(parser)
-    parser = Map.put(parser, :last_parsed, current_token_type(parser))
     parser = next_token(parser)
     {rhs, parser} = parse_expression(parser, precedence: precedence)
-
-    parser = Map.put(parser, :last_parsed, nil)
 
     ast = {token, [], [rhs]}
 
@@ -535,9 +531,6 @@ defmodule Spitfire do
         {token, meta, Elixir} ->
           {token, meta, [exprs]}
 
-        # {token, meta, [[{:<-, _, _} | _] = stabs]} ->
-        #   {token, meta, stabs ++ [exprs]}
-
         {token, meta, args} when is_list(args) ->
           {token, meta, args ++ [exprs]}
       end
@@ -633,8 +626,7 @@ defmodule Spitfire do
               current_token: nil,
               peek_token: nil,
               nestings: [],
-              stab_depth: 0,
-              last_parsed: nil
+              stab_depth: 0
             }
 
             {ast, _parser} = parse_expression(parser |> next_token() |> next_token())
@@ -662,8 +654,7 @@ defmodule Spitfire do
   end
 
   defp parse_map_literal(%{current_token: {:%{}, _}} = parser) do
-    parser = next_token(parser)
-    parser = parser |> next_token() |> eat_eol()
+    parser = parser |> next_token() |> next_token() |> eat_eol()
 
     if current_token(parser) == :"}" do
       {{:%{}, [], []}, parser}
@@ -793,8 +784,7 @@ defmodule Spitfire do
       current_token: nil,
       peek_token: nil,
       nestings: [],
-      stab_depth: 0,
-      last_parsed: nil
+      stab_depth: 0
     }
   end
 
