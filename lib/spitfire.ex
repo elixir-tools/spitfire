@@ -147,6 +147,7 @@ defmodule Spitfire do
         :identifier -> &parse_identifier/1
         :do_identifier -> &parse_identifier/1
         :paren_identifier -> &parse_identifier/1
+        :bracket_identifier -> &parse_identifier/1
         :alias -> &parse_alias/1
         :kw_identifier -> &parse_kw_identifier/1
         :int -> &parse_int/1
@@ -693,15 +694,30 @@ defmodule Spitfire do
   end
 
   defp parse_identifier(%{current_token: {:paren_identifier, _, token}} = parser) do
-    parser = parser |> next_token() |> eat_eol()
+    parser =
+      parser
+      |> next_token()
+      |> eat_eol()
 
     if peek_token(parser) == :")" do
       {{token, [], []}, next_token(parser)}
     else
-      {pairs, parser} = parse_comma_list(parser |> next_token() |> eat_eol())
+      {pairs, parser} =
+        parser
+        |> next_token()
+        |> eat_eol()
+        |> parse_comma_list()
 
       {{token, [], List.wrap(pairs)}, parser |> next_token() |> eat_eol()}
     end
+  end
+
+  defp parse_identifier(%{current_token: {:bracket_identifier, _, token}} = parser) do
+    parser = parser |> next_token() |> eat_eol()
+
+    {key, parser} = parse_expression(parser |> next_token() |> eat_eol())
+    ast = {{:., [], [Access, :get]}, [], [{token, [], Elixir}, key]}
+    {ast, parser |> next_token() |> eat_eol()}
   end
 
   @operators [

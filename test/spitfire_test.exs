@@ -40,6 +40,12 @@ defmodule SpitfireTest do
               ]}
   end
 
+  test "access syntax" do
+    code = "foo[:bar]"
+
+    assert Spitfire.parse(code) == {{:., [], [Access, :get]}, [], [{:foo, [], Elixir}, :bar]}
+  end
+
   test "parses unary operators" do
     code = ~S'''
     ^foo
