@@ -25,6 +25,11 @@ defmodule SpitfireTest do
                   do:
                     {:__block__, [],
                      [
+                       {:use, [],
+                        [
+                          {:__aliases__, [], [:AnotherMod, :Nested]},
+                          [some: :option]
+                        ]},
                        {:def, [],
                         [
                           {:run, [], [{:arg, [], Elixir}]},
@@ -628,18 +633,56 @@ defmodule SpitfireTest do
     end
   end
 
-  @tag skip: true
   test "case expr" do
     codes = [
       {~s'''
        case foo do
-        bar -> bar
+        bar ->
+          bar
+
        end
        ''',
        {:case, [],
         [
           {:foo, [], Elixir},
-          [do: [{:->, [], [[{:bar, [], Elixir}], {:bar, [], Elixir}]}]]
+          [do: [{:->, [depth: 1], [[{:bar, [], Elixir}], {:bar, [], Elixir}]}]]
+        ]}},
+      {~s'''
+       case :foo do
+         :foo ->
+           case get(:foo) do
+             :FOO ->
+               :bar
+             _ ->
+               :error
+             end
+
+         _ ->
+           :error
+       end
+       ''',
+       {:case, [],
+        [
+          :foo,
+          [
+            do: [
+              {:->, [depth: 1],
+               [
+                 [:foo],
+                 {:case, [],
+                  [
+                    {:get, [], [:foo]},
+                    [
+                      do: [
+                        {:->, [depth: 2], [[:FOO], :bar]},
+                        {:->, [depth: 2], [[{:_, [], Elixir}], :error]}
+                      ]
+                    ]
+                  ]}
+               ]},
+              {:->, [depth: 1], [[{:_, [], Elixir}], :error]}
+            ]
+          ]
         ]}}
     ]
 
@@ -648,7 +691,6 @@ defmodule SpitfireTest do
     end
   end
 
-  @tag skip: true
   test "parse ambiguous function calls" do
     codes = [
       {~s'''
