@@ -946,4 +946,25 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == expected
     end
   end
+
+  test "anonymous function function calls" do
+    codes = [
+      {~s'''
+       foo.()
+       ''', {{:., [], [{:foo, [], Elixir}]}, [], []}},
+      {~s'''
+       foo.(one, two)
+       ''', {{:., [], [{:foo, [], Elixir}]}, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+      {~s'''
+       foo.(
+         one,
+         two
+       )
+       ''', {{:., [], [{:foo, [], Elixir}]}, [], [{:one, [], Elixir}, {:two, [], Elixir}]}}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
 end

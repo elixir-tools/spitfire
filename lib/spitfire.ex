@@ -68,6 +68,7 @@ defmodule Spitfire do
     :"," => @comma,
     :. => @dot_call_op,
     :"(" => @left_paren,
+    dot_call_op: @dot_call_op,
     do: @doo,
     kw_identifier: @kw_identifier,
     stab_op: @stab_op,
@@ -255,6 +256,7 @@ defmodule Spitfire do
             :range_op -> &parse_range_expression/2
             :stab_op -> &parse_stab_expression/2
             :do -> &parse_do_block/2
+            :dot_call_op -> &parse_dot_call_expression/2
             :. -> &parse_dot_expression/2
             :"," when is_top -> &parse_comma/2
             _ -> nil
@@ -571,6 +573,20 @@ defmodule Spitfire do
     {{:fn, [], ast}, parser}
   end
 
+  defp parse_dot_call_expression(parser, lhs) do
+    parser = parser |> next_token() |> eat_eol()
+
+    if peek_token(parser) == :")" do
+      ast = {{:., [], [lhs]}, [], []}
+      {ast, next_token(parser)}
+    else
+      {pairs, parser} = parse_comma_list(parser |> next_token() |> eat_eol())
+      ast = {{:., [], [lhs]}, [], pairs}
+
+      {ast, parser |> next_token() |> eat_eol()}
+    end
+  end
+
   defp parse_atom(%{current_token: {:atom, _, atom}} = parser) do
     {atom, parser}
   end
@@ -710,6 +726,7 @@ defmodule Spitfire do
     :in_match_op,
     :comp_op,
     :match_op,
+    :dot_call_op,
     :when_op
   ]
   defp parse_identifier(%{current_token: {type, _, token}} = parser) when type in [:identifier, :do_identifier] do
