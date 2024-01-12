@@ -162,6 +162,7 @@ defmodule Spitfire do
         :at_op -> &parse_prefix_expression/1
         :unary_op -> &parse_prefix_expression/1
         :capture_op -> &parse_prefix_expression/1
+        :capture_int -> &parse_prefix_expression/1
         :stab_op -> &parse_stab_expression/1
         :"[" -> &parse_list_literal/1
         :"(" -> &parse_grouped_expression/1
@@ -972,6 +973,7 @@ defmodule Spitfire do
              :xor_op,
              :in_match_op,
              :capture_op,
+             :capture_int,
              :in_op,
              :or_op,
              :and_op,
