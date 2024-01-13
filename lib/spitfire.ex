@@ -157,9 +157,10 @@ defmodule Spitfire do
         :kw_identifier when not is_list and not is_map -> &parse_bracketless_kw_list/1
         :int -> &parse_int/1
         :atom -> &parse_atom/1
+        :atom_quoted -> &parse_atom/1
+        :atom_unsafe -> &parse_atom/1
         true -> &parse_boolean/1
         false -> &parse_boolean/1
-        :atom_quoted -> &parse_atom/1
         :bin_string -> &parse_string/1
         :fn -> &parse_anon_function/1
         :at_op -> &parse_prefix_expression/1
@@ -646,6 +647,41 @@ defmodule Spitfire do
     {atom, parser}
   end
 
+  defp parse_atom(%{current_token: {:atom_unsafe, _, tokens}} = parser) do
+    dbg(parser)
+    dbg(tokens)
+
+    args =
+      for token <- tokens do
+        case token do
+          token when is_binary(token) ->
+            token
+
+          {_start, _stop, tokens} ->
+            # construct a new parser
+            ast =
+              if tokens == [] do
+                {:__block__, [], []}
+              else
+                parser = %{
+                  tokens: tokens ++ [:eof],
+                  current_token: nil,
+                  peek_token: nil,
+                  nestings: [],
+                  stab_depth: 0
+                }
+
+                {ast, _parser} = parse_expression(parser |> next_token() |> next_token())
+                ast
+              end
+
+            {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [ast]}, {:binary, [], Elixir}]}
+        end
+      end
+
+    {{{:., [], [:erlang, :binary_to_atom]}, [], [{:<<>>, [], args}, :utf8]}, parser}
+  end
+
   defp parse_boolean(%{current_token: {bool, _}} = parser) do
     {bool, parser}
   end
@@ -667,15 +703,21 @@ defmodule Spitfire do
 
           {_start, _stop, tokens} ->
             # construct a new parser
-            parser = %{
-              tokens: tokens ++ [:eof],
-              current_token: nil,
-              peek_token: nil,
-              nestings: [],
-              stab_depth: 0
-            }
+            ast =
+              if tokens == [] do
+                {:__block__, [], []}
+              else
+                parser = %{
+                  tokens: tokens ++ [:eof],
+                  current_token: nil,
+                  peek_token: nil,
+                  nestings: [],
+                  stab_depth: 0
+                }
 
-            {ast, _parser} = parse_expression(parser |> next_token() |> next_token())
+                {ast, _parser} = parse_expression(parser |> next_token() |> next_token())
+                ast
+              end
 
             {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [ast]}, {:binary, [], Elixir}]}
         end

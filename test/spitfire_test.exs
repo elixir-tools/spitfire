@@ -134,6 +134,22 @@ defmodule SpitfireTest do
                  ]},
                 "bar"
               ]}
+
+    code = ~S'''
+    "foo#{}bar"
+    '''
+
+    assert Spitfire.parse(code) ==
+             {:<<>>, [],
+              [
+                "foo",
+                {:"::", [],
+                 [
+                   {{:., [], [Kernel, :to_string]}, [], [{:__block__, [], []}]},
+                   {:binary, [], Elixir}
+                 ]},
+                "bar"
+              ]}
   end
 
   test "parses atoms" do
@@ -148,6 +164,44 @@ defmodule SpitfireTest do
     '''
 
     assert Spitfire.parse(code) == :","
+
+    code = ~S'''
+    :"foo#{}"
+    '''
+
+    assert Spitfire.parse(code) ==
+             {{:., [], [:erlang, :binary_to_atom]}, [],
+              [
+                {:<<>>, [],
+                 [
+                   "foo",
+                   {:"::", [],
+                    [
+                      {{:., [], [Kernel, :to_string]}, [], [{:__block__, [], []}]},
+                      {:binary, [], Elixir}
+                    ]}
+                 ]},
+                :utf8
+              ]}
+
+    code = ~S'''
+    :"foo#{bar}"
+    '''
+
+    assert Spitfire.parse(code) ==
+             {{:., [], [:erlang, :binary_to_atom]}, [],
+              [
+                {:<<>>, [],
+                 [
+                   "foo",
+                   {:"::", [],
+                    [
+                      {{:., [], [Kernel, :to_string]}, [], [{:bar, [], Elixir}]},
+                      {:binary, [], Elixir}
+                    ]}
+                 ]},
+                :utf8
+              ]}
   end
 
   test "parses left stab" do
