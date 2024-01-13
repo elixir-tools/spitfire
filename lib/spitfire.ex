@@ -70,8 +70,8 @@ defmodule Spitfire do
     at_op: @at_op
   }
 
-  def parse(code) do
-    parser = code |> new() |> next_token() |> next_token()
+  def parse(code, opts \\ []) do
+    parser = code |> new(opts) |> next_token() |> next_token()
 
     parse_program(parser)
   end
@@ -837,9 +837,9 @@ defmodule Spitfire do
     end
   end
 
-  def tokenize(code) do
+  def tokenize(code, opts) do
     tokens =
-      case :elixir_tokenizer.tokenize(String.to_charlist(code), 1, []) do
+      case :elixir_tokenizer.tokenize(String.to_charlist(code), 1, opts) do
         {:ok, _, _, _, tokens} ->
           tokens
 
@@ -850,9 +850,9 @@ defmodule Spitfire do
     tokens ++ [:eof]
   end
 
-  def new(code) do
+  def new(code, opts) do
     %{
-      tokens: tokenize(code),
+      tokens: tokenize(code, opts),
       current_token: nil,
       peek_token: nil,
       nestings: [],
