@@ -238,22 +238,25 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_nil_literal(parser) do
-    {nil, parser}
+  defp parse_nil_literal(%{current_token: {nil, meta}} = parser) do
+    ast = encode_literal(parser, nil, meta)
+    {ast, parser}
   end
 
-  defp parse_kw_identifier(%{current_token: {:kw_identifier, _, token}} = parser) do
+  defp parse_kw_identifier(%{current_token: {:kw_identifier, meta, token}} = parser) do
     parser = next_token(parser)
     {expr, parser} = parse_expression(parser, precedence: @kw_identifier)
 
+    token = encode_literal(parser, token, meta)
     pair = {token, expr}
     {pair, parser}
   end
 
-  defp parse_bracketless_kw_list(%{current_token: {:kw_identifier, _, token}} = parser) do
+  defp parse_bracketless_kw_list(%{current_token: {:kw_identifier, meta, token}} = parser) do
     parser = next_token(parser)
 
     {value, parser} = parse_expression(parser, precedence: @kw_identifier)
+    token = encode_literal(parser, token, meta)
     kvs = [{token, value}]
 
     {kvs, parser} =
@@ -609,11 +612,13 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_atom(%{current_token: {:atom, _, atom}} = parser) do
+  defp parse_atom(%{current_token: {:atom, meta, atom}} = parser) do
+    atom = encode_literal(parser, atom, meta)
     {atom, parser}
   end
 
-  defp parse_atom(%{current_token: {:atom_quoted, _, atom}} = parser) do
+  defp parse_atom(%{current_token: {:atom_quoted, meta, atom}} = parser) do
+    atom = encode_literal(parser, atom, meta)
     {atom, parser}
   end
 
@@ -649,15 +654,19 @@ defmodule Spitfire do
     {{{:., [], [:erlang, :binary_to_atom]}, [], [{:<<>>, [], args}, :utf8]}, parser}
   end
 
-  defp parse_boolean(%{current_token: {bool, _}} = parser) do
+  defp parse_boolean(%{current_token: {bool, meta}} = parser) do
+    bool = encode_literal(parser, bool, meta)
+
     {bool, parser}
   end
 
-  defp parse_int(%{current_token: {:int, {_, _, int}, _}} = parser) do
+  defp parse_int(%{current_token: {:int, {_, _, int} = meta, _}} = parser) do
+    int = encode_literal(parser, int, meta)
     {int, parser}
   end
 
-  defp parse_string(%{current_token: {:bin_string, _, [string]}} = parser) do
+  defp parse_string(%{current_token: {:bin_string, meta, [string]}} = parser) do
+    string = encode_literal(parser, string, meta)
     {string, parser}
   end
 
@@ -735,7 +744,7 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_list_literal(%{current_token: {:"[", _}} = parser) do
+  defp parse_list_literal(%{current_token: {:"[", meta}} = parser) do
     parser = parser |> next_token() |> eat_eol()
 
     if current_token(parser) == :"]" do
@@ -743,7 +752,8 @@ defmodule Spitfire do
     else
       {pairs, parser} = parse_comma_list(parser, is_list: true)
 
-      {List.wrap(pairs), parser |> next_token() |> eat_eol()}
+      list = encode_literal(parser, List.wrap(pairs), meta)
+      {list, parser |> next_token() |> eat_eol()}
     end
   end
 
@@ -856,7 +866,8 @@ defmodule Spitfire do
       current_token: nil,
       peek_token: nil,
       nestings: [],
-      stab_depth: 0
+      stab_depth: 0,
+      literal_encoder: Keyword.get(opts, :literal_encoder, fn literal, _meta -> {:ok, literal} end)
     }
   end
 
@@ -1076,5 +1087,18 @@ defmodule Spitfire do
 
   defp dec_stab_depth(%{stab_depth: depth} = parser) do
     %{parser | stab_depth: depth - 1}
+  end
+
+  defp encode_literal(parser, literal, {line, col, _}) do
+    meta = [line: line, column: col]
+
+    case parser.literal_encoder.(literal, meta) do
+      {:ok, ast} ->
+        ast
+
+      {:error, reason} ->
+        Logger.error(reason)
+        literal
+    end
   end
 end

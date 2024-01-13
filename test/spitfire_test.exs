@@ -50,6 +50,24 @@ defmodule SpitfireTest do
              {{:., [], [Access, :get]}, [], [{:%{}, [], [bar: :foo]}, :bar]}
   end
 
+  test "literal encoder" do
+    code = ~S'''
+    1
+    "two"
+    :three
+    [four]
+    '''
+
+    assert Spitfire.parse(code, literal_encoder: fn l, m -> {:ok, {:__literal__, m, l}} end) ==
+             {:__block__, [],
+              [
+                {:__literal__, [line: 1, column: 1], 1},
+                {:__literal__, [line: 2, column: 1], "two"},
+                {:__literal__, [line: 3, column: 1], :three},
+                {:__literal__, [line: 4, column: 1], [{:four, [], Elixir}]}
+              ]}
+  end
+
   test "type syntax" do
     code = ~S'''
     @type foo :: String.t()
