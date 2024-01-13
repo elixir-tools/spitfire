@@ -35,35 +35,6 @@ defmodule Spitfire do
   @dot_call_op {:left, 58}
   @dot_op {:left, 60}
   @at_op {:left, 62}
-  @dot_identifier {:unassoc, 64}
-  # Left       5 do.
-  # Right     10 stab_op_eol.     %% ->
-  # Left      20 ','.
-  # Left      40 in_match_op_eol. %% <-, \\ (allowed in matches along =)
-  # Right     50 when_op_eol.     %% when
-  # Right     60 type_op_eol.     %% ::
-  # Right     70 pipe_op_eol.     %% |
-  # Right     80 assoc_op_eol.    %% =>
-  # Nonassoc  90 capture_op_eol.  %% &
-  # Right    100 match_op_eol.    %% =
-  # Left     120 or_op_eol.       %% ||, |||, or
-  # Left     130 and_op_eol.      %% &&, &&&, and
-  # Left     140 comp_op_eol.     %% ==, !=, =~, ===, !==
-  # Left     150 rel_op_eol.      %% <, >, <=, >=
-  # Left     160 arrow_op_eol.    %% |>, <<<, >>>, <<~, ~>>, <~, ~>, <~>, <|>
-  # Left     170 in_op_eol.       %% in, not in
-  # Left     180 xor_op_eol.      %% ^^^
-  # Right    190 ternary_op_eol.  %% //
-  # Right    200 concat_op_eol.   %% ++, --, +++, ---, <>
-  # Right    200 range_op_eol.    %% ..
-  # Left     210 dual_op_eol.     %% +, -
-  # Left     220 mult_op_eol.     %% *, /
-  # Left     230 power_op_eol.    %% **
-  # Nonassoc 300 unary_op_eol.    %% +, -, !, ^, not, ~~~
-  # Left     310 dot_call_op.
-  # Left     310 dot_op.          %% .
-  # Nonassoc 320 at_op_eol.       %% @
-  # Nonassoc 330 dot_identifier.
 
   @precedences %{
     :"," => @comma,
@@ -96,8 +67,7 @@ defmodule Spitfire do
     power_op: @power_op,
     unary_op: @unary_op,
     dot_op: @dot_op,
-    at_op: @at_op,
-    dot_identifier: @dot_identifier
+    at_op: @at_op
   }
 
   def parse(code) do
@@ -648,9 +618,6 @@ defmodule Spitfire do
   end
 
   defp parse_atom(%{current_token: {:atom_unsafe, _, tokens}} = parser) do
-    dbg(parser)
-    dbg(tokens)
-
     args =
       for token <- tokens do
         case token do
