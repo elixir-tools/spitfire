@@ -3,7 +3,6 @@ defmodule SpitfireTest do
 
   doctest Spitfire
 
-  @tag :skip
   test "parses valid elixir" do
     code = """
     defmodule Foo do
@@ -49,6 +48,50 @@ defmodule SpitfireTest do
 
     assert Spitfire.parse(code) ==
              {{:., [], [Access, :get]}, [], [{:%{}, [], [bar: :foo]}, :bar]}
+  end
+
+  test "type syntax" do
+    code = ~S'''
+    @type foo :: String.t()
+    '''
+
+    assert Spitfire.parse(code) ==
+             {:@, [],
+              [
+                {:type, [],
+                 [
+                   {:"::", [],
+                    [
+                      {:foo, [], Elixir},
+                      {{:., [], [{:__aliases__, [], [:String]}, :t]}, [], []}
+                    ]}
+                 ]}
+              ]}
+
+    code = ~S'''
+    @spec foo(one :: String.t(), number) :: :ok | :error
+    '''
+
+    assert Spitfire.parse(code) ==
+             {:@, [],
+              [
+                {:spec, [],
+                 [
+                   {:"::", [],
+                    [
+                      {:foo, [],
+                       [
+                         {:"::", [],
+                          [
+                            {:one, [], Elixir},
+                            {{:., [], [{:__aliases__, [], [:String]}, :t]}, [], []}
+                          ]},
+                         {:number, [], Elixir}
+                       ]},
+                      {:|, [], [:ok, :error]}
+                    ]}
+                 ]}
+              ]}
   end
 
   test "parses unary operators" do
@@ -315,6 +358,55 @@ defmodule SpitfireTest do
     for {code, expected} <- codes do
       assert Spitfire.parse(code) == expected
     end
+  end
+
+  test "parses bracket-less keyword lists" do
+    codes = [
+      {~s'''
+       foo(one, two, alice: alice, bob: bob)
+       ''', {:foo, [], [{:one, [], Elixir}, {:two, [], Elixir}, [alice: {:alice, [], Elixir}, bob: {:bob, [], Elixir}]]}},
+      {~s'''
+       foo alice: alice do
+         :ok
+       end
+       ''', {:foo, [], [[alice: {:alice, [], Elixir}], [do: :ok]]}},
+      {~s'''
+       [:one, two: :three]
+       ''', [:one, {:two, :three}]}
+    ]
+
+    for {code, expected} <- codes do
+      assert Spitfire.parse(code) == expected
+    end
+  end
+
+  test "another thing" do
+    code = ~S'''
+    case foo do
+      :kw_identifier when is_list or is_map -> &parse_kw_identifier/1
+    end
+    '''
+
+    assert Spitfire.parse(code) ==
+             {:case, [],
+              [
+                {:foo, [], Elixir},
+                [
+                  do: [
+                    {:->, [depth: 1],
+                     [
+                       [
+                         {:when, [],
+                          [
+                            :kw_identifier,
+                            {:or, [], [{:is_list, [], Elixir}, {:is_map, [], Elixir}]}
+                          ]}
+                       ],
+                       {:&, [], [{:/, [], [{:parse_kw_identifier, [], Elixir}, 1]}]}
+                     ]}
+                  ]
+                ]
+              ]}
   end
 
   test "parses pattern matching in list" do
@@ -887,18 +979,18 @@ defmodule SpitfireTest do
        fn one ->
          one
        end
-       ''', {:fn, [], [{:->, [depth: 0], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}},
+       ''', {:fn, [], [{:->, [depth: 1], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}},
       {~s'''
        fn
         one ->
          one
        end
-       ''', {:fn, [], [{:->, [depth: 0], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}},
+       ''', {:fn, [], [{:->, [depth: 1], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}},
       {~s'''
        fn(one) ->
          one
        end
-       ''', {:fn, [], [{:->, [depth: 0], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}}
+       ''', {:fn, [], [{:->, [depth: 1], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}}
     ]
 
     for {code, expected} <- codes do
@@ -1021,7 +1113,7 @@ defmodule SpitfireTest do
          :ok
        end
        ''',
-       {:fn, [], [{:->, [depth: 0], [[{:when, [], [{:foo, [], Elixir}, {:is_binary, [], [{:foo, [], Elixir}]}]}], :ok]}]}},
+       {:fn, [], [{:->, [depth: 1], [[{:when, [], [{:foo, [], Elixir}, {:is_binary, [], [{:foo, [], Elixir}]}]}], :ok]}]}},
       {~s'''
        fn foo, bar, _baz when is_binary(foo) and bar in [:alice, :bob] ->
          :ok
@@ -1029,7 +1121,7 @@ defmodule SpitfireTest do
        ''',
        {:fn, [],
         [
-          {:->, [depth: 0],
+          {:->, [depth: 1],
            [
              [
                {:when, [],
@@ -1246,7 +1338,7 @@ defmodule SpitfireTest do
                           {:calc_prec, [], Elixir},
                           {:fn, [],
                            [
-                             {:->, [depth: 4],
+                             {:->, [depth: 2],
                               [
                                 [{:parser, [], Elixir}],
                                 {:__block__, [],
@@ -1264,9 +1356,9 @@ defmodule SpitfireTest do
                                          {:associativity, [], Elixir},
                                          [
                                            do: [
-                                             {:->, [depth: 5], [[:left], {:precedence, [], Elixir}]},
-                                             {:->, [depth: 5], [[:unassoc], 0]},
-                                             {:->, [depth: 5],
+                                             {:->, [depth: 3], [[:left], {:precedence, [], Elixir}]},
+                                             {:->, [depth: 3], [[:unassoc], 0]},
+                                             {:->, [depth: 3],
                                               [
                                                 [:right],
                                                 {:-, [], [{:precedence, [], Elixir}, 1]}
@@ -1323,7 +1415,7 @@ defmodule SpitfireTest do
                                        {:peek_token_type, [], [{:parser, [], Elixir}]},
                                        [
                                          do: [
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:match_op],
                                               {:&, [],
@@ -1331,7 +1423,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:when_op],
                                               {:&, [],
@@ -1339,7 +1431,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:pipe_op],
                                               {:&, [],
@@ -1347,7 +1439,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:dual_op],
                                               {:&, [],
@@ -1355,7 +1447,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:mult_op],
                                               {:&, [],
@@ -1363,7 +1455,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:concat_op],
                                               {:&, [],
@@ -1371,7 +1463,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:assoc_op],
                                               {:&, [],
@@ -1379,7 +1471,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_assoc_op, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:arrow_op],
                                               {:&, [],
@@ -1387,7 +1479,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:ternary_op],
                                               {:&, [],
@@ -1395,7 +1487,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:or_op],
                                               {:&, [],
@@ -1403,7 +1495,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:and_op],
                                               {:&, [],
@@ -1411,7 +1503,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:comp_op],
                                               {:&, [],
@@ -1419,7 +1511,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:rel_op],
                                               {:&, [],
@@ -1427,7 +1519,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:in_op],
                                               {:&, [],
@@ -1435,7 +1527,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:xor_op],
                                               {:&, [],
@@ -1443,7 +1535,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:in_match_op],
                                               {:&, [],
@@ -1451,7 +1543,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:range_op],
                                               {:&, [],
@@ -1459,7 +1551,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_range_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:stab_op],
                                               {:&, [],
@@ -1467,7 +1559,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_stab_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:do],
                                               {:&, [],
@@ -1475,7 +1567,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_do_block, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:dot_call_op],
                                               {:&, [],
@@ -1483,7 +1575,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_dot_call_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [:.],
                                               {:&, [],
@@ -1491,7 +1583,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_dot_expression, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9],
+                                           {:->, [depth: 3],
                                             [
                                               [{:when, [], [:",", {:is_top, [], Elixir}]}],
                                               {:&, [],
@@ -1499,7 +1591,7 @@ defmodule SpitfireTest do
                                                  {:/, [], [{:parse_comma, [], Elixir}, 2]}
                                                ]}
                                             ]},
-                                           {:->, [depth: 9], [[{:_, [], Elixir}], nil]}
+                                           {:->, [depth: 3], [[{:_, [], Elixir}], nil]}
                                          ]
                                        ]
                                      ]}
@@ -1517,8 +1609,8 @@ defmodule SpitfireTest do
                                     {:infix, [], Elixir},
                                     [
                                       do: [
-                                        {:->, [depth: 11], [[nil], {{:left, [], Elixir}, {:parser, [], Elixir}}]},
-                                        {:->, [depth: 11],
+                                        {:->, [depth: 3], [[nil], {{:left, [], Elixir}, {:parser, [], Elixir}}]},
+                                        {:->, [depth: 3],
                                          [
                                            [
                                              {:when, [],
@@ -1533,7 +1625,7 @@ defmodule SpitfireTest do
                                            ],
                                            {{:left, [], Elixir}, {:next_token, [], [{:parser, [], Elixir}]}}
                                          ]},
-                                        {:->, [depth: 11],
+                                        {:->, [depth: 3],
                                          [
                                            [{:_, [], Elixir}],
                                            {{:., [], [{:infix, [], Elixir}]}, [],
@@ -1548,6 +1640,454 @@ defmodule SpitfireTest do
                                ]}
                           ]
                         ]}
+                     ]}
+                ]
+              ]}
+  end
+
+  test "function def with case expression with anon function inside" do
+    code = ~S'''
+    def bar(foo) do
+      case foo do
+        :foo ->
+          :ok
+        :bar ->
+          Enum.map(some_list, fn item ->
+            item.name
+          end)
+      end
+    end
+    '''
+
+    assert Spitfire.parse(code) ==
+             {:def, [],
+              [
+                {:bar, [], [{:foo, [], Elixir}]},
+                [
+                  do:
+                    {:case, [],
+                     [
+                       {:foo, [], Elixir},
+                       [
+                         do: [
+                           {:->, [depth: 2], [[:foo], :ok]},
+                           {:->, [depth: 2],
+                            [
+                              [:bar],
+                              {{:., [], [{:__aliases__, [], [:Enum]}, :map]}, [],
+                               [
+                                 {:some_list, [], Elixir},
+                                 {:fn, [],
+                                  [
+                                    {:->, [depth: 3],
+                                     [
+                                       [{:item, [], Elixir}],
+                                       {{:., [], [{:item, [], Elixir}, :name]}, [], []}
+                                     ]}
+                                  ]}
+                               ]}
+                            ]}
+                         ]
+                       ]
+                     ]}
+                ]
+              ]}
+  end
+
+  test "case expression with anon function inside" do
+    code = ~S'''
+    case foo do
+      :foo ->
+        :ok
+      :bar ->
+        Enum.map(some_list, fn item ->
+          item.name
+        end)
+    end
+    '''
+
+    assert Spitfire.parse(code) ==
+             {:case, [],
+              [
+                {:foo, [], Elixir},
+                [
+                  do: [
+                    {:->, [depth: 1], [[:foo], :ok]},
+                    {:->, [depth: 1],
+                     [
+                       [:bar],
+                       {{:., [], [{:__aliases__, [], [:Enum]}, :map]}, [],
+                        [
+                          {:some_list, [], Elixir},
+                          {:fn, [],
+                           [
+                             {:->, [depth: 2],
+                              [
+                                [{:item, [], Elixir}],
+                                {{:., [], [{:item, [], Elixir}, :name]}, [], []}
+                              ]}
+                           ]}
+                        ]}
+                     ]}
+                  ]
+                ]
+              ]}
+  end
+
+  test "not really sure" do
+    code = ~S'''
+    defp parse_stab_expression(parser, lhs) do
+      case current_token(parser) do
+        :<- ->
+          parse_infix_expression(parser, lhs)
+
+        :-> ->
+          token = current_token(parser)
+          current_sd = parser.stab_depth
+          parser = eat_at(parser, :eol, 1)
+          exprs = []
+
+          {exprs, parser} =
+            while peek_token(parser) not in [:eof, :end] <- {exprs, parser} do
+              parser = next_token(parser)
+              {ast, parser} = parse_expression(parser, top: true)
+
+              parser = eat_at(parser, :eol, 1)
+
+              {[ast | exprs], eat_eol(parser)}
+            end
+
+          rhs =
+            case exprs do
+              [ast] -> ast
+              exprs -> {:__block__, [], Enum.reverse(exprs)}
+            end
+
+          {rhs, stabs} =
+            Macro.traverse(
+              rhs,
+              [],
+              fn node, acc ->
+                case node do
+                  {:->, meta, _args} ->
+                    if meta[:depth] == current_sd do
+                      {:__remove_me__, [node | acc]}
+                    else
+                      {node, acc}
+                    end
+
+                  _ ->
+                    {node, acc}
+                end
+              end,
+              fn
+                {node, meta, args}, acc when is_list(args) ->
+                  args = Enum.reject(args, &(is_list(&1) && Enum.member?(&1, :__remove_me__)))
+                  {{node, meta, args}, acc}
+
+                node, acc ->
+                  {node, acc}
+              end
+            )
+
+          rhs =
+            case rhs do
+              {:__block__, _, [ast]} -> ast
+              [ast] -> ast
+              block -> block
+            end
+
+          ast =
+            [{token, [depth: parser.stab_depth], [wrap(lhs), rhs]}] ++ Enum.reverse(stabs)
+
+          {ast, eat_eol(parser)}
+      end
+    end
+    '''
+
+    assert Spitfire.parse(code) ==
+             {:defp, [],
+              [
+                {:parse_stab_expression, [], [{:parser, [], Elixir}, {:lhs, [], Elixir}]},
+                [
+                  do:
+                    {:case, [],
+                     [
+                       {:current_token, [], [{:parser, [], Elixir}]},
+                       [
+                         do: [
+                           {:->, [depth: 2],
+                            [
+                              [:<-],
+                              {:parse_infix_expression, [], [{:parser, [], Elixir}, {:lhs, [], Elixir}]}
+                            ]},
+                           {:->, [depth: 2],
+                            [
+                              [:->],
+                              {:__block__, [],
+                               [
+                                 {:=, [],
+                                  [
+                                    {:token, [], Elixir},
+                                    {:current_token, [], [{:parser, [], Elixir}]}
+                                  ]},
+                                 {:=, [],
+                                  [
+                                    {:current_sd, [], Elixir},
+                                    {{:., [], [{:parser, [], Elixir}, :stab_depth]}, [], []}
+                                  ]},
+                                 {:=, [],
+                                  [
+                                    {:parser, [], Elixir},
+                                    {:eat_at, [], [{:parser, [], Elixir}, :eol, 1]}
+                                  ]},
+                                 {:=, [], [{:exprs, [], Elixir}, []]},
+                                 {:=, [],
+                                  [
+                                    {{:exprs, [], Elixir}, {:parser, [], Elixir}},
+                                    {:while, [],
+                                     [
+                                       {:<-, [],
+                                        [
+                                          {:not, [],
+                                           [
+                                             {:in, [],
+                                              [
+                                                {:peek_token, [], [{:parser, [], Elixir}]},
+                                                [:eof, :end]
+                                              ]}
+                                           ]},
+                                          {{:exprs, [], Elixir}, {:parser, [], Elixir}}
+                                        ]},
+                                       [
+                                         do:
+                                           {:__block__, [],
+                                            [
+                                              {:=, [],
+                                               [
+                                                 {:parser, [], Elixir},
+                                                 {:next_token, [], [{:parser, [], Elixir}]}
+                                               ]},
+                                              {:=, [],
+                                               [
+                                                 {{:ast, [], Elixir}, {:parser, [], Elixir}},
+                                                 {:parse_expression, [], [{:parser, [], Elixir}, [top: true]]}
+                                               ]},
+                                              {:=, [],
+                                               [
+                                                 {:parser, [], Elixir},
+                                                 {:eat_at, [], [{:parser, [], Elixir}, :eol, 1]}
+                                               ]},
+                                              {[
+                                                 {:|, [], [{:ast, [], Elixir}, {:exprs, [], Elixir}]}
+                                               ], {:eat_eol, [], [{:parser, [], Elixir}]}}
+                                            ]}
+                                       ]
+                                     ]}
+                                  ]},
+                                 {:=, [],
+                                  [
+                                    {:rhs, [], Elixir},
+                                    {:case, [],
+                                     [
+                                       {:exprs, [], Elixir},
+                                       [
+                                         do: [
+                                           {:->, [depth: 3], [[[{:ast, [], Elixir}]], {:ast, [], Elixir}]},
+                                           {:->, [depth: 3],
+                                            [
+                                              [{:exprs, [], Elixir}],
+                                              {:{}, [],
+                                               [
+                                                 :__block__,
+                                                 [],
+                                                 {{:., [],
+                                                   [
+                                                     {:__aliases__, [], [:Enum]},
+                                                     :reverse
+                                                   ]}, [], [{:exprs, [], Elixir}]}
+                                               ]}
+                                            ]}
+                                         ]
+                                       ]
+                                     ]}
+                                  ]},
+                                 {:=, [],
+                                  [
+                                    {{:rhs, [], Elixir}, {:stabs, [], Elixir}},
+                                    {{:., [], [{:__aliases__, [], [:Macro]}, :traverse]}, [],
+                                     [
+                                       {:rhs, [], Elixir},
+                                       [],
+                                       {:fn, [],
+                                        [
+                                          {:->, [depth: 3],
+                                           [
+                                             [
+                                               {:node, [], Elixir},
+                                               {:acc, [], Elixir}
+                                             ],
+                                             {:case, [],
+                                              [
+                                                {:node, [], Elixir},
+                                                [
+                                                  do: [
+                                                    {:->, [depth: 4],
+                                                     [
+                                                       [
+                                                         {:{}, [],
+                                                          [
+                                                            :->,
+                                                            {:meta, [], Elixir},
+                                                            {:_args, [], Elixir}
+                                                          ]}
+                                                       ],
+                                                       {:if, [],
+                                                        [
+                                                          {:==, [],
+                                                           [
+                                                             {{:., [], [Access, :get]}, [],
+                                                              [{:meta, [], Elixir}, :depth]},
+                                                             {:current_sd, [], Elixir}
+                                                           ]},
+                                                          [
+                                                            do:
+                                                              {:__remove_me__,
+                                                               [
+                                                                 {:|, [],
+                                                                  [
+                                                                    {:node, [], Elixir},
+                                                                    {:acc, [], Elixir}
+                                                                  ]}
+                                                               ]},
+                                                            else: {{:node, [], Elixir}, {:acc, [], Elixir}}
+                                                          ]
+                                                        ]}
+                                                     ]},
+                                                    {:->, [depth: 4],
+                                                     [
+                                                       [{:_, [], Elixir}],
+                                                       {{:node, [], Elixir}, {:acc, [], Elixir}}
+                                                     ]}
+                                                  ]
+                                                ]
+                                              ]}
+                                           ]}
+                                        ]},
+                                       {:fn, [],
+                                        [
+                                          {:->, [depth: 3],
+                                           [
+                                             [
+                                               {:when, [],
+                                                [
+                                                  {:{}, [],
+                                                   [
+                                                     {:node, [], Elixir},
+                                                     {:meta, [], Elixir},
+                                                     {:args, [], Elixir}
+                                                   ]},
+                                                  {:acc, [], Elixir},
+                                                  {:is_list, [], [{:args, [], Elixir}]}
+                                                ]}
+                                             ],
+                                             {:__block__, [],
+                                              [
+                                                {:=, [],
+                                                 [
+                                                   {:args, [], Elixir},
+                                                   {{:., [],
+                                                     [
+                                                       {:__aliases__, [], [:Enum]},
+                                                       :reject
+                                                     ]}, [],
+                                                    [
+                                                      {:args, [], Elixir},
+                                                      {:&, [],
+                                                       [
+                                                         {:&&, [],
+                                                          [
+                                                            {:is_list, [], [{:&, [], [1]}]},
+                                                            {{:., [],
+                                                              [
+                                                                {:__aliases__, [], [:Enum]},
+                                                                :member?
+                                                              ]}, [], [{:&, [], [1]}, :__remove_me__]}
+                                                          ]}
+                                                       ]}
+                                                    ]}
+                                                 ]},
+                                                {{:{}, [],
+                                                  [
+                                                    {:node, [], Elixir},
+                                                    {:meta, [], Elixir},
+                                                    {:args, [], Elixir}
+                                                  ]}, {:acc, [], Elixir}}
+                                              ]}
+                                           ]},
+                                          {:->, [depth: 3],
+                                           [
+                                             [
+                                               {:node, [], Elixir},
+                                               {:acc, [], Elixir}
+                                             ],
+                                             {{:node, [], Elixir}, {:acc, [], Elixir}}
+                                           ]}
+                                        ]}
+                                     ]}
+                                  ]},
+                                 {:=, [],
+                                  [
+                                    {:rhs, [], Elixir},
+                                    {:case, [],
+                                     [
+                                       {:rhs, [], Elixir},
+                                       [
+                                         do: [
+                                           {:->, [depth: 3],
+                                            [
+                                              [
+                                                {:{}, [],
+                                                 [
+                                                   :__block__,
+                                                   {:_, [], Elixir},
+                                                   [{:ast, [], Elixir}]
+                                                 ]}
+                                              ],
+                                              {:ast, [], Elixir}
+                                            ]},
+                                           {:->, [depth: 3], [[[{:ast, [], Elixir}]], {:ast, [], Elixir}]},
+                                           {:->, [depth: 3], [[{:block, [], Elixir}], {:block, [], Elixir}]}
+                                         ]
+                                       ]
+                                     ]}
+                                  ]},
+                                 {:=, [],
+                                  [
+                                    {:ast, [], Elixir},
+                                    {:++, [],
+                                     [
+                                       [
+                                         {:{}, [],
+                                          [
+                                            {:token, [], Elixir},
+                                            [
+                                              depth: {{:., [], [{:parser, [], Elixir}, :stab_depth]}, [], []}
+                                            ],
+                                            [
+                                              {:wrap, [], [{:lhs, [], Elixir}]},
+                                              {:rhs, [], Elixir}
+                                            ]
+                                          ]}
+                                       ],
+                                       {{:., [], [{:__aliases__, [], [:Enum]}, :reverse]}, [], [{:stabs, [], Elixir}]}
+                                     ]}
+                                  ]},
+                                 {{:ast, [], Elixir}, {:eat_eol, [], [{:parser, [], Elixir}]}}
+                               ]}
+                            ]}
+                         ]
+                       ]
                      ]}
                 ]
               ]}

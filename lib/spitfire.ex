@@ -141,6 +141,8 @@ defmodule Spitfire do
 
   defp parse_expression(parser, opts \\ []) do
     {associativity, precedence} = Keyword.get(opts, :precedence, @lowest)
+    is_list = Keyword.get(opts, :is_list, false)
+    is_map = Keyword.get(opts, :is_map, false)
     # NOTE: the root of an expression list is the only place where a comma is treated like an infix operator
     is_top = Keyword.get(opts, :top, false)
 
@@ -151,7 +153,8 @@ defmodule Spitfire do
         :paren_identifier -> &parse_identifier/1
         :bracket_identifier -> &parse_identifier/1
         :alias -> &parse_alias/1
-        :kw_identifier -> &parse_kw_identifier/1
+        :kw_identifier when is_list or is_map -> &parse_kw_identifier/1
+        :kw_identifier when not is_list and not is_map -> &parse_bracketless_kw_list/1
         :int -> &parse_int/1
         :atom -> &parse_atom/1
         true -> &parse_boolean/1
@@ -212,6 +215,7 @@ defmodule Spitfire do
             :match_op -> &parse_infix_expression/2
             :when_op -> &parse_infix_expression/2
             :pipe_op -> &parse_infix_expression/2
+            :type_op -> &parse_infix_expression/2
             :dual_op -> &parse_infix_expression/2
             :mult_op -> &parse_infix_expression/2
             :"[" -> &parse_access_expression/2
@@ -275,6 +279,23 @@ defmodule Spitfire do
     {pair, parser}
   end
 
+  defp parse_bracketless_kw_list(%{current_token: {:kw_identifier, _, token}} = parser) do
+    parser = next_token(parser)
+
+    {value, parser} = parse_expression(parser, precedence: @kw_identifier)
+    kvs = [{token, value}]
+
+    {kvs, parser} =
+      while peek_token(parser) == :"," <- {kvs, parser} do
+        parser = parser |> next_token() |> next_token()
+        {pair, parser} = parse_kw_identifier(parser)
+
+        {[pair | kvs], parser}
+      end
+
+    {Enum.reverse(kvs), parser}
+  end
+
   defp parse_assoc_op(%{current_token: {:assoc_op, _, _token}} = parser, key) do
     parser = next_token(parser)
     {expr, parser} = parse_expression(parser, precedence: @assoc_op)
@@ -283,15 +304,16 @@ defmodule Spitfire do
     {pair, parser}
   end
 
-  defp parse_comma_list(parser) do
-    {expr, parser} = parse_expression(parser, precedence: @comma)
+  defp parse_comma_list(parser, opts \\ []) do
+    opts = Keyword.put(opts, :precedence, @comma)
+    {expr, parser} = parse_expression(parser, opts)
     items = [expr]
 
     {items, parser} =
       while peek_token(parser) == :"," <- {items, parser} do
         parser = parser |> next_token() |> next_token()
 
-        {item, parser} = parse_expression(parser, precedence: @comma)
+        {item, parser} = parse_expression(parser, opts)
 
         {[item | items], parser}
       end
@@ -425,26 +447,24 @@ defmodule Spitfire do
             block -> block
           end
 
+        lhs =
+          case lhs do
+            {:comma, _, lhs} -> lhs
+            lhs -> [lhs]
+          end
+
         ast =
-          [{token, [depth: parser.stab_depth], [wrap(lhs), rhs]}] ++ Enum.reverse(stabs)
+          [{token, [depth: parser.stab_depth], [lhs, rhs]}] ++ Enum.reverse(stabs)
 
         {ast, eat_eol(parser)}
     end
-  end
-
-  defp wrap(nil) do
-    [nil]
-  end
-
-  defp wrap(other) do
-    List.wrap(other)
   end
 
   defp parse_comma(parser, lhs) do
     parser = parser |> next_token() |> eat_eol()
     {exprs, parser} = parse_comma_list(parser)
 
-    {[lhs | exprs], eat_eol(parser)}
+    {{:comma, [], [lhs | exprs]}, eat_eol(parser)}
   end
 
   defp parse_infix_expression(parser, lhs) do
@@ -459,7 +479,13 @@ defmodule Spitfire do
           {:not, [], [{:in, [], [lhs, rhs]}]}
 
         :when ->
-          {token, [], List.wrap(lhs) ++ [rhs]}
+          lhs =
+            case lhs do
+              {:comma, _, lhs} -> lhs
+              lhs -> [lhs]
+            end
+
+          {token, [], lhs ++ [rhs]}
 
         _ ->
           {token, [], [lhs, rhs]}
@@ -498,13 +524,15 @@ defmodule Spitfire do
     parser = parser |> next_token() |> eat_eol()
     exprs = [do: []]
 
+    parser = inc_stab_depth(parser)
+
     {exprs, parser} =
       while current_token(parser) != :end <- {exprs, parser} do
         [{type, current_exprs} | rest] = exprs
 
         {exprs, parser} =
           while current_token(parser) not in [:end, :block_identifier] <- {current_exprs, parser} do
-            {ast, parser} = parse_expression(inc_stab_depth(parser), top: true)
+            {ast, parser} = parse_expression(parser, top: true)
 
             parser = next_token(parser)
 
@@ -517,8 +545,6 @@ defmodule Spitfire do
 
             {[ast | current_exprs], parser}
           end
-
-        parser = dec_stab_depth(parser)
 
         case parser do
           %{current_token: {:block_identifier, _, token}} ->
@@ -550,6 +576,7 @@ defmodule Spitfire do
           {token, meta, args ++ [exprs]}
       end
 
+    parser = dec_stab_depth(parser)
     {ast, parser}
   end
 
@@ -586,7 +613,11 @@ defmodule Spitfire do
   defp parse_anon_function(%{current_token: {:fn, _}} = parser) do
     parser = parser |> next_token() |> eat_eol()
 
+    parser = inc_stab_depth(parser)
+
     {ast, parser} = parse_expression(parser, top: true)
+
+    parser = dec_stab_depth(parser)
 
     parser = next_token(parser)
 
@@ -674,7 +705,7 @@ defmodule Spitfire do
     if current_token(parser) == :"}" do
       {{:%{}, [], []}, parser}
     else
-      {pairs, parser} = parse_comma_list(parser)
+      {pairs, parser} = parse_comma_list(parser, is_map: true)
       {{:%{}, [], pairs}, parser |> next_token() |> eat_eol()}
     end
   end
@@ -701,7 +732,7 @@ defmodule Spitfire do
     if current_token(parser) == :"]" do
       {[], parser}
     else
-      {pairs, parser} = parse_comma_list(parser)
+      {pairs, parser} = parse_comma_list(parser, is_list: true)
 
       {List.wrap(pairs), parser |> next_token() |> eat_eol()}
     end
@@ -751,6 +782,7 @@ defmodule Spitfire do
     :range_op,
     :rel_op,
     :and_op,
+    :or_op,
     :mult_op,
     :arrow_op,
     :assoc_op,
@@ -762,6 +794,7 @@ defmodule Spitfire do
     :in_match_op,
     :comp_op,
     :match_op,
+    :type_op,
     :dot_call_op,
     :when_op
   ]
@@ -972,6 +1005,7 @@ defmodule Spitfire do
              :range_op,
              :xor_op,
              :in_match_op,
+             :type_op,
              :capture_op,
              :capture_int,
              :in_op,
