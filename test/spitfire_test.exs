@@ -1,6 +1,9 @@
 defmodule SpitfireTest do
   use ExUnit.Case
 
+  import Kernel, except: [==: 2]
+  import Spitfire.TestHelpers
+
   doctest Spitfire
 
   test "parses valid elixir" do
@@ -17,22 +20,22 @@ defmodule SpitfireTest do
     """
 
     assert Spitfire.parse(code) ==
-             {:defmodule, [],
+             {:defmodule, [line: 1, column: 1],
               [
-                {:__aliases__, [], [:Foo]},
+                {:__aliases__, [line: 1, column: 11], [:Foo]},
                 [
                   do:
                     {:__block__, [],
                      [
-                       {:use, [],
+                       {:use, [line: 2, column: 3],
                         [
-                          {:__aliases__, [], [:AnotherMod, :Nested]},
+                          {:__aliases__, [line: 2, column: 7], [:AnotherMod, :Nested]},
                           [some: :option]
                         ]},
-                       {:def, [],
+                       {:def, [line: 5, column: 3],
                         [
-                          {:run, [], [{:arg, [], Elixir}]},
-                          [do: {:__block__, [], [{:bar, [], []}, :ok]}]
+                          {:run, [line: 5, column: 7], [{:arg, [line: 5, column: 11], Elixir}]},
+                          [do: {:__block__, [], [{:bar, [line: 6, column: 5], []}, :ok]}]
                         ]}
                      ]}
                 ]
@@ -42,12 +45,15 @@ defmodule SpitfireTest do
   test "access syntax" do
     code = "foo[:bar]"
 
-    assert Spitfire.parse(code) == {{:., [], [Access, :get]}, [], [{:foo, [], Elixir}, :bar]}
+    assert Spitfire.parse(code) ==
+             {{:., [line: 1, column: 4], [Access, :get]}, [line: 1, column: 4, from_brackets: true],
+              [{:foo, [line: 1, column: 1], Elixir}, :bar]}
 
     code = "%{bar: :foo}[:bar]"
 
     assert Spitfire.parse(code) ==
-             {{:., [], [Access, :get]}, [], [{:%{}, [], [bar: :foo]}, :bar]}
+             {{:., [line: 1, column: 14], [Access, :get]}, [line: 1, column: 14, from_brackets: true],
+              [{:%{}, [line: 1, column: 1], [bar: :foo]}, :bar]}
   end
 
   test "literal encoder" do
@@ -58,14 +64,16 @@ defmodule SpitfireTest do
     [four]
     '''
 
-    assert Spitfire.parse(code, literal_encoder: fn l, m -> {:ok, {:__literal__, m, l}} end) ==
+    assert Kernel.==(
+             Spitfire.parse(code, literal_encoder: fn l, m -> {:ok, {:__literal__, m, l}} end),
              {:__block__, [],
               [
                 {:__literal__, [line: 1, column: 1], 1},
                 {:__literal__, [line: 2, column: 1], "two"},
                 {:__literal__, [line: 3, column: 1], :three},
-                {:__literal__, [line: 4, column: 1], [{:four, [], Elixir}]}
+                {:__literal__, [line: 4, column: 1], [{:four, [line: 4, column: 2], Elixir}]}
               ]}
+           )
   end
 
   test "type syntax" do
@@ -74,14 +82,14 @@ defmodule SpitfireTest do
     '''
 
     assert Spitfire.parse(code) ==
-             {:@, [],
+             {:@, [line: 1, column: 1],
               [
-                {:type, [],
+                {:type, [line: 1, column: 2],
                  [
-                   {:"::", [],
+                   {:"::", [line: 1, column: 11],
                     [
-                      {:foo, [], Elixir},
-                      {{:., [], [{:__aliases__, [], [:String]}, :t]}, [], []}
+                      {:foo, [line: 1, column: 7], Elixir},
+                      {{:., [], [{:__aliases__, [line: 1, column: 14], [:String]}, :t]}, [], []}
                     ]}
                  ]}
               ]}
@@ -91,22 +99,22 @@ defmodule SpitfireTest do
     '''
 
     assert Spitfire.parse(code) ==
-             {:@, [],
+             {:@, [line: 1, column: 1],
               [
-                {:spec, [],
+                {:spec, [line: 1, column: 2],
                  [
-                   {:"::", [],
+                   {:"::", [line: 1, column: 38],
                     [
-                      {:foo, [],
+                      {:foo, [line: 1, column: 7],
                        [
-                         {:"::", [],
+                         {:"::", [line: 1, column: 15],
                           [
-                            {:one, [], Elixir},
-                            {{:., [], [{:__aliases__, [], [:String]}, :t]}, [], []}
+                            {:one, [line: 1, column: 11], Elixir},
+                            {{:., [], [{:__aliases__, [line: 1, column: 18], [:String]}, :t]}, [], []}
                           ]},
-                         {:number, [], Elixir}
+                         {:number, [line: 1, column: 30], Elixir}
                        ]},
-                      {:|, [], [:ok, :error]}
+                      {:|, [line: 1, column: 45], [:ok, :error]}
                     ]}
                  ]}
               ]}
@@ -117,7 +125,7 @@ defmodule SpitfireTest do
     ^foo
     '''
 
-    assert Spitfire.parse(code) == {:^, [], [{:foo, [], Elixir}]}
+    assert Spitfire.parse(code) == {:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}
   end
 
   test "parses numbers" do
@@ -142,12 +150,13 @@ defmodule SpitfireTest do
     '''
 
     assert Spitfire.parse(code) ==
-             {:<<>>, [],
+             {:<<>>, [line: 1, column: 1],
               [
                 "foo",
-                {:"::", [],
+                {:"::", [line: 1, column: 1],
                  [
-                   {{:., [], [Kernel, :to_string]}, [], [{:alice, [], Elixir}]},
+                   {{:., [line: 1, column: 1], [Kernel, :to_string]}, [line: 1, column: 1, from_interpolation: true],
+                    [{:alice, [line: 1, column: 7], Elixir}]},
                    {:binary, [], Elixir}
                  ]},
                 "bar"
@@ -158,12 +167,13 @@ defmodule SpitfireTest do
     '''
 
     assert Spitfire.parse(code) ==
-             {:<<>>, [],
+             {:<<>>, [line: 1, column: 1],
               [
                 "foo",
-                {:"::", [],
+                {:"::", [line: 1, column: 1],
                  [
-                   {{:., [], [Kernel, :to_string]}, [], [{:__block__, [], []}]},
+                   {{:., [line: 1, column: 1], [Kernel, :to_string]}, [line: 1, column: 1, from_interpolation: true],
+                    [{:__block__, [], []}]},
                    {:binary, [], Elixir}
                  ]},
                 "bar"
@@ -188,14 +198,15 @@ defmodule SpitfireTest do
     '''
 
     assert Spitfire.parse(code) ==
-             {{:., [], [:erlang, :binary_to_atom]}, [],
+             {{:., [line: 1, column: 1], [:erlang, :binary_to_atom]}, [line: 1, column: 1],
               [
-                {:<<>>, [],
+                {:<<>>, [line: 1, column: 1],
                  [
                    "foo",
-                   {:"::", [],
+                   {:"::", [line: 1, column: 1],
                     [
-                      {{:., [], [Kernel, :to_string]}, [], [{:__block__, [], []}]},
+                      {{:., [line: 1, column: 1], [Kernel, :to_string]}, [line: 1, column: 1, from_interpolation: true],
+                       [{:__block__, [], []}]},
                       {:binary, [], Elixir}
                     ]}
                  ]},
@@ -207,14 +218,15 @@ defmodule SpitfireTest do
     '''
 
     assert Spitfire.parse(code) ==
-             {{:., [], [:erlang, :binary_to_atom]}, [],
+             {{:., [line: 1, column: 1], [:erlang, :binary_to_atom]}, [line: 1, column: 1],
               [
-                {:<<>>, [],
+                {:<<>>, [line: 1, column: 1],
                  [
                    "foo",
-                   {:"::", [],
+                   {:"::", [line: 1, column: 1],
                     [
-                      {{:., [], [Kernel, :to_string]}, [], [{:bar, [], Elixir}]},
+                      {{:., [line: 1, column: 1], [Kernel, :to_string]}, [line: 1, column: 1, from_interpolation: true],
+                       [{:bar, [line: 1, column: 8], Elixir}]},
                       {:binary, [], Elixir}
                     ]}
                  ]},
@@ -227,7 +239,9 @@ defmodule SpitfireTest do
     apple <- apples
     """
 
-    assert Spitfire.parse(code) == {:<-, [], [{:apple, [], Elixir}, {:apples, [], Elixir}]}
+    assert Spitfire.parse(code) ==
+             {:<-, [line: 1, column: 7],
+              [{:apple, [line: 1, column: 1], Elixir}, {:apples, [line: 1, column: 10], Elixir}]}
   end
 
   test "parses right stab" do
@@ -235,29 +249,36 @@ defmodule SpitfireTest do
     -> bar
     """
 
-    assert Spitfire.parse(code) == [{:->, [], [[], {:bar, [], Elixir}]}]
+    assert Spitfire.parse(code) == [{:->, [line: 1, column: 1], [[], {:bar, [line: 1, column: 4], Elixir}]}]
 
     code = """
     -> :ok
     """
 
-    assert Spitfire.parse(code) == [{:->, [], [[], :ok]}]
+    assert Spitfire.parse(code) == [{:->, [line: 1, column: 1], [[], :ok]}]
 
     code = """
     foo -> bar
     """
 
-    assert Spitfire.parse(code) == [{:->, [depth: 0], [[{:foo, [], Elixir}], {:bar, [], Elixir}]}]
+    assert Spitfire.parse(code) == [
+             {:->, [depth: 0, line: 1, column: 5],
+              [[{:foo, [line: 1, column: 1], Elixir}], {:bar, [line: 1, column: 8], Elixir}]}
+           ]
 
     code = """
     foo, bar, baz -> bar
     """
 
     assert Spitfire.parse(code) == [
-             {:->, [depth: 0],
+             {:->, [depth: 0, line: 1, column: 15],
               [
-                [{:foo, [], Elixir}, {:bar, [], Elixir}, {:baz, [], Elixir}],
-                {:bar, [], Elixir}
+                [
+                  {:foo, [line: 1, column: 1], Elixir},
+                  {:bar, [line: 1, column: 6], Elixir},
+                  {:baz, [line: 1, column: 11], Elixir}
+                ],
+                {:bar, [line: 1, column: 18], Elixir}
               ]}
            ]
 
@@ -271,10 +292,14 @@ defmodule SpitfireTest do
     # parse a comma list. if we hit the operator, it means that we are not actually in an
     # existing comma list, like a list or a map
     assert Spitfire.parse(code) == [
-             {:->, [depth: 0],
+             {:->, [depth: 0, line: 1, column: 19],
               [
-                [{:alice, [], Elixir}, {:bob, [], Elixir}, {:carol, [], Elixir}],
-                {:__block__, [], [:error, {:bar, [], Elixir}]}
+                [
+                  {:alice, [line: 1, column: 1], Elixir},
+                  {:bob, [line: 1, column: 8], Elixir},
+                  {:carol, [line: 1, column: 13], Elixir}
+                ],
+                {:__block__, [], [:error, {:bar, [line: 3, column: 3], Elixir}]}
               ]}
            ]
 
@@ -289,11 +314,16 @@ defmodule SpitfireTest do
     """
 
     assert Spitfire.parse(code) == [
-             {:->, [depth: 0], [[{:foo, [], Elixir}], {:__block__, [], [:ok, {:baz, [], Elixir}]}]},
-             {:->, [depth: 0],
+             {:->, [depth: 0, line: 1, column: 5],
+              [[{:foo, [line: 1, column: 1], Elixir}], {:__block__, [], [:ok, {:baz, [line: 3, column: 3], Elixir}]}]},
+             {:->, [depth: 0, line: 5, column: 19],
               [
-                [{:alice, [], Elixir}, {:bob, [], Elixir}, {:carol, [], Elixir}],
-                {:__block__, [], [:error, {:bar, [], Elixir}]}
+                [
+                  {:alice, [line: 5, column: 1], Elixir},
+                  {:bob, [line: 5, column: 8], Elixir},
+                  {:carol, [line: 5, column: 13], Elixir}
+                ],
+                {:__block__, [], [:error, {:bar, [line: 7, column: 3], Elixir}]}
               ]}
            ]
 
@@ -302,30 +332,36 @@ defmodule SpitfireTest do
       :ok
     '''
 
-    assert Spitfire.parse(code) == [{:->, [depth: 0], [[{:^, [], [{:foo, [], Elixir}]}], :ok]}]
+    assert Spitfire.parse(code) == [
+             {:->, [depth: 0, line: 1, column: 6],
+              [[{:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}], :ok]}
+           ]
 
     code = ~S'''
     @foo ->
       :ok
     '''
 
-    assert Spitfire.parse(code) == [{:->, [depth: 0], [[{:@, [], [{:foo, [], Elixir}]}], :ok]}]
+    assert Spitfire.parse(code) == [
+             {:->, [depth: 0, line: 1, column: 6],
+              [[{:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}], :ok]}
+           ]
   end
 
   test "parses grouped expressions" do
     codes = [
       {~s'''
        1 + 2 + 3
-       ''', {:+, [], [{:+, [], [1, 2]}, 3]}},
+       ''', {:+, [line: 1, column: 7], [{:+, [line: 1, column: 3], [1, 2]}, 3]}},
       {~s'''
        (1 + 2) + 3
-       ''', {:+, [], [{:+, [], [1, 2]}, 3]}},
+       ''', {:+, [line: 1, column: 9], [{:+, [line: 1, column: 4], [1, 2]}, 3]}},
       {~s'''
        ((1 + 2) + 3)
-       ''', {:+, [], [{:+, [], [1, 2]}, 3]}},
+       ''', {:+, [line: 1, column: 10], [{:+, [line: 1, column: 5], [1, 2]}, 3]}},
       {~s'''
        1 + (2 + 3)
-       ''', {:+, [], [1, {:+, [], [2, 3]}]}}
+       ''', {:+, [line: 1, column: 3], [1, {:+, [line: 1, column: 8], [2, 3]}]}}
     ]
 
     for {code, expected} <- codes do
@@ -340,10 +376,10 @@ defmodule SpitfireTest do
          i + i
        end
        ''',
-       {:for, [],
+       {:for, [line: 1, column: 1],
         [
-          {:<-, [], [{:i, [], Elixir}, {:.., [], [0, 100]}]},
-          [do: {:+, [], [{:i, [], Elixir}, {:i, [], Elixir}]}]
+          {:<-, [line: 1, column: 7], [{:i, [line: 1, column: 5], Elixir}, {:.., [line: 1, column: 11], [0, 100]}]},
+          [do: {:+, [line: 2, column: 5], [{:i, [line: 2, column: 3], Elixir}, {:i, [line: 2, column: 7], Elixir}]}]
         ]}}
     ]
 
@@ -361,27 +397,30 @@ defmodule SpitfireTest do
          Email.send(teacher, "You are the coolest teacher")
        end
        ''',
-       {:with, [],
+       {:with, [line: 1, column: 1],
         [
-          {:<-, [],
+          {:<-, [line: 1, column: 20],
            [
-             {:ok, {:school, [], Elixir}},
-             {{:., [], [{:__aliases__, [], [:State]}, :get_school]}, [], [{:id, [], Elixir}]}
+             {:ok, {:school, [line: 1, column: 12], Elixir}},
+             {{:., [], [{:__aliases__, [line: 1, column: 23], [:State]}, :get_school]}, [],
+              [{:id, [line: 1, column: 40], Elixir}]}
            ]},
-          {:<-, [],
+          {:<-, [line: 2, column: 22],
            [
-             {:ok, {:teachers, [], Elixir}},
-             {{:., [], [{:__aliases__, [], [:School]}, :list_teachers]}, [], [{:school, [], Elixir}]}
+             {:ok, {:teachers, [line: 2, column: 12], Elixir}},
+             {{:., [], [{:__aliases__, [line: 2, column: 25], [:School]}, :list_teachers]}, [],
+              [{:school, [line: 2, column: 46], Elixir}]}
            ]},
-          {:<-, [],
+          {:<-, [line: 3, column: 21],
            [
-             {:ok, {:teacher, [], Elixir}},
-             {{:., [], [{:__aliases__, [], [:Teacher]}, :coolest]}, [], [{:teachers, [], Elixir}]}
+             {:ok, {:teacher, [line: 3, column: 12], Elixir}},
+             {{:., [], [{:__aliases__, [line: 3, column: 24], [:Teacher]}, :coolest]}, [],
+              [{:teachers, [line: 3, column: 40], Elixir}]}
            ]},
           [
             do:
-              {{:., [], [{:__aliases__, [], [:Email]}, :send]}, [],
-               [{:teacher, [], Elixir}, "You are the coolest teacher"]}
+              {{:., [], [{:__aliases__, [line: 4, column: 3], [:Email]}, :send]}, [],
+               [{:teacher, [line: 4, column: 14], Elixir}, "You are the coolest teacher"]}
           ]
         ]}}
     ]
@@ -401,9 +440,9 @@ defmodule SpitfireTest do
     assert Spitfire.parse(code) ==
              {:__block__, [],
               [
-                {:foobar, [], Elixir},
-                {:alice, [], Elixir},
-                {:bob, [], Elixir}
+                {:foobar, [line: 1, column: 1], Elixir},
+                {:alice, [line: 2, column: 1], Elixir},
+                {:bob, [line: 3, column: 1], Elixir}
               ]}
   end
 
@@ -414,17 +453,17 @@ defmodule SpitfireTest do
        ''', []},
       {~s'''
        [arg]
-       ''', [{:arg, [], Elixir}]},
+       ''', [{:arg, [line: 1, column: 2], Elixir}]},
       {~s'''
-        [one, :two, "three"]
-       ''', [{:one, [], Elixir}, :two, "three"]},
+       [one, :two, "three"]
+       ''', [{:one, [line: 1, column: 2], Elixir}, :two, "three"]},
       {~s'''
         [
           one,
           :two,
           "three"
         ]
-       ''', [{:one, [], Elixir}, :two, "three"]}
+       ''', [{:one, [line: 2, column: 4], Elixir}, :two, "three"]}
     ]
 
     for {code, expected} <- codes do
@@ -436,12 +475,18 @@ defmodule SpitfireTest do
     codes = [
       {~s'''
        foo(one, two, alice: alice, bob: bob)
-       ''', {:foo, [], [{:one, [], Elixir}, {:two, [], Elixir}, [alice: {:alice, [], Elixir}, bob: {:bob, [], Elixir}]]}},
+       ''',
+       {:foo, [line: 1, column: 1],
+        [
+          {:one, [line: 1, column: 5], Elixir},
+          {:two, [line: 1, column: 10], Elixir},
+          [alice: {:alice, [line: 1, column: 22], Elixir}, bob: {:bob, [line: 1, column: 34], Elixir}]
+        ]}},
       {~s'''
        foo alice: alice do
          :ok
        end
-       ''', {:foo, [], [[alice: {:alice, [], Elixir}], [do: :ok]]}},
+       ''', {:foo, [line: 1, column: 1], [[alice: {:alice, [line: 1, column: 12], Elixir}], [do: :ok]]}},
       {~s'''
        [:one, two: :three]
        ''', [:one, {:two, :three}]}
@@ -460,21 +505,23 @@ defmodule SpitfireTest do
     '''
 
     assert Spitfire.parse(code) ==
-             {:case, [],
+             {:case, [line: 1, column: 1],
               [
-                {:foo, [], Elixir},
+                {:foo, [line: 1, column: 6], Elixir},
                 [
                   do: [
-                    {:->, [depth: 1],
+                    {:->, [depth: 1, line: 2, column: 41],
                      [
                        [
-                         {:when, [],
+                         {:when, [line: 2, column: 18],
                           [
                             :kw_identifier,
-                            {:or, [], [{:is_list, [], Elixir}, {:is_map, [], Elixir}]}
+                            {:or, [line: 2, column: 31],
+                             [{:is_list, [line: 2, column: 23], Elixir}, {:is_map, [line: 2, column: 34], Elixir}]}
                           ]}
                        ],
-                       {:&, [], [{:/, [], [{:parse_kw_identifier, [], Elixir}, 1]}]}
+                       {:&, [line: 2, column: 44],
+                        [{:/, [line: 2, column: 64], [{:parse_kw_identifier, [line: 2, column: 45], Elixir}, 1]}]}
                      ]}
                   ]
                 ]
@@ -485,14 +532,22 @@ defmodule SpitfireTest do
     codes = [
       {~s'''
        [one | rest] = my_list
-       ''', {:=, [], [[{:|, [], [{:one, [], Elixir}, {:rest, [], Elixir}]}], {:my_list, [], Elixir}]}},
+       ''',
+       {:=, [line: 1, column: 14],
+        [
+          [{:|, [line: 1, column: 6], [{:one, [line: 1, column: 2], Elixir}, {:rest, [line: 1, column: 8], Elixir}]}],
+          {:my_list, [line: 1, column: 16], Elixir}
+        ]}},
       {~s'''
        [one, two | rest] = my_list
        ''',
-       {:=, [],
+       {:=, [line: 1, column: 19],
         [
-          [{:one, [], Elixir}, {:|, [], [{:two, [], Elixir}, {:rest, [], Elixir}]}],
-          {:my_list, [], Elixir}
+          [
+            {:one, [line: 1, column: 2], Elixir},
+            {:|, [line: 1, column: 11], [{:two, [line: 1, column: 7], Elixir}, {:rest, [line: 1, column: 13], Elixir}]}
+          ],
+          {:my_list, [line: 1, column: 21], Elixir}
         ]}}
     ]
 
@@ -505,27 +560,27 @@ defmodule SpitfireTest do
     codes = [
       {~s'''
        {}
-       ''', {:{}, [], []}},
+       ''', {:{}, [line: 1, column: 1], []}},
       {~s'''
-        {one, :two}
-       ''', {{:one, [], Elixir}, :two}},
+       {one, :two}
+       ''', {{:one, [line: 1, column: 2], Elixir}, :two}},
       {~s'''
-        {
-          one,
-          :two,
-          "three"
-        }
-       ''', {:{}, [], [{:one, [], Elixir}, :two, "three"]}},
+       {
+         one,
+         :two,
+         "three"
+       }
+       ''', {:{}, [line: 1, column: 1], [{:one, [line: 2, column: 3], Elixir}, :two, "three"]}},
       {~s'''
-        {one, :two, "three"}
-       ''', {:{}, [], [{:one, [], Elixir}, :two, "three"]}},
+       {one, :two, "three"}
+       ''', {:{}, [line: 1, column: 1], [{:one, [line: 1, column: 2], Elixir}, :two, "three"]}},
       {~s'''
-        {
-          one,
-          :two,
-          "three"
-        }
-       ''', {:{}, [], [{:one, [], Elixir}, :two, "three"]}}
+       {
+         one,
+         :two,
+         "three"
+       }
+       ''', {:{}, [line: 1, column: 1], [{:one, [line: 2, column: 3], Elixir}, :two, "three"]}}
     ]
 
     for {code, expected} <- codes do
@@ -537,13 +592,13 @@ defmodule SpitfireTest do
     codes = [
       {~s'''
        Remote
-       ''', {:__aliases__, [], [:Remote]}},
+       ''', {:__aliases__, [line: 1, column: 1], [:Remote]}},
       {~s'''
-        Remote.Foo
-       ''', {:__aliases__, [], [:Remote, :Foo]}},
+       Remote.Foo
+       ''', {:__aliases__, [line: 1, column: 1], [:Remote, :Foo]}},
       {~s'''
-        Remote.Foo.Bar
-       ''', {:__aliases__, [], [:Remote, :Foo, :Bar]}}
+       Remote.Foo.Bar
+       ''', {:__aliases__, [line: 1, column: 1], [:Remote, :Foo, :Bar]}}
     ]
 
     for {code, expected} <- codes do
@@ -555,51 +610,51 @@ defmodule SpitfireTest do
     codes = [
       {~s'''
        %{}
-       ''', {:%{}, [], []}},
+       ''', {:%{}, [line: 1, column: 1], []}},
       {~s'''
        %{
          foo: "bar",
          alice: "bob"
         }
-       ''', {:%{}, [], [{:foo, "bar"}, {:alice, "bob"}]}},
+       ''', {:%{}, [line: 1, column: 1], [{:foo, "bar"}, {:alice, "bob"}]}},
       {~s'''
        %{
          "foo" => "bar",
          "alice" => "bob"
         }
-       ''', {:%{}, [], [{"foo", "bar"}, {"alice", "bob"}]}},
+       ''', {:%{}, [line: 1, column: 1], [{"foo", "bar"}, {"alice", "bob"}]}},
       {~s'''
-        %{"foo" => "bar", 1 => 2, :three => :four, [] => [1], %{} => nil, bing => bong, foo: :bar}
+       %{"foo" => "bar", 1 => 2, :three => :four, [] => [1], %{} => nil, bing => bong, foo: :bar}
        ''',
-       {:%{}, [],
+       {:%{}, [line: 1, column: 1],
         [
           {"foo", "bar"},
           {1, 2},
           {:three, :four},
           {[], [1]},
-          {{:%{}, [], []}, nil},
-          {{:bing, [], Elixir}, {:bong, [], Elixir}},
+          {{:%{}, [line: 1, column: 55], []}, nil},
+          {{:bing, [line: 1, column: 67], Elixir}, {:bong, [line: 1, column: 75], Elixir}},
           {:foo, :bar}
         ]}},
       {~s'''
-        %{
-          "foo" => "bar",
-          1 => 2,
-          :three => :four,
-          [] => [1],
-          %{} => nil,
-          bing => bong,
-          foo: :bar
-        }
+       %{
+         "foo" => "bar",
+         1 => 2,
+         :three => :four,
+         [] => [1],
+         %{} => nil,
+         bing => bong,
+         foo: :bar
+       }
        ''',
-       {:%{}, [],
+       {:%{}, [line: 1, column: 1],
         [
           {"foo", "bar"},
           {1, 2},
           {:three, :four},
           {[], [1]},
-          {{:%{}, [], []}, nil},
-          {{:bing, [], Elixir}, {:bong, [], Elixir}},
+          {{:%{}, [line: 6, column: 3], []}, nil},
+          {{:bing, [line: 7, column: 3], Elixir}, {:bong, [line: 7, column: 11], Elixir}},
           {:foo, :bar}
         ]}}
     ]
@@ -613,144 +668,145 @@ defmodule SpitfireTest do
     codes = [
       {~s'''
        1 + 2
-       ''', {:+, [], [1, 2]}},
+       ''', {:+, [line: 1, column: 3], [1, 2]}},
       {~s'''
        1 - 2
-       ''', {:-, [], [1, 2]}},
+       ''', {:-, [line: 1, column: 3], [1, 2]}},
       {~s'''
        1 * 2
-       ''', {:*, [], [1, 2]}},
+       ''', {:*, [line: 1, column: 3], [1, 2]}},
       {~s'''
        1 / 2
-       ''', {:/, [], [1, 2]}},
+       ''', {:/, [line: 1, column: 3], [1, 2]}},
       {~s'''
        1 || foo()
-       ''', {:||, [], [1, {:foo, [], []}]}},
+       ''', {:||, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
       {~s'''
        1 ||| foo()
-       ''', {:|||, [], [1, {:foo, [], []}]}},
+       ''', {:|||, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
       {~s'''
        1 or foo()
-       ''', {:or, [], [1, {:foo, [], []}]}},
+       ''', {:or, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
       {~s'''
        1 == foo()
-       ''', {:==, [], [1, {:foo, [], []}]}},
+       ''', {:==, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
       {~s'''
        1 != foo()
-       ''', {:!=, [], [1, {:foo, [], []}]}},
+       ''', {:!=, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
       {~s'''
        1 =~ foo()
-       ''', {:=~, [], [1, {:foo, [], []}]}},
+       ''', {:=~, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
       {~s'''
        1 === foo()
-       ''', {:===, [], [1, {:foo, [], []}]}},
+       ''', {:===, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
       {~s'''
        1 !== foo()
-       ''', {:!==, [], [1, {:foo, [], []}]}},
+       ''', {:!==, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
       {~s'''
        1 < foo()
-       ''', {:<, [], [1, {:foo, [], []}]}},
+       ''', {:<, [line: 1, column: 3], [1, {:foo, [line: 1, column: 5], []}]}},
       {~s'''
        1 > foo()
-       ''', {:>, [], [1, {:foo, [], []}]}},
+       ''', {:>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 5], []}]}},
       {~s'''
        1 <= foo()
-       ''', {:<=, [], [1, {:foo, [], []}]}},
+       ''', {:<=, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
       {~s'''
        1 >= foo()
-       ''', {:>=, [], [1, {:foo, [], []}]}},
+       ''', {:>=, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
       {~s'''
        1 |> foo()
-       ''', {:|>, [], [1, {:foo, [], []}]}},
+       ''', {:|>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
       {~s'''
        1 <|> foo()
-       ''', {:"<|>", [], [1, {:foo, [], []}]}},
+       ''', {:"<|>", [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
       {~s'''
        1 <<< foo()
-       ''', {:<<<, [], [1, {:foo, [], []}]}},
+       ''', {:<<<, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
       {~s'''
        1 >>> foo()
-       ''', {:>>>, [], [1, {:foo, [], []}]}},
+       ''', {:>>>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
       {~s'''
        1 <<~ foo()
-       ''', {:<<~, [], [1, {:foo, [], []}]}},
+       ''', {:<<~, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
       {~s'''
        1 ~>> foo()
-       ''', {:~>>, [], [1, {:foo, [], []}]}},
+       ''', {:~>>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
       {~s'''
        1 <~ foo()
-       ''', {:<~, [], [1, {:foo, [], []}]}},
+       ''', {:<~, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
       {~s'''
        1 ~> foo()
-       ''', {:~>, [], [1, {:foo, [], []}]}},
+       ''', {:~>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
       {~s'''
        1 <~> foo()
-       ''', {:<~>, [], [1, {:foo, [], []}]}},
+       ''', {:<~>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
       {~s'''
        1 in foo()
-       ''', {:in, [], [1, {:foo, [], []}]}},
+       ''', {:in, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
       {~s'''
        foo not in bar
        ''',
-       {:not, [],
+       {:not, [line: 1, column: 5],
         [
-          {:in, [], [{:foo, [], Elixir}, {:bar, [], Elixir}]}
+          {:in, [], [{:foo, [line: 1, column: 1], Elixir}, {:bar, [line: 1, column: 12], Elixir}]}
         ]}},
       {~s'''
        1 ^^^ foo()
-       ''', {:"^^^", [], [1, {:foo, [], []}]}},
+       ''', {:"^^^", [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
       {~s'''
        1 + 2 * 3 - 2
        ''',
-       {:-, [],
+       {:-, [line: 1, column: 11],
         [
-          {:+, [], [1, {:*, [], [2, 3]}]},
+          {:+, [line: 1, column: 3], [1, {:*, [line: 1, column: 7], [2, 3]}]},
           2
         ]}},
       {~s'''
        one..two
-       ''', {:.., [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+       ''', {:.., [line: 1, column: 4], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 6], Elixir}]}},
       {~s'''
        one..two//2
-       ''', {:"..//", [], [{:one, [], Elixir}, {:two, [], Elixir}, 2]}},
+       ''',
+       {:"..//", [line: 1, column: 4], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 6], Elixir}, 2]}},
       {~s'''
        one <> two
-       ''', {:<>, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+       ''', {:<>, [line: 1, column: 5], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 8], Elixir}]}},
       {~s'''
        one ++ two
-       ''', {:++, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+       ''', {:++, [line: 1, column: 5], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 8], Elixir}]}},
       {~s'''
        one -- two
-       ''', {:--, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+       ''', {:--, [line: 1, column: 5], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 8], Elixir}]}},
       {~s'''
        one +++ two
-       ''', {:+++, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+       ''', {:+++, [line: 1, column: 5], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 9], Elixir}]}},
       {~s'''
        one --- two
-       ''', {:---, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+       ''', {:---, [line: 1, column: 5], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 9], Elixir}]}},
       {~s'''
        one ++ two ++ three
        ''',
-       {:++, [],
+       {:++, [line: 1, column: 5],
         [
-          {:one, [], Elixir},
-          {:++, [], [{:two, [], Elixir}, {:three, [], Elixir}]}
+          {:one, [line: 1, column: 1], Elixir},
+          {:++, [line: 1, column: 12], [{:two, [line: 1, column: 8], Elixir}, {:three, [line: 1, column: 15], Elixir}]}
         ]}},
       {~s'''
        @foo
-       ''', {:@, [], [{:foo, [], Elixir}]}},
+       ''', {:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}},
       {~s'''
        !foo
-       ''', {:!, [], [{:foo, [], Elixir}]}},
+       ''', {:!, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}},
       {~s'''
        not foo
-       ''', {:not, [], [{:foo, [], Elixir}]}},
+       ''', {:not, [line: 1, column: 1], [{:foo, [line: 1, column: 5], Elixir}]}},
       {~s'''
        ^foo
-       ''', {:^, [], [{:foo, [], Elixir}]}},
+       ''', {:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}},
       {~s'''
        ~~~foo
-       ''', {:"~~~", [], [{:foo, [], Elixir}]}}
+       ''', {:"~~~", [line: 1, column: 1], [{:foo, [line: 1, column: 4], Elixir}]}}
     ]
 
     for {code, expected} <- codes do
@@ -762,12 +818,12 @@ defmodule SpitfireTest do
     codes = [
       {~s'''
        @foo bar()
-       ''', {:@, [], [{:foo, [], [{:bar, [], []}]}]}},
+       ''', {:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], [{:bar, [line: 1, column: 6], []}]}]}},
       {~s'''
        @foo %{
          foo: :bar
        }
-       ''', {:@, [], [{:foo, [], [{:%{}, [], [foo: :bar]}]}]}}
+       ''', {:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], [{:%{}, [line: 1, column: 6], [foo: :bar]}]}]}}
     ]
 
     for {code, expected} <- codes do
@@ -780,14 +836,14 @@ defmodule SpitfireTest do
       {~s'''
        foo do
        end
-       ''', {:foo, [], [[do: {:__block__, [], []}]]}},
+       ''', {:foo, [line: 1, column: 1], [[do: {:__block__, [], []}]]}},
       {~s'''
        foo do
         "howdy"
         :partner
        end
        ''',
-       {:foo, [],
+       {:foo, [line: 1, column: 1],
         [
           [
             do:
@@ -804,9 +860,9 @@ defmodule SpitfireTest do
         :partner
        end
        ''',
-       {:foo, [],
+       {:foo, [line: 1, column: 1],
         [
-          {:arg, [], Elixir},
+          {:arg, [line: 1, column: 5], Elixir},
           [
             do:
               {:__block__, [],
@@ -822,7 +878,7 @@ defmodule SpitfireTest do
         else
         :partner
        end
-       ''', {:if, [], [{:arg, [], Elixir}, [do: "howdy", else: :partner]]}}
+       ''', {:if, [line: 1, column: 1], [{:arg, [line: 1, column: 4], Elixir}, [do: "howdy", else: :partner]]}}
     ]
 
     for {code, expected} <- codes do
@@ -839,10 +895,15 @@ defmodule SpitfireTest do
 
        end
        ''',
-       {:case, [],
+       {:case, [line: 1, column: 1],
         [
-          {:foo, [], Elixir},
-          [do: [{:->, [depth: 1], [[{:bar, [], Elixir}], {:bar, [], Elixir}]}]]
+          {:foo, [line: 1, column: 6], Elixir},
+          [
+            do: [
+              {:->, [depth: 1, line: 2, column: 6],
+               [[{:bar, [line: 2, column: 2], Elixir}], {:bar, [line: 3, column: 4], Elixir}]}
+            ]
+          ]
         ]}},
       {~s'''
        case :foo do
@@ -858,26 +919,26 @@ defmodule SpitfireTest do
            :error
        end
        ''',
-       {:case, [],
+       {:case, [line: 1, column: 1],
         [
           :foo,
           [
             do: [
-              {:->, [depth: 1],
+              {:->, [depth: 1, line: 2, column: 8],
                [
                  [:foo],
-                 {:case, [],
+                 {:case, [line: 3, column: 5],
                   [
-                    {:get, [], [:foo]},
+                    {:get, [line: 3, column: 10], [:foo]},
                     [
                       do: [
-                        {:->, [depth: 2], [[:FOO], :bar]},
-                        {:->, [depth: 2], [[{:_, [], Elixir}], :error]}
+                        {:->, [depth: 2, line: 4, column: 12], [[:FOO], :bar]},
+                        {:->, [depth: 2, line: 6, column: 9], [[{:_, [line: 6, column: 7], Elixir}], :error]}
                       ]
                     ]
                   ]}
                ]},
-              {:->, [depth: 1], [[{:_, [], Elixir}], :error]}
+              {:->, [depth: 1, line: 10, column: 5], [[{:_, [line: 10, column: 3], Elixir}], :error]}
             ]
           ]
         ]}},
@@ -893,31 +954,37 @@ defmodule SpitfireTest do
            infix.(next_token(parser), left)
        end
        ''',
-       {:case, [],
+       {:case, [line: 1, column: 1],
         [
-          {:infix, [], Elixir},
+          {:infix, [line: 1, column: 6], Elixir},
           [
             do: [
-              {:->, [depth: 1], [[nil], {{:left, [], Elixir}, {:parser, [], Elixir}}]},
-              {:->, [depth: 1],
+              {:->, [depth: 1, line: 2, column: 7],
+               [[nil], {{:left, [line: 3, column: 6], Elixir}, {:parser, [line: 3, column: 12], Elixir}}]},
+              {:->, [depth: 1, line: 5, column: 40],
                [
                  [
-                   {:when, [],
+                   {:when, [line: 5, column: 13],
                     [
-                      {:^, [], [{:do_block, [], Elixir}]},
-                      {:!=, [],
+                      {:^, [line: 5, column: 3], [{:do_block, [line: 5, column: 4], Elixir}]},
+                      {:!=, [line: 5, column: 34],
                        [
-                         {{:., [], [{:parser, [], Elixir}, :nestings]}, [], []},
+                         {{:., [], [{:parser, [line: 5, column: 18], Elixir}, :nestings]}, [], []},
                          []
                        ]}
                     ]}
                  ],
-                 {{:left, [], Elixir}, {:next_token, [], [{:parser, [], Elixir}]}}
+                 {{:left, [line: 6, column: 6], Elixir},
+                  {:next_token, [line: 6, column: 12], [{:parser, [line: 6, column: 23], Elixir}]}}
                ]},
-              {:->, [depth: 1],
+              {:->, [depth: 1, line: 8, column: 5],
                [
-                 [{:_, [], Elixir}],
-                 {{:., [], [{:infix, [], Elixir}]}, [], [{:next_token, [], [{:parser, [], Elixir}]}, {:left, [], Elixir}]}
+                 [{:_, [line: 8, column: 3], Elixir}],
+                 {{:., [], [{:infix, [line: 9, column: 5], Elixir}]}, [],
+                  [
+                    {:next_token, [line: 9, column: 12], [{:parser, [line: 9, column: 23], Elixir}]},
+                    {:left, [line: 9, column: 32], Elixir}
+                  ]}
                ]}
             ]
           ]
@@ -934,24 +1001,24 @@ defmodule SpitfireTest do
       {~s'''
        a b c, d
        ''',
-       {:a, [],
+       {:a, [line: 1, column: 1],
         [
-          {:b, [],
+          {:b, [line: 1, column: 3],
            [
-             {:c, [], Elixir},
-             {:d, [], Elixir}
+             {:c, [line: 1, column: 5], Elixir},
+             {:d, [line: 1, column: 8], Elixir}
            ]}
         ]}},
       {~s'''
        a b c, d do
        end
        ''',
-       {:a, [],
+       {:a, [line: 1, column: 1],
         [
-          {:b, [],
+          {:b, [line: 1, column: 3],
            [
-             {:c, [], Elixir},
-             {:d, [], Elixir}
+             {:c, [line: 1, column: 5], Elixir},
+             {:d, [line: 1, column: 8], Elixir}
            ]},
           [do: {:__block__, [], []}]
         ]}}
@@ -966,37 +1033,43 @@ defmodule SpitfireTest do
     codes = [
       {~s'''
        foo()
-       ''', {:foo, [], []}},
+       ''', {:foo, [line: 1, column: 1], []}},
       {~s'''
        foo(arg, arg2)
-       ''', {:foo, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''', {:foo, [line: 1, column: 1], [{:arg, [line: 1, column: 5], Elixir}, {:arg2, [line: 1, column: 10], Elixir}]}},
       {~s'''
        foo(
          arg,
          arg2
        )
-       ''', {:foo, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''', {:foo, [line: 1, column: 1], [{:arg, [line: 2, column: 3], Elixir}, {:arg2, [line: 3, column: 3], Elixir}]}},
       {~s'''
        foo arg, arg2
-       ''', {:foo, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''', {:foo, [line: 1, column: 1], [{:arg, [line: 1, column: 5], Elixir}, {:arg2, [line: 1, column: 10], Elixir}]}},
       {~s'''
        Remote.foo
-       ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], []}},
+       ''', {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [], []}},
       {~s'''
        Remote.foo()
-       ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], []}},
+       ''', {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [], []}},
       {~s'''
        Remote.foo(arg, arg2)
-       ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''',
+       {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [],
+        [{:arg, [line: 1, column: 12], Elixir}, {:arg2, [line: 1, column: 17], Elixir}]}},
       {~s'''
        Remote.foo(
          arg,
          arg2
        )
-       ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''',
+       {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [],
+        [{:arg, [line: 2, column: 3], Elixir}, {:arg2, [line: 3, column: 3], Elixir}]}},
       {~s'''
        Remote.foo arg, arg2
-       ''', {{:., [], [{:__aliases__, [], [:Remote]}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''',
+       {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [],
+        [{:arg, [line: 1, column: 12], Elixir}, {:arg2, [line: 1, column: 17], Elixir}]}},
       {~s'''
        :erlang.foo
        ''', {{:., [], [:erlang, :foo]}, [], []}},
@@ -1005,31 +1078,38 @@ defmodule SpitfireTest do
        ''', {{:., [], [:erlang, :foo]}, [], []}},
       {~s'''
        :erlang.foo(arg, arg2)
-       ''', {{:., [], [:erlang, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''',
+       {{:., [], [:erlang, :foo]}, [], [{:arg, [line: 1, column: 13], Elixir}, {:arg2, [line: 1, column: 18], Elixir}]}},
       {~s'''
        :erlang.foo arg, arg2
-       ''', {{:., [], [:erlang, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''',
+       {{:., [], [:erlang, :foo]}, [], [{:arg, [line: 1, column: 13], Elixir}, {:arg2, [line: 1, column: 18], Elixir}]}},
       {~s'''
        somevar.foo
-       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], []}},
+       ''', {{:., [], [{:somevar, [line: 1, column: 1], Elixir}, :foo]}, [], []}},
       {~s'''
        somevar.foo()
-       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], []}},
+       ''', {{:., [], [{:somevar, [line: 1, column: 1], Elixir}, :foo]}, [], []}},
       {~s'''
        :elixir_tokenizer.tokenize(String.to_charlist(code), 1, [])
        ''',
        {{:., [], [:elixir_tokenizer, :tokenize]}, [],
         [
-          {{:., [], [{:__aliases__, [], [:String]}, :to_charlist]}, [], [{:code, [], Elixir}]},
+          {{:., [], [{:__aliases__, [line: 1, column: 28], [:String]}, :to_charlist]}, [],
+           [{:code, [line: 1, column: 47], Elixir}]},
           1,
           []
         ]}},
       {~s'''
        somevar.foo(arg, arg2)
-       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}},
+       ''',
+       {{:., [], [{:somevar, [line: 1, column: 1], Elixir}, :foo]}, [],
+        [{:arg, [line: 1, column: 13], Elixir}, {:arg2, [line: 1, column: 18], Elixir}]}},
       {~s'''
        somevar.foo arg, arg2
-       ''', {{:., [], [{:somevar, [], Elixir}, :foo]}, [], [{:arg, [], Elixir}, {:arg2, [], Elixir}]}}
+       ''',
+       {{:., [], [{:somevar, [line: 1, column: 1], Elixir}, :foo]}, [],
+        [{:arg, [line: 1, column: 13], Elixir}, {:arg2, [line: 1, column: 18], Elixir}]}}
     ]
 
     for {code, expected} <- codes do
@@ -1041,28 +1121,43 @@ defmodule SpitfireTest do
     codes = [
       {~s'''
        fn -> :ok end
-       ''', {:fn, [], [{:->, [], [[], :ok]}]}},
+       ''', {:fn, [line: 1, column: 1], [{:->, [line: 1, column: 4], [[], :ok]}]}},
       {~s'''
        fn ->
          :ok
        end
-       ''', {:fn, [], [{:->, [], [[], :ok]}]}},
+       ''', {:fn, [line: 1, column: 1], [{:->, [line: 1, column: 4], [[], :ok]}]}},
       {~s'''
        fn one ->
          one
        end
-       ''', {:fn, [], [{:->, [depth: 1], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}},
+       ''',
+       {:fn, [line: 1, column: 1],
+        [
+          {:->, [depth: 1, line: 1, column: 8],
+           [[{:one, [line: 1, column: 4], Elixir}], {:one, [line: 2, column: 3], Elixir}]}
+        ]}},
       {~s'''
        fn
         one ->
          one
        end
-       ''', {:fn, [], [{:->, [depth: 1], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}},
+       ''',
+       {:fn, [line: 1, column: 1],
+        [
+          {:->, [depth: 1, line: 2, column: 6],
+           [[{:one, [line: 2, column: 2], Elixir}], {:one, [line: 3, column: 3], Elixir}]}
+        ]}},
       {~s'''
        fn(one) ->
          one
        end
-       ''', {:fn, [], [{:->, [depth: 1], [[{:one, [], Elixir}], {:one, [], Elixir}]}]}}
+       ''',
+       {:fn, [line: 1, column: 1],
+        [
+          {:->, [depth: 1, line: 1, column: 9],
+           [[{:one, [line: 1, column: 4], Elixir}], {:one, [line: 2, column: 3], Elixir}]}
+        ]}}
     ]
 
     for {code, expected} <- codes do
@@ -1074,7 +1169,7 @@ defmodule SpitfireTest do
     codes = [
       {~s'''
        foo = :bar
-       ''', {:=, [], [{:foo, [], Elixir}, :bar]}}
+       ''', {:=, [line: 1, column: 5], [{:foo, [line: 1, column: 1], Elixir}, :bar]}}
     ]
 
     for {code, expected} <- codes do
@@ -1105,12 +1200,13 @@ defmodule SpitfireTest do
             :bar
         end
        ''',
-       {:cond, [],
+       {:cond, [line: 1, column: 1],
         [
           [
             do: [
-              {:->, [depth: 1], [[{:==, [], [{:prefix, [], Elixir}, nil]}], :foo]},
-              {:->, [depth: 1], [[true], :bar]}
+              {:->, [depth: 1, line: 2, column: 18],
+               [[{:==, [line: 2, column: 11], [{:prefix, [line: 2, column: 4], Elixir}, nil]}], :foo]},
+              {:->, [depth: 1, line: 4, column: 9], [[true], :bar]}
             ]
           ]
         ]}}
@@ -1131,27 +1227,28 @@ defmodule SpitfireTest do
     '''
 
     assert Spitfire.parse(code) ==
-             {:def, [],
+             {:def, [line: 1, column: 1],
               [
-                {:parse, [], [{:code, [], Elixir}]},
+                {:parse, [line: 1, column: 5], [{:code, [line: 1, column: 11], Elixir}]},
                 [
                   do:
                     {:__block__, [],
                      [
-                       {:=, [],
+                       {:=, [line: 2, column: 10],
                         [
-                          {:parser, [], Elixir},
-                          {:|>, [],
+                          {:parser, [line: 2, column: 3], Elixir},
+                          {:|>, [line: 2, column: 42],
                            [
-                             {:|>, [],
+                             {:|>, [line: 2, column: 26],
                               [
-                                {:|>, [], [{:code, [], Elixir}, {:new, [], []}]},
-                                {:next_token, [], []}
+                                {:|>, [line: 2, column: 17],
+                                 [{:code, [line: 2, column: 12], Elixir}, {:new, [line: 2, column: 20], []}]},
+                                {:next_token, [line: 2, column: 29], []}
                               ]},
-                             {:next_token, [], []}
+                             {:next_token, [line: 2, column: 45], []}
                            ]}
                         ]},
-                       {:parse_program, [], [{:parser, [], Elixir}]}
+                       {:parse_program, [line: 4, column: 3], [{:parser, [line: 4, column: 17], Elixir}]}
                      ]}
                 ]
               ]}
@@ -1162,7 +1259,20 @@ defmodule SpitfireTest do
       {~s'''
        foo when is_binary(foo) ->
          :ok
-       ''', [{:->, [depth: 0], [[{:when, [], [{:foo, [], Elixir}, {:is_binary, [], [{:foo, [], Elixir}]}]}], :ok]}]},
+       ''',
+       [
+         {:->, [depth: 0, line: 1, column: 25],
+          [
+            [
+              {:when, [line: 1, column: 5],
+               [
+                 {:foo, [line: 1, column: 1], Elixir},
+                 {:is_binary, [line: 1, column: 10], [{:foo, [line: 1, column: 20], Elixir}]}
+               ]}
+            ],
+            :ok
+          ]}
+       ]},
       {~s'''
        foo when is_binary(foo) ->
          :ok
@@ -1171,40 +1281,81 @@ defmodule SpitfireTest do
          :ok
        ''',
        [
-         {:->, [depth: 0], [[{:when, [], [{:foo, [], Elixir}, {:is_binary, [], [{:foo, [], Elixir}]}]}], :ok]},
-         {:->, [depth: 0], [[{:when, [], [{:bar, [], Elixir}, {:is_number, [], [{:bar, [], Elixir}]}]}], :ok]}
+         {:->, [depth: 0, line: 1, column: 25],
+          [
+            [
+              {:when, [line: 1, column: 5],
+               [
+                 {:foo, [line: 1, column: 1], Elixir},
+                 {:is_binary, [line: 1, column: 10], [{:foo, [line: 1, column: 20], Elixir}]}
+               ]}
+            ],
+            :ok
+          ]},
+         {:->, [depth: 0, line: 4, column: 25],
+          [
+            [
+              {:when, [line: 4, column: 5],
+               [
+                 {:bar, [line: 4, column: 1], Elixir},
+                 {:is_number, [line: 4, column: 10], [{:bar, [line: 4, column: 20], Elixir}]}
+               ]}
+            ],
+            :ok
+          ]}
        ]},
       {~s'''
        def foo(bar) when is_binary(bar) do
          :ok
        end
        ''',
-       {:def, [], [{:when, [], [{:foo, [], [{:bar, [], Elixir}]}, {:is_binary, [], [{:bar, [], Elixir}]}]}, [do: :ok]]}},
+       {:def, [line: 1, column: 1],
+        [
+          {:when, [line: 1, column: 14],
+           [
+             {:foo, [line: 1, column: 5], [{:bar, [line: 1, column: 9], Elixir}]},
+             {:is_binary, [line: 1, column: 19], [{:bar, [line: 1, column: 29], Elixir}]}
+           ]},
+          [do: :ok]
+        ]}},
       {~s'''
        fn foo when is_binary(foo) ->
          :ok
        end
        ''',
-       {:fn, [], [{:->, [depth: 1], [[{:when, [], [{:foo, [], Elixir}, {:is_binary, [], [{:foo, [], Elixir}]}]}], :ok]}]}},
+       {:fn, [line: 1, column: 1],
+        [
+          {:->, [depth: 1, line: 1, column: 28],
+           [
+             [
+               {:when, [line: 1, column: 8],
+                [
+                  {:foo, [line: 1, column: 4], Elixir},
+                  {:is_binary, [line: 1, column: 13], [{:foo, [line: 1, column: 23], Elixir}]}
+                ]}
+             ],
+             :ok
+           ]}
+        ]}},
       {~s'''
        fn foo, bar, _baz when is_binary(foo) and bar in [:alice, :bob] ->
          :ok
        end
        ''',
-       {:fn, [],
+       {:fn, [line: 1, column: 1],
         [
-          {:->, [depth: 1],
+          {:->, [depth: 1, line: 1, column: 65],
            [
              [
-               {:when, [],
+               {:when, [line: 1, column: 19],
                 [
-                  {:foo, [], Elixir},
-                  {:bar, [], Elixir},
-                  {:_baz, [], Elixir},
-                  {:and, [],
+                  {:foo, [line: 1, column: 4], Elixir},
+                  {:bar, [line: 1, column: 9], Elixir},
+                  {:_baz, [line: 1, column: 14], Elixir},
+                  {:and, [line: 1, column: 39],
                    [
-                     {:is_binary, [], [{:foo, [], Elixir}]},
-                     {:in, [], [{:bar, [], Elixir}, [:alice, :bob]]}
+                     {:is_binary, [line: 1, column: 24], [{:foo, [line: 1, column: 34], Elixir}]},
+                     {:in, [line: 1, column: 47], [{:bar, [line: 1, column: 43], Elixir}, [:alice, :bob]]}
                    ]}
                 ]}
              ],
@@ -1222,19 +1373,22 @@ defmodule SpitfireTest do
     codes = [
       {~s'''
        &foo/1
-       ''', {:&, [], [{:/, [], [{:foo, [], Elixir}, 1]}]}},
+       ''', {:&, [line: 1, column: 1], [{:/, [line: 1, column: 5], [{:foo, [line: 1, column: 2], Elixir}, 1]}]}},
       {~s'''
        &Foo.foo/1
-       ''', {:&, [], [{:/, [], [{{:., [], [{:__aliases__, [], [:Foo]}, :foo]}, [], []}, 1]}]}},
+       ''',
+       {:&, [line: 1, column: 1],
+        [{:/, [line: 1, column: 9], [{{:., [], [{:__aliases__, [line: 1, column: 2], [:Foo]}, :foo]}, [], []}, 1]}]}},
       {~s'''
        & &1
-       ''', {:&, [], [{:&, [], [1]}]}},
+       ''', {:&, [line: 1, column: 1], [{:&, [line: 1, column: 3], [1]}]}},
       {~s'''
        &Foo.bar(one, &1)
        ''',
-       {:&, [],
+       {:&, [line: 1, column: 1],
         [
-          {{:., [], [{:__aliases__, [], [:Foo]}, :bar]}, [], [{:one, [], Elixir}, {:&, [], [1]}]}
+          {{:., [], [{:__aliases__, [line: 1, column: 2], [:Foo]}, :bar]}, [],
+           [{:one, [line: 1, column: 10], Elixir}, {:&, [line: 1, column: 15], [1]}]}
         ]}}
     ]
 

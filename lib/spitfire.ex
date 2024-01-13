@@ -297,11 +297,12 @@ defmodule Spitfire do
 
   defp parse_prefix_expression(parser) do
     token = current_token(parser)
+    meta = current_meta(parser)
     precedence = current_precedence(parser)
     parser = next_token(parser)
     {rhs, parser} = parse_expression(parser, precedence: precedence)
 
-    ast = {token, [], [rhs]}
+    ast = {token, meta, [rhs]}
 
     {ast, eat_eol(parser)}
   end
@@ -316,6 +317,7 @@ defmodule Spitfire do
 
   defp parse_stab_expression(parser) do
     token = current_token(parser)
+    meta = current_meta(parser)
     parser = eat_at(parser, :eol, 1)
     exprs = []
 
@@ -336,7 +338,7 @@ defmodule Spitfire do
       end
 
     ast =
-      [{token, [], [[], rhs]}]
+      [{token, meta, [[], rhs]}]
 
     {ast, eat_eol(parser)}
   end
@@ -367,6 +369,7 @@ defmodule Spitfire do
 
       :-> ->
         token = current_token(parser)
+        meta = current_meta(parser)
         current_sd = parser.stab_depth
         parser = eat_at(parser, :eol, 1)
         exprs = []
@@ -428,7 +431,7 @@ defmodule Spitfire do
           end
 
         ast =
-          [{token, [depth: parser.stab_depth], [lhs, rhs]}] ++ Enum.reverse(stabs)
+          [{token, [depth: parser.stab_depth] ++ meta, [lhs, rhs]}] ++ Enum.reverse(stabs)
 
         {ast, eat_eol(parser)}
     end
@@ -443,6 +446,7 @@ defmodule Spitfire do
 
   defp parse_infix_expression(parser, lhs) do
     token = current_token(parser)
+    meta = current_meta(parser)
     precedence = current_precedence(parser)
     parser = parser |> next_token() |> eat_eol()
     {rhs, parser} = parse_expression(parser, precedence: precedence)
@@ -450,7 +454,7 @@ defmodule Spitfire do
     ast =
       case token do
         :"not in" ->
-          {:not, [], [{:in, [], [lhs, rhs]}]}
+          {:not, meta, [{:in, [], [lhs, rhs]}]}
 
         :when ->
           lhs =
@@ -459,10 +463,10 @@ defmodule Spitfire do
               lhs -> [lhs]
             end
 
-          {token, [], lhs ++ [rhs]}
+          {token, meta, lhs ++ [rhs]}
 
         _ ->
-          {token, [], [lhs, rhs]}
+          {token, meta, [lhs, rhs]}
       end
 
     {ast, eat_eol(parser)}
@@ -471,15 +475,17 @@ defmodule Spitfire do
   defp parse_access_expression(parser, lhs) do
     precedence = current_precedence(parser)
     parser = parser |> next_token() |> eat_eol()
+    meta = current_meta(parser)
     {rhs, parser} = parse_expression(parser, precedence: precedence)
 
-    ast = {{:., [], [Access, :get]}, [], [lhs, rhs]}
+    ast = {{:., meta, [Access, :get]}, meta ++ [from_brackets: true], [lhs, rhs]}
 
     {ast, eat_eol(next_token(parser))}
   end
 
   defp parse_range_expression(parser, lhs) do
     token = current_token(parser)
+    meta = current_meta(parser)
     precedence = current_precedence(parser)
     parser = next_token(parser)
     {rhs, parser} = parse_expression(parser, precedence: precedence)
@@ -488,9 +494,9 @@ defmodule Spitfire do
       parser = parser |> next_token() |> next_token()
       {rrhs, parser} = parse_expression(parser, precedence: precedence)
 
-      {{:"..//", [], [lhs, rhs, rrhs]}, eat_eol(parser)}
+      {{:"..//", meta, [lhs, rhs, rrhs]}, eat_eol(parser)}
     else
-      {{token, [], [lhs, rhs]}, eat_eol(parser)}
+      {{token, meta, [lhs, rhs]}, eat_eol(parser)}
     end
   end
 
@@ -585,6 +591,7 @@ defmodule Spitfire do
   end
 
   defp parse_anon_function(%{current_token: {:fn, _}} = parser) do
+    meta = current_meta(parser)
     parser = parser |> next_token() |> eat_eol()
 
     parser = inc_stab_depth(parser)
@@ -595,7 +602,7 @@ defmodule Spitfire do
 
     parser = next_token(parser)
 
-    {{:fn, [], ast}, parser}
+    {{:fn, meta, ast}, parser}
   end
 
   defp parse_dot_call_expression(parser, lhs) do
@@ -623,6 +630,8 @@ defmodule Spitfire do
   end
 
   defp parse_atom(%{current_token: {:atom_unsafe, _, tokens}} = parser) do
+    meta = current_meta(parser)
+
     args =
       for token <- tokens do
         case token do
@@ -647,11 +656,12 @@ defmodule Spitfire do
                 ast
               end
 
-            {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [ast]}, {:binary, [], Elixir}]}
+            {:"::", meta,
+             [{{:., meta, [Kernel, :to_string]}, meta ++ [from_interpolation: true], [ast]}, {:binary, [], Elixir}]}
         end
       end
 
-    {{{:., [], [:erlang, :binary_to_atom]}, [], [{:<<>>, [], args}, :utf8]}, parser}
+    {{{:., meta, [:erlang, :binary_to_atom]}, meta, [{:<<>>, meta, args}, :utf8]}, parser}
   end
 
   defp parse_boolean(%{current_token: {bool, meta}} = parser) do
@@ -671,6 +681,8 @@ defmodule Spitfire do
   end
 
   defp parse_string(%{current_token: {:bin_string, _, tokens}} = parser) do
+    meta = current_meta(parser)
+
     args =
       for token <- tokens do
         case token do
@@ -695,14 +707,16 @@ defmodule Spitfire do
                 ast
               end
 
-            {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [ast]}, {:binary, [], Elixir}]}
+            {:"::", meta,
+             [{{:., meta, [Kernel, :to_string]}, meta ++ [from_interpolation: true], [ast]}, {:binary, [], Elixir}]}
         end
       end
 
-    {{:<<>>, [], args}, parser}
+    {{:<<>>, meta, args}, parser}
   end
 
   defp parse_alias(%{current_token: {:alias, _, alias}} = parser) do
+    meta = current_meta(parser)
     aliases = [alias]
 
     {aliases, parser} =
@@ -714,32 +728,34 @@ defmodule Spitfire do
         {[alias | aliases], parser}
       end
 
-    {{:__aliases__, [], Enum.reverse(aliases)}, parser}
+    {{:__aliases__, meta, Enum.reverse(aliases)}, parser}
   end
 
   defp parse_map_literal(%{current_token: {:%{}, _}} = parser) do
+    meta = current_meta(parser)
     parser = parser |> next_token() |> next_token() |> eat_eol()
 
     if current_token(parser) == :"}" do
-      {{:%{}, [], []}, parser}
+      {{:%{}, meta, []}, parser}
     else
       {pairs, parser} = parse_comma_list(parser, is_map: true)
-      {{:%{}, [], pairs}, parser |> next_token() |> eat_eol()}
+      {{:%{}, meta, pairs}, parser |> next_token() |> eat_eol()}
     end
   end
 
   defp parse_tuple_literal(%{current_token: {:"{", _}} = parser) do
+    meta = current_meta(parser)
     parser = parser |> next_token() |> eat_eol()
 
     if current_token(parser) == :"}" do
-      {{:{}, [], []}, parser}
+      {{:{}, meta, []}, parser}
     else
       {pairs, parser} = parse_comma_list(parser)
 
       if length(pairs) == 2 do
         {pairs |> List.wrap() |> List.to_tuple(), parser |> next_token() |> eat_eol()}
       else
-        {{:{}, [], List.wrap(pairs)}, parser |> next_token() |> eat_eol()}
+        {{:{}, meta, List.wrap(pairs)}, parser |> next_token() |> eat_eol()}
       end
     end
   end
@@ -758,13 +774,15 @@ defmodule Spitfire do
   end
 
   defp parse_identifier(%{current_token: {:paren_identifier, _, token}} = parser) do
+    meta = current_meta(parser)
+
     parser =
       parser
       |> next_token()
       |> eat_eol()
 
     if peek_token(parser) == :")" do
-      {{token, [], []}, next_token(parser)}
+      {{token, meta, []}, next_token(parser)}
     else
       {pairs, parser} =
         parser
@@ -772,15 +790,17 @@ defmodule Spitfire do
         |> eat_eol()
         |> parse_comma_list()
 
-      {{token, [], List.wrap(pairs)}, parser |> next_token() |> eat_eol()}
+      {{token, meta, List.wrap(pairs)}, parser |> next_token() |> eat_eol()}
     end
   end
 
   defp parse_identifier(%{current_token: {:bracket_identifier, _, token}} = parser) do
+    ident_meta = current_meta(parser)
     parser = parser |> next_token() |> eat_eol()
 
+    meta = current_meta(parser)
     {key, parser} = parse_expression(parser |> next_token() |> eat_eol())
-    ast = {{:., [], [Access, :get]}, [], [{token, [], Elixir}, key]}
+    ast = {{:., meta, [Access, :get]}, meta ++ [from_brackets: true], [{token, ident_meta, Elixir}, key]}
     {ast, parser |> next_token() |> eat_eol()}
   end
 
@@ -818,8 +838,10 @@ defmodule Spitfire do
     :when_op
   ]
   defp parse_identifier(%{current_token: {type, _, token}} = parser) when type in [:identifier, :do_identifier] do
+    meta = current_meta(parser)
+
     if peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do, :., :"}", :"]"] ++ @operators) do
-      {{token, [], Elixir}, parser}
+      {{token, meta, Elixir}, parser}
     else
       parser = next_token(parser)
 
@@ -840,9 +862,9 @@ defmodule Spitfire do
       parser = pop_nesting(parser)
 
       if parser.nestings == [] && current_token(parser) == :do do
-        parse_do_block(parser, {token, [], Enum.reverse(args)})
+        parse_do_block(parser, {token, meta, Enum.reverse(args)})
       else
-        {{token, [], Enum.reverse(args)}, parser}
+        {{token, meta, Enum.reverse(args)}, parser}
       end
     end
   end
@@ -1051,6 +1073,14 @@ defmodule Spitfire do
 
   def current_token(%{current_token: {token, _}}) do
     token
+  end
+
+  def current_meta(%{current_token: {_token, {line, col, _}, _}}) do
+    [line: line, column: col]
+  end
+
+  def current_meta(%{current_token: {_token, {line, col, _}}}) do
+    [line: line, column: col]
   end
 
   def token_loc({_, {row, col, _}, _}) do
