@@ -2515,5 +2515,43 @@ defmodule SpitfireTest do
                [{[line: 1, column: 4], "missing closing parentheses for function invocation"}]
              }
     end
+
+    test "missing closing end to anon function and paren" do
+      code = ~S'''
+      new_list = 
+        Enum.map(some_list, fn item ->
+
+
+      send(pid, new_list)
+      '''
+
+      assert Spitfire.parse(code) == {
+               :error,
+               {
+                 :=,
+                 [line: 1, column: 10],
+                 [
+                   {:new_list, [line: 1, column: 1], Elixir},
+                   {{:., [], [{:__aliases__, [line: 2, column: 3], [:Enum]}, :map]}, [],
+                    [
+                      {:some_list, [line: 2, column: 12], Elixir},
+                      {:fn, [line: 2, column: 23],
+                       [
+                         {:->, [depth: 1, line: 2, column: 31],
+                          [
+                            [{:item, [line: 2, column: 26], Elixir}],
+                            {:send, [line: 5, column: 1],
+                             [{:pid, [line: 5, column: 6], Elixir}, {:new_list, [line: 5, column: 11], Elixir}]}
+                          ]}
+                       ]}
+                    ]}
+                 ]
+               },
+               [
+                 {[line: 2, column: 11], "missing closing parentheses for function invocation"},
+                 {[line: 2, column: 23], "missing closing end for anonymous function"}
+               ]
+             }
+    end
   end
 end

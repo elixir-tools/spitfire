@@ -654,7 +654,16 @@ defmodule Spitfire do
 
     parser = dec_stab_depth(parser)
 
-    parser = next_token(parser)
+    dbg(parser)
+
+    parser =
+      case peek_token(parser) do
+        :end ->
+          next_token(parser)
+
+        _ ->
+          put_error(parser, {meta, "missing closing end for anonymous function"})
+      end
 
     {{:fn, meta, ast}, parser}
   end
@@ -1083,7 +1092,9 @@ defmodule Spitfire do
     end
   end
 
-  def eat_at(%{tokens: tokens} = parser, token, idx) do
+  def eat_at(%{tokens: tokens} = parser, token, idx) when is_list(tokens) do
+    dbg()
+
     tokens =
       case Enum.at(tokens, idx) do
         {^token, _, _} ->
@@ -1097,6 +1108,10 @@ defmodule Spitfire do
       end
 
     %{parser | tokens: tokens}
+  end
+
+  def eat_at(%{tokens: :eot} = parser, _token, _idx) do
+    parser
   end
 
   def peek_token(%{peek_token: {:stab_op, _, token}}) do
