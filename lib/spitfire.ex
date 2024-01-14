@@ -501,6 +501,7 @@ defmodule Spitfire do
   end
 
   defp parse_do_block(%{current_token: {:do, _}} = parser, lhs) do
+    do_meta = current_meta(parser)
     parser = parser |> next_token() |> eat_eol()
     exprs = [do: []]
 
@@ -535,6 +536,8 @@ defmodule Spitfire do
         end
       end
 
+    end_meta = current_meta(parser)
+
     exprs =
       for {type, expr} <- Enum.reverse(exprs) do
         expr =
@@ -550,10 +553,10 @@ defmodule Spitfire do
     ast =
       case lhs do
         {token, meta, Elixir} ->
-          {token, meta, [exprs]}
+          {token, [do: do_meta, end: end_meta] ++ meta, [exprs]}
 
         {token, meta, args} when is_list(args) ->
-          {token, meta, args ++ [exprs]}
+          {token, [do: do_meta, end: end_meta] ++ meta, args ++ [exprs]}
       end
 
     parser = dec_stab_depth(parser)

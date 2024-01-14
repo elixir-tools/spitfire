@@ -56,6 +56,39 @@ defmodule SpitfireTest do
               [{:%{}, [line: 1, column: 1], [bar: :foo]}, :bar]}
   end
 
+  test "token metadata" do
+    import Kernel
+    import Spitfire.TestHelpers, only: []
+
+    code = ~S'''
+    foo do
+      1 + 1
+    end
+    '''
+
+    assert Spitfire.parse(code, token_metadata: true) ==
+             {:foo, [do: [line: 1, column: 5], end: [line: 3, column: 1], line: 1, column: 1],
+              [[do: {:+, [line: 2, column: 5], [1, 1]}]]}
+
+    code = ~S'''
+    foo do
+      bar do
+        1 + 1
+      end
+    end
+    '''
+
+    assert Spitfire.parse(code, token_metadata: true) ==
+             {:foo, [do: [line: 1, column: 5], end: [line: 5, column: 1], line: 1, column: 1],
+              [
+                [
+                  do:
+                    {:bar, [do: [line: 2, column: 7], end: [line: 4, column: 3], line: 2, column: 3],
+                     [[do: {:+, [line: 3, column: 7], [1, 1]}]]}
+                ]
+              ]}
+  end
+
   test "literal encoder" do
     code = ~S'''
     1
