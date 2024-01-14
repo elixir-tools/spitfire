@@ -73,13 +73,29 @@ defmodule Spitfire do
   def parse(code, opts \\ []) do
     parser = code |> new(opts) |> next_token() |> next_token()
 
-    parse_program(parser)
+    case parse_program(parser) do
+      {ast, %{errors: []}} ->
+        {:ok, ast}
+
+      {ast, %{errors: errors}} ->
+        {:error, ast, errors}
+    end
+  end
+
+  def parse!(code, opts \\ []) do
+    case parse(code, opts) do
+      {:ok, ast} ->
+        ast
+
+      {:error, _ast, _errors} ->
+        raise "Failed to parse!"
+    end
   end
 
   defp parse_program(parser) do
     exprs = []
 
-    {exprs, _parser} =
+    {exprs, parser} =
       while current_token(parser) != :eof <- {exprs, parser} do
         {ast, parser} = parse_expression(parser, top: true)
 
@@ -103,10 +119,13 @@ defmodule Spitfire do
         {[ast | exprs], eat_eol(parser)}
       end
 
-    case exprs do
-      [ast] -> ast
-      exprs -> {:__block__, [], Enum.reverse(exprs)}
-    end
+    {
+      case exprs do
+        [ast] -> ast
+        exprs -> {:__block__, [], Enum.reverse(exprs)}
+      end,
+      parser
+    }
   end
 
   defp parse_expression(parser, opts \\ []) do
@@ -147,14 +166,19 @@ defmodule Spitfire do
       end
 
     if prefix == nil do
-      {row, col} = token_loc(parser.current_token)
+      meta = current_meta(parser)
+      ctype = current_token_type(parser)
+      parser = put_error(parser, {meta, "unknown token: #{ctype}"})
 
-      IO.puts(
-        IO.ANSI.red() <>
-          "#{row}:#{col}: unknown prefix: #{current_token_type(parser)}" <> IO.ANSI.reset()
-      )
+      parser =
+        case ctype do
+          :")" -> parser
+          :"]" -> parser
+          :"}" -> parser
+          _ -> next_token(parser)
+        end
 
-      {:error, next_token(parser)}
+      {{:__error__, meta, ["unknown token: #{ctype}"]}, parser}
     else
       {left, parser} = prefix.(parser)
 
@@ -164,7 +188,6 @@ defmodule Spitfire do
         precedence =
           case associativity do
             :left -> precedence
-            :unassoc -> 0
             :right -> precedence - 1
           end
 
@@ -180,48 +203,54 @@ defmodule Spitfire do
           [:"," | terminals]
         end
 
-      while peek_token(parser) not in terminals && calc_prec.(parser) <- {left, parser} do
-        infix =
-          case peek_token_type(parser) do
-            :match_op -> &parse_infix_expression/2
-            :when_op -> &parse_infix_expression/2
-            :pipe_op -> &parse_infix_expression/2
-            :type_op -> &parse_infix_expression/2
-            :dual_op -> &parse_infix_expression/2
-            :mult_op -> &parse_infix_expression/2
-            :"[" -> &parse_access_expression/2
-            :concat_op -> &parse_infix_expression/2
-            :assoc_op -> &parse_assoc_op/2
-            :arrow_op -> &parse_infix_expression/2
-            :ternary_op -> &parse_infix_expression/2
-            :or_op -> &parse_infix_expression/2
-            :and_op -> &parse_infix_expression/2
-            :comp_op -> &parse_infix_expression/2
-            :rel_op -> &parse_infix_expression/2
-            :in_op -> &parse_infix_expression/2
-            :xor_op -> &parse_infix_expression/2
-            :in_match_op -> &parse_infix_expression/2
-            :range_op -> &parse_range_expression/2
-            :stab_op -> &parse_stab_expression/2
-            :do -> &parse_do_block/2
-            :dot_call_op -> &parse_dot_call_expression/2
-            :. -> &parse_dot_expression/2
-            :"," when is_top -> &parse_comma/2
-            _ -> nil
+      {parser, is_valid} = validate_peek(parser, current_token_type(parser))
+
+      if is_valid do
+        while peek_token(parser) not in terminals && calc_prec.(parser) <- {left, parser} do
+          infix =
+            case peek_token_type(parser) do
+              :match_op -> &parse_infix_expression/2
+              :when_op -> &parse_infix_expression/2
+              :pipe_op -> &parse_infix_expression/2
+              :type_op -> &parse_infix_expression/2
+              :dual_op -> &parse_infix_expression/2
+              :mult_op -> &parse_infix_expression/2
+              :"[" -> &parse_access_expression/2
+              :concat_op -> &parse_infix_expression/2
+              :assoc_op -> &parse_assoc_op/2
+              :arrow_op -> &parse_infix_expression/2
+              :ternary_op -> &parse_infix_expression/2
+              :or_op -> &parse_infix_expression/2
+              :and_op -> &parse_infix_expression/2
+              :comp_op -> &parse_infix_expression/2
+              :rel_op -> &parse_infix_expression/2
+              :in_op -> &parse_infix_expression/2
+              :xor_op -> &parse_infix_expression/2
+              :in_match_op -> &parse_infix_expression/2
+              :range_op -> &parse_range_expression/2
+              :stab_op -> &parse_stab_expression/2
+              :do -> &parse_do_block/2
+              :dot_call_op -> &parse_dot_call_expression/2
+              :. -> &parse_dot_expression/2
+              :"," when is_top -> &parse_comma/2
+              _ -> nil
+            end
+
+          do_block = &parse_do_block/2
+
+          case infix do
+            nil ->
+              {left, parser}
+
+            ^do_block when parser.nestings != [] ->
+              {left, next_token(parser)}
+
+            _ ->
+              infix.(next_token(parser), left)
           end
-
-        do_block = &parse_do_block/2
-
-        case infix do
-          nil ->
-            {left, parser}
-
-          ^do_block when parser.nestings != [] ->
-            {left, next_token(parser)}
-
-          _ ->
-            infix.(next_token(parser), left)
         end
+      else
+        {left, parser}
       end
     end
   end
@@ -234,7 +263,10 @@ defmodule Spitfire do
     if peek_token(parser) == :")" do
       {expression, next_token(parser)}
     else
-      {:error, parser}
+      meta = current_meta(parser)
+      parser = put_error(parser, {meta, "missing closing parentheses"})
+
+      {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
     end
   end
 
@@ -448,8 +480,20 @@ defmodule Spitfire do
     token = current_token(parser)
     meta = current_meta(parser)
     precedence = current_precedence(parser)
+    # we save this in case the next expression is an error
+    pre_parser = parser
     parser = parser |> next_token() |> eat_eol()
     {rhs, parser} = parse_expression(parser, precedence: precedence)
+
+    {rhs, parser} =
+      case rhs do
+        {:__error__, _, ["unknown token:" <> _]} ->
+          parser = put_error(pre_parser, {meta, "malformed right-hand side of #{token} operator"})
+          {{:__error__, meta, ["malformed right-hand side of #{token} operator"]}, parser}
+
+        _ ->
+          {rhs, parser}
+      end
 
     ast =
       case token do
@@ -508,11 +552,11 @@ defmodule Spitfire do
     parser = inc_stab_depth(parser)
 
     {exprs, parser} =
-      while current_token(parser) != :end <- {exprs, parser} do
+      while current_token(parser) not in [:end, :eof] <- {exprs, parser} do
         [{type, current_exprs} | rest] = exprs
 
         {exprs, parser} =
-          while current_token(parser) not in [:end, :block_identifier] <- {current_exprs, parser} do
+          while current_token(parser) not in [:end, :block_identifier, :eof] <- {current_exprs, parser} do
             {ast, parser} = parse_expression(parser, top: true)
 
             parser = next_token(parser)
@@ -536,7 +580,14 @@ defmodule Spitfire do
         end
       end
 
-    end_meta = current_meta(parser)
+    {parser, end_meta} =
+      case current_token(parser) do
+        :end ->
+          {parser, current_meta(parser)}
+
+        _ ->
+          {put_error(parser, {do_meta, "missing `end` for do block"}), do_meta}
+      end
 
     exprs =
       for {type, expr} <- Enum.reverse(exprs) do
@@ -742,7 +793,19 @@ defmodule Spitfire do
       {{:%{}, meta, []}, parser}
     else
       {pairs, parser} = parse_comma_list(parser, is_map: true)
-      {{:%{}, meta, pairs}, parser |> next_token() |> eat_eol()}
+
+      parser = eat_at(parser, :eol, 1)
+
+      parser =
+        case peek_token(parser) do
+          :"}" ->
+            next_token(parser)
+
+          _ ->
+            put_error(parser, {current_meta(parser), "missing closing brace for map"})
+        end
+
+      {{:%{}, meta, pairs}, parser}
     end
   end
 
@@ -755,10 +818,21 @@ defmodule Spitfire do
     else
       {pairs, parser} = parse_comma_list(parser)
 
+      parser = eat_at(parser, :eol, 1)
+
+      parser =
+        case peek_token(parser) do
+          :"}" ->
+            parser |> next_token() |> eat_eol()
+
+          _ ->
+            put_error(parser, {current_meta(parser), "missing closing brace for tuple"})
+        end
+
       if length(pairs) == 2 do
-        {pairs |> List.wrap() |> List.to_tuple(), parser |> next_token() |> eat_eol()}
+        {pairs |> List.wrap() |> List.to_tuple(), parser}
       else
-        {{:{}, meta, List.wrap(pairs)}, parser |> next_token() |> eat_eol()}
+        {{:{}, meta, List.wrap(pairs)}, parser}
       end
     end
   end
@@ -771,8 +845,19 @@ defmodule Spitfire do
     else
       {pairs, parser} = parse_comma_list(parser, is_list: true)
 
+      parser = eat_at(parser, :eol, 1)
+
+      parser =
+        case peek_token(parser) do
+          :"]" ->
+            next_token(parser)
+
+          _ ->
+            put_error(parser, {current_meta(parser), "missing closing bracket for list"})
+        end
+
       list = encode_literal(parser, List.wrap(pairs), meta)
-      {list, parser |> next_token() |> eat_eol()}
+      {list, parser}
     end
   end
 
@@ -784,6 +869,8 @@ defmodule Spitfire do
       |> next_token()
       |> eat_eol()
 
+    error_meta = current_meta(parser)
+
     if peek_token(parser) == :")" do
       {{token, meta, []}, next_token(parser)}
     else
@@ -793,7 +880,18 @@ defmodule Spitfire do
         |> eat_eol()
         |> parse_comma_list()
 
-      {{token, meta, List.wrap(pairs)}, parser |> next_token() |> eat_eol()}
+      parser = eat_at(parser, :eol, 1)
+
+      parser =
+        case peek_token(parser) do
+          :")" ->
+            next_token(parser)
+
+          _ ->
+            put_error(parser, {error_meta, "missing closing parentheses for function invocation"})
+        end
+
+      {{token, meta, List.wrap(pairs)}, parser}
     end
   end
 
@@ -822,6 +920,8 @@ defmodule Spitfire do
     :or,
     :**,
     :range_op,
+    :stab_op,
+    :xor_op,
     :rel_op,
     :and_op,
     :or_op,
@@ -874,7 +974,7 @@ defmodule Spitfire do
 
   def tokenize(code, opts) do
     tokens =
-      case :elixir_tokenizer.tokenize(String.to_charlist(code), 1, opts) do
+      case code |> String.to_charlist() |> :elixir_tokenizer.tokenize(1, Keyword.put(opts, :check_terminators, false)) do
         {:ok, _, _, _, tokens} ->
           tokens
 
@@ -892,12 +992,17 @@ defmodule Spitfire do
       peek_token: nil,
       nestings: [],
       stab_depth: 0,
-      literal_encoder: Keyword.get(opts, :literal_encoder, fn literal, _meta -> {:ok, literal} end)
+      literal_encoder: Keyword.get(opts, :literal_encoder, fn literal, _meta -> {:ok, literal} end),
+      errors: []
     }
   end
 
   def next_token(%{tokens: :eot, current_token: nil, peek_token: nil} = parser) do
     parser
+  end
+
+  def next_token(%{tokens: :eot, current_token: :eof, peek_token: nil} = parser) do
+    %{parser | tokens: :eot, current_token: nil}
   end
 
   def next_token(%{tokens: [], current_token: nil, peek_token: nil} = parser) do
@@ -912,7 +1017,8 @@ defmodule Spitfire do
     %{
       parser
       | current_token: parser.peek_token,
-        peek_token: nil
+        peek_token: nil,
+        tokens: :eot
     }
   end
 
@@ -1017,6 +1123,10 @@ defmodule Spitfire do
     :eot
   end
 
+  def current_token_type(%{tokens: :eof}) do
+    :eof
+  end
+
   def current_token_type(%{current_token: {type, _}}) do
     type
   end
@@ -1035,6 +1145,10 @@ defmodule Spitfire do
 
   def peek_token_type(_) do
     :no_peek
+  end
+
+  def current_token(%{current_token: nil}) do
+    :eof
   end
 
   def current_token(%{current_token: :eof}) do
@@ -1133,5 +1247,38 @@ defmodule Spitfire do
         Logger.error(reason)
         literal
     end
+  end
+
+  defp put_error(parser, error) do
+    update_in(parser.errors, &[error | &1])
+  end
+
+  defp validate_peek(parser, current_type) do
+    peek = peek_token_type(parser)
+
+    if peek != :no_peek and not valid_peek?(current_type, peek) do
+      parser =
+        if peek in [:")", :"]", :"}"] do
+          parser
+        else
+          next_token(parser)
+        end
+
+      {put_error(parser, {current_meta(parser), "syntax error"}), false}
+    else
+      {parser, true}
+    end
+  end
+
+  defp valid_peek?(ctype, _ptype) when ctype in [:identifier, :paren_identifier, :"["] do
+    true
+  end
+
+  defp valid_peek?(:"}", ptype) do
+    ptype in (@operators ++ [:"[", :";", :eol, :eof, :",", :")", :do, :., :"}", :"]", :end])
+  end
+
+  defp valid_peek?(_ctype, ptype) do
+    ptype in (@operators ++ [:";", :eol, :eof, :",", :")", :do, :., :"}", :"]", :end])
   end
 end

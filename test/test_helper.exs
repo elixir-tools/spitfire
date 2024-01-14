@@ -20,7 +20,12 @@ defmodule Spitfire.TestHelpers do
             ast
         end)
 
-      Kernel.==(lhs, rhs)
+      if true do
+        import Kernel
+        import unquote(__MODULE__), except: [==: 2]
+
+        assert lhs == rhs
+      end
     end
   end
 end
