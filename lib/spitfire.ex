@@ -175,6 +175,7 @@ defmodule Spitfire do
           :")" -> parser
           :"]" -> parser
           :"}" -> parser
+          :end -> parser
           _ -> next_token(parser)
         end
 
@@ -313,7 +314,9 @@ defmodule Spitfire do
   defp parse_comma_list(parser, opts \\ []) do
     opts = Keyword.put(opts, :precedence, @comma)
     {expr, parser} = parse_expression(parser, opts)
-    items = [expr]
+    # we zip together the expression and parser state so that we can potentially 
+    # backtrack later
+    items = [{expr, parser}]
 
     {items, parser} =
       while peek_token(parser) == :"," <- {items, parser} do
@@ -321,7 +324,7 @@ defmodule Spitfire do
 
         {item, parser} = parse_expression(parser, opts)
 
-        {[item | items], parser}
+        {[{item, parser} | items], parser}
       end
 
     {Enum.reverse(items), parser}
@@ -472,6 +475,7 @@ defmodule Spitfire do
   defp parse_comma(parser, lhs) do
     parser = parser |> next_token() |> eat_eol()
     {exprs, parser} = parse_comma_list(parser)
+    {exprs, _} = Enum.unzip(exprs)
 
     {{:comma, [], [lhs | exprs]}, eat_eol(parser)}
   end
@@ -654,8 +658,6 @@ defmodule Spitfire do
 
     parser = dec_stab_depth(parser)
 
-    dbg(parser)
-
     parser =
       case peek_token(parser) do
         :end ->
@@ -676,6 +678,7 @@ defmodule Spitfire do
       {ast, next_token(parser)}
     else
       {pairs, parser} = parse_comma_list(parser |> next_token() |> eat_eol())
+      {pairs, _} = Enum.unzip(pairs)
       ast = {{:., [], [lhs]}, [], pairs}
 
       {ast, parser |> next_token() |> eat_eol()}
@@ -802,6 +805,7 @@ defmodule Spitfire do
       {{:%{}, meta, []}, parser}
     else
       {pairs, parser} = parse_comma_list(parser, is_map: true)
+      {pairs, _} = Enum.unzip(pairs)
 
       parser = eat_at(parser, :eol, 1)
 
@@ -820,29 +824,71 @@ defmodule Spitfire do
 
   defp parse_tuple_literal(%{current_token: {:"{", _}} = parser) do
     meta = current_meta(parser)
+    orig_parser = parser
     parser = parser |> next_token() |> eat_eol()
 
-    if current_token(parser) == :"}" do
-      {{:{}, meta, []}, parser}
-    else
-      {pairs, parser} = parse_comma_list(parser)
+    cond do
+      current_token(parser) == :"}" ->
+        {{:{}, meta, []}, parser}
 
-      parser = eat_at(parser, :eol, 1)
+      current_token(parser) in [:end, :"]", :")"] ->
+        # if the current token is the wrong kind of ending delimiter, we revert to the previous parser
+        # state, put an error, and inject a closing brace to simulate a completed tuple
+        parser = put_error(orig_parser, {meta, "missing closing brace for tuple"})
 
-      parser =
-        case peek_token(parser) do
-          :"}" ->
-            parser |> next_token() |> eat_eol()
+        parser = next_token(parser)
 
-          _ ->
-            put_error(parser, {current_meta(parser), "missing closing brace for tuple"})
+        parser =
+          parser
+          |> put_in([:current_token], {:fake_closing_brace, nil})
+          |> put_in([:peek_token], parser.current_token)
+          |> update_in([:tokens], &[parser.peek_token | &1])
+
+        {{:{}, meta, []}, parser}
+
+      true ->
+        {pairs, parser} = parse_comma_list(parser)
+
+        parser = eat_at(parser, :eol, 1)
+
+        {pairs, parser} =
+          case peek_token(parser) do
+            :"}" ->
+              pairs = pairs |> Enum.unzip() |> elem(0)
+              {pairs, parser |> next_token() |> eat_eol()}
+
+            _ ->
+              [{potential_error, parser}, {item, parser_for_errors} | rest] = all_pairs = Enum.reverse(pairs)
+
+              # if the last item is an unknown token error, that means that it parsed past the
+              # recovery point and we need to insert a fake closing brace, and backtrack
+              # the errors from the previous item.
+              {pairs, parser} =
+                case potential_error do
+                  {:__error__, _, ["unknown token: " <> _]} ->
+                    {[{item, parser} | rest],
+                     parser
+                     |> put_in([:current_token], {:fake_closing_brace, nil})
+                     |> put_in([:peek_token], parser.current_token)
+                     |> put_in([:errors], parser_for_errors.errors)
+                     |> update_in([:tokens], &[parser.peek_token | &1])}
+
+                  _ ->
+                    {all_pairs, parser}
+                end
+
+              parser = put_error(parser, {meta, "missing closing brace for tuple"})
+
+              {pairs, _} = pairs |> Enum.reverse() |> Enum.unzip()
+
+              {pairs, parser}
+          end
+
+        if length(pairs) == 2 do
+          {pairs |> List.wrap() |> List.to_tuple(), parser}
+        else
+          {{:{}, meta, List.wrap(pairs)}, parser}
         end
-
-      if length(pairs) == 2 do
-        {pairs |> List.wrap() |> List.to_tuple(), parser}
-      else
-        {{:{}, meta, List.wrap(pairs)}, parser}
-      end
     end
   end
 
@@ -853,6 +899,7 @@ defmodule Spitfire do
       {[], parser}
     else
       {pairs, parser} = parse_comma_list(parser, is_list: true)
+      {pairs, _} = Enum.unzip(pairs)
 
       parser = eat_at(parser, :eol, 1)
 
@@ -888,6 +935,8 @@ defmodule Spitfire do
         |> next_token()
         |> eat_eol()
         |> parse_comma_list()
+
+      {pairs, _} = Enum.unzip(pairs)
 
       parser = eat_at(parser, :eol, 1)
 
@@ -974,7 +1023,8 @@ defmodule Spitfire do
       parser = pop_nesting(parser)
 
       if parser.nestings == [] && current_token(parser) == :do do
-        parse_do_block(parser, {token, meta, Enum.reverse(args)})
+        res = parse_do_block(parser, {token, meta, Enum.reverse(args)})
+        res
       else
         {{token, meta, Enum.reverse(args)}, parser}
       end
@@ -1093,8 +1143,6 @@ defmodule Spitfire do
   end
 
   def eat_at(%{tokens: tokens} = parser, token, idx) when is_list(tokens) do
-    dbg()
-
     tokens =
       case Enum.at(tokens, idx) do
         {^token, _, _} ->
