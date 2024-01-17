@@ -2360,6 +2360,43 @@ defmodule SpitfireTest do
     end
   end
 
+  describe "with original ==" do
+    test "sigils" do
+      codes = [
+        {~S'~s"foo"', {:sigil_s, [delimiter: "\"", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["foo"]}, []]}},
+        {~S'~s"foo"bar',
+         {:sigil_s, [delimiter: "\"", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["foo"]}, ~c"bar"]}},
+        {~S'~s"hello#{world}"bar',
+         {:sigil_s, [delimiter: "\"", line: 1, column: 1],
+          [
+            {:<<>>, [line: 1, column: 1],
+             [
+               "hello",
+               {:"::", [line: 1, column: 9],
+                [
+                  {{:., [line: 1, column: 9], [Kernel, :to_string]},
+                   [
+                     from_interpolation: true,
+                     line: 1,
+                     column: 9
+                   ], [{:world, [line: 1, column: 11], Elixir}]},
+                  {:binary, [line: 1, column: 9], Elixir}
+                ]}
+             ]},
+            ~c"bar"
+          ]}},
+        {~S'~S"hello#{world}"bar',
+         {:sigil_S, [delimiter: "\"", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["hello\#{world}"]}, ~c"bar"]}},
+        {~S'~S|hello#{world}|bar',
+         {:sigil_S, [delimiter: "|", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["hello\#{world}"]}, ~c"bar"]}}
+      ]
+
+      for {code, expected} <- codes do
+        assert Spitfire.parse(code) == {:ok, expected}
+      end
+    end
+  end
+
   describe "code with errors" do
     test "unknown prefix operator" do
       code = "foo %bar"

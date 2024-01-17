@@ -151,6 +151,7 @@ defmodule Spitfire do
         true -> &parse_boolean/1
         false -> &parse_boolean/1
         :bin_string -> &parse_string/1
+        :sigil -> &parse_sigil/1
         :fn -> &parse_anon_function/1
         :at_op -> &parse_prefix_expression/1
         :unary_op -> &parse_prefix_expression/1
@@ -755,30 +756,74 @@ defmodule Spitfire do
           token when is_binary(token) ->
             token
 
-          {_start, _stop, tokens} ->
+          {{line, col, _}, _stop, tokens} ->
+            meta = [line: line, column: col]
             # construct a new parser
             ast =
               if tokens == [] do
                 {:__block__, [], []}
               else
-                parser = %{
-                  tokens: tokens ++ [:eof],
-                  current_token: nil,
-                  peek_token: nil,
-                  nestings: [],
-                  stab_depth: 0
-                }
+                parser =
+                  %{
+                    tokens: tokens ++ [:eof],
+                    current_token: nil,
+                    peek_token: nil,
+                    nestings: [],
+                    stab_depth: 0
+                  }
+                  |> next_token()
+                  |> next_token()
 
-                {ast, _parser} = parse_expression(parser |> next_token() |> next_token())
+                {ast, _parser} = parse_expression(parser)
                 ast
               end
 
             {:"::", meta,
-             [{{:., meta, [Kernel, :to_string]}, meta ++ [from_interpolation: true], [ast]}, {:binary, [], Elixir}]}
+             [{{:., meta, [Kernel, :to_string]}, [from_interpolation: true] ++ meta, [ast]}, {:binary, meta, Elixir}]}
         end
       end
 
     {{:<<>>, meta, args}, parser}
+  end
+
+  defp parse_sigil(%{current_token: {:sigil, _meta, token, tokens, mods, _, delimiter}} = parser) do
+    meta = current_meta(parser)
+
+    args =
+      for token <- tokens do
+        case token do
+          token when is_binary(token) ->
+            token
+
+          {{line, col, _}, _stop, tokens} ->
+            meta = [line: line, column: col]
+            # construct a new parser
+            ast =
+              if tokens == [] do
+                {:__block__, [], []}
+              else
+                parser =
+                  %{
+                    tokens: tokens ++ [:eof],
+                    current_token: nil,
+                    peek_token: nil,
+                    nestings: [],
+                    stab_depth: 0
+                  }
+                  |> next_token()
+                  |> next_token()
+
+                {ast, _parser} = parse_expression(parser)
+                ast
+              end
+
+            {:"::", meta,
+             [{{:., meta, [Kernel, :to_string]}, [from_interpolation: true] ++ meta, [ast]}, {:binary, meta, Elixir}]}
+        end
+      end
+
+    ast = {token, Keyword.put(meta, :delimiter, delimiter), [{:<<>>, meta, args}, mods]}
+    {ast, parser}
   end
 
   defp parse_alias(%{current_token: {:alias, _, alias}} = parser) do
@@ -1228,6 +1273,10 @@ defmodule Spitfire do
     :eof
   end
 
+  def current_token_type(%{current_token: {:sigil, _meta, _token, _tokens, _mods, _, _delimiter}}) do
+    :sigil
+  end
+
   def current_token_type(%{current_token: {type, _}}) do
     type
   end
@@ -1254,6 +1303,10 @@ defmodule Spitfire do
 
   def current_token(%{current_token: :eof}) do
     :eof
+  end
+
+  def current_token(%{current_token: {:sigil, _meta, token, _tokens, _mods, _, _delimiter}}) do
+    token
   end
 
   def current_token(%{current_token: {op, _, token}})
@@ -1291,6 +1344,10 @@ defmodule Spitfire do
 
   def current_token(%{current_token: {token, _}}) do
     token
+  end
+
+  def current_meta(%{current_token: {:sigil, {line, col, _}, _token, _tokens, _mods, _, _delimiter}}) do
+    [line: line, column: col]
   end
 
   def current_meta(%{current_token: {_token, {line, col, _}, _}}) do
