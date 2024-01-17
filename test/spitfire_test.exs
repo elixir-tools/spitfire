@@ -2383,7 +2383,7 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code) ==
                {:error, [1, {:++, [line: 1, column: 8], [2, [4]]}],
-                [{[line: 1, column: 13], "missing closing bracket for list"}]}
+                [{[line: 1, column: 2], "missing closing bracket for list"}]}
     end
 
     test "missing closing tuple brace" do
@@ -2656,6 +2656,64 @@ defmodule SpitfireTest do
                    ]
                  },
                  [{[line: 6, column: 5], "missing closing brace for tuple"}]
+               }
+    end
+
+    test "example from github issue with list elements" do
+      code = ~S'''
+      defmodule Foo do
+        import Baz
+
+        def bat do
+          var = 123
+          [var,
+        end
+
+        def local_function do
+          # ...
+        end
+      end
+      '''
+
+      assert {:error, _ast, _} = result = Spitfire.parse(code)
+
+      assert result ==
+               {
+                 :error,
+                 {
+                   :defmodule,
+                   [do: [line: 1, column: 15], end: [line: 12, column: 1], line: 1, column: 1],
+                   [
+                     {:__aliases__, [line: 1, column: 11], [:Foo]},
+                     [
+                       do: {
+                         :__block__,
+                         [],
+                         [
+                           {:import, [line: 2, column: 3], [{:__aliases__, [line: 2, column: 10], [:Baz]}]},
+                           {
+                             :def,
+                             [do: [line: 4, column: 11], end: [line: 7, column: 3], line: 4, column: 3],
+                             [
+                               {:bat, [line: 4, column: 7], Elixir},
+                               [
+                                 do:
+                                   {:__block__, [],
+                                    [
+                                      {:=, [line: 5, column: 9], [{:var, [line: 5, column: 5], Elixir}, 123]},
+                                      [{:var, [line: 6, column: 6], Elixir}]
+                                    ]}
+                               ]
+                             ]
+                           },
+                           {:def, [do: [line: 9, column: 22], end: [line: 11, column: 3], line: 9, column: 3],
+                            [{:local_function, [line: 9, column: 7], Elixir}, [do: {:__block__, [], []}]]}
+                         ]
+                       }
+                     ]
+                   ]
+                 },
+                 [{[line: 6, column: 5], "missing closing bracket for list"}]
                }
     end
   end
