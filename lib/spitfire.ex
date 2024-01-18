@@ -106,16 +106,6 @@ defmodule Spitfire do
             parser
           end
 
-        {ast, exprs} =
-          case ast do
-            {:",", _meta, [arg]} ->
-              [last | rest] = exprs
-              {[last, arg], rest}
-
-            _ ->
-              {ast, exprs}
-          end
-
         {[ast | exprs], eat_eol(parser)}
       end
 
@@ -151,6 +141,7 @@ defmodule Spitfire do
         true -> &parse_boolean/1
         false -> &parse_boolean/1
         :bin_string -> &parse_string/1
+        :bin_heredoc -> &parse_string/1
         :sigil -> &parse_sigil/1
         :fn -> &parse_anon_function/1
         :at_op -> &parse_prefix_expression/1
@@ -742,6 +733,61 @@ defmodule Spitfire do
     {int, parser}
   end
 
+  defp parse_string(%{current_token: {:bin_heredoc, meta, _indent, [string]}} = parser) do
+    string = encode_literal(parser, string, meta)
+    {string, parser}
+  end
+
+  defp parse_string(%{current_token: {:bin_heredoc, _meta, indentation, tokens}} = parser) do
+    meta = current_meta(parser)
+
+    args =
+      for token <- tokens do
+        case token do
+          token when is_binary(token) ->
+            token
+
+          {{line, col, _}, {cline, ccol, _}, tokens} ->
+            meta = [line: line, column: col]
+            # construct a new parser
+            ast =
+              if tokens == [] do
+                {:__block__, [], []}
+              else
+                parser =
+                  %{
+                    tokens: tokens ++ [:eof],
+                    current_token: nil,
+                    peek_token: nil,
+                    nestings: [],
+                    stab_depth: 0
+                  }
+                  |> next_token()
+                  |> next_token()
+
+                {ast, _parser} = parse_expression(parser)
+                ast
+              end
+
+            {:"::", meta,
+             [
+               {{:., meta, [Kernel, :to_string]},
+                [from_interpolation: true, closing: [line: cline, column: ccol]] ++ meta, [ast]},
+               {:binary, meta, Elixir}
+             ]}
+        end
+      end
+
+    meta =
+      if indentation != nil do
+        [{:indentation, indentation} | meta]
+      else
+        meta
+      end
+
+    {{:<<>>, [{:delimiter, ~s|"""|} | meta], args}, parser}
+  end
+
   defp parse_string(%{current_token: {:bin_string, meta, [string]}} = parser) do
     string = encode_literal(parser, string, meta)
     {string, parser}
@@ -756,7 +802,7 @@ defmodule Spitfire do
           token when is_binary(token) ->
             token
 
-          {{line, col, _}, _stop, tokens} ->
+          {{line, col, _}, {cline, ccol, _}, tokens} ->
             meta = [line: line, column: col]
             # construct a new parser
             ast =
@@ -779,14 +825,18 @@ defmodule Spitfire do
               end
 
             {:"::", meta,
-             [{{:., meta, [Kernel, :to_string]}, [from_interpolation: true] ++ meta, [ast]}, {:binary, meta, Elixir}]}
+             [
+               {{:., meta, [Kernel, :to_string]},
+                [from_interpolation: true, closing: [line: cline, column: ccol]] ++ meta, [ast]},
+               {:binary, meta, Elixir}
+             ]}
         end
       end
 
-    {{:<<>>, meta, args}, parser}
+    {{:<<>>, [{:delimiter, "\""} | meta], args}, parser}
   end
 
-  defp parse_sigil(%{current_token: {:sigil, _meta, token, tokens, mods, _, delimiter}} = parser) do
+  defp parse_sigil(%{current_token: {:sigil, _meta, token, tokens, mods, indentation, delimiter}} = parser) do
     meta = current_meta(parser)
 
     args =
@@ -822,7 +872,14 @@ defmodule Spitfire do
         end
       end
 
-    ast = {token, Keyword.put(meta, :delimiter, delimiter), [{:<<>>, meta, args}, mods]}
+    bs_meta =
+      if indentation != nil do
+        [{:indentation, indentation} | meta]
+      else
+        meta
+      end
+
+    ast = {token, Keyword.put(meta, :delimiter, delimiter), [{:<<>>, bs_meta, args}, mods]}
     {ast, parser}
   end
 
@@ -1277,6 +1334,10 @@ defmodule Spitfire do
     :sigil
   end
 
+  def current_token_type(%{current_token: {:bin_heredoc, _meta, _indent, _tokens}}) do
+    :bin_heredoc
+  end
+
   def current_token_type(%{current_token: {type, _}}) do
     type
   end
@@ -1305,8 +1366,12 @@ defmodule Spitfire do
     :eof
   end
 
-  def current_token(%{current_token: {:sigil, _meta, token, _tokens, _mods, _, _delimiter}}) do
+  def current_token(%{current_token: {:sigil, _meta, token, _tokens, _mods, _indent, _delimiter}}) do
     token
+  end
+
+  def current_token(%{current_token: {:bin_heredoc, _meta, _indent, _tokens}}) do
+    :bin_heredoc
   end
 
   def current_token(%{current_token: {op, _, token}})
@@ -1347,6 +1412,10 @@ defmodule Spitfire do
   end
 
   def current_meta(%{current_token: {:sigil, {line, col, _}, _token, _tokens, _mods, _, _delimiter}}) do
+    [line: line, column: col]
+  end
+
+  def current_meta(%{current_token: {:bin_heredoc, {line, col, _}, _indent, _tokens}}) do
     [line: line, column: col]
   end
 

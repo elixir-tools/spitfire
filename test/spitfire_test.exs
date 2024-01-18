@@ -176,42 +176,16 @@ defmodule SpitfireTest do
       '''
 
       assert Spitfire.parse!(code) == "foobar"
-    end
-
-    test "parses string interpolation" do
-      code = ~S'''
-      "foo#{alice}bar"
-      '''
-
-      assert Spitfire.parse!(code) ==
-               {:<<>>, [line: 1, column: 1],
-                [
-                  "foo",
-                  {:"::", [line: 1, column: 1],
-                   [
-                     {{:., [line: 1, column: 1], [Kernel, :to_string]}, [line: 1, column: 1, from_interpolation: true],
-                      [{:alice, [line: 1, column: 7], Elixir}]},
-                     {:binary, [], Elixir}
-                   ]},
-                  "bar"
-                ]}
 
       code = ~S'''
-      "foo#{}bar"
+      """
+      foobar
+      """
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:<<>>, [line: 1, column: 1],
-                [
-                  "foo",
-                  {:"::", [line: 1, column: 1],
-                   [
-                     {{:., [line: 1, column: 1], [Kernel, :to_string]}, [line: 1, column: 1, from_interpolation: true],
-                      [{:__block__, [], []}]},
-                     {:binary, [], Elixir}
-                   ]},
-                  "bar"
-                ]}
+      assert Spitfire.parse!(code) == """
+             foobar
+             """
     end
 
     test "parses atoms" do
@@ -2360,6 +2334,9 @@ defmodule SpitfireTest do
     end
   end
 
+  # INFO: the above describe block uses a new implementation of `==` that deletes all the `meta` fields in the AST, to make it easy
+  # to bootstrap the original structure. As more metadata is added, we want to move them to the describe below so that all the
+  # meta is properly tested
   describe "with original ==" do
     test "sigils" do
       codes = [
@@ -2388,12 +2365,89 @@ defmodule SpitfireTest do
         {~S'~S"hello#{world}"bar',
          {:sigil_S, [delimiter: "\"", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["hello\#{world}"]}, ~c"bar"]}},
         {~S'~S|hello#{world}|bar',
-         {:sigil_S, [delimiter: "|", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["hello\#{world}"]}, ~c"bar"]}}
+         {:sigil_S, [delimiter: "|", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["hello\#{world}"]}, ~c"bar"]}},
+        {~S'''
+           ~S"""
+         hello world
+           """
+         ''',
+         {:sigil_S, [delimiter: "\"\"\"", line: 1, column: 3],
+          [{:<<>>, [indentation: 2, line: 1, column: 3], ["hello world\n"]}, []]}}
       ]
 
       for {code, expected} <- codes do
         assert Spitfire.parse(code) == {:ok, expected}
       end
+    end
+
+    test "parses string interpolation" do
+      code = ~S'''
+      "foo#{alice}bar"
+      '''
+
+      assert Spitfire.parse!(code) ==
+               {:<<>>, [delimiter: "\"", line: 1, column: 1],
+                [
+                  "foo",
+                  {:"::", [line: 1, column: 5],
+                   [
+                     {{:., [line: 1, column: 5], [Kernel, :to_string]},
+                      [
+                        from_interpolation: true,
+                        closing: [line: 1, column: 12],
+                        line: 1,
+                        column: 5
+                      ], [{:alice, [line: 1, column: 7], Elixir}]},
+                     {:binary, [line: 1, column: 5], Elixir}
+                   ]},
+                  "bar"
+                ]}
+
+      code = ~S'''
+      "foo#{}bar"
+      '''
+
+      assert Spitfire.parse!(code) ==
+               {:<<>>, [delimiter: "\"", line: 1, column: 1],
+                [
+                  "foo",
+                  {:"::", [line: 1, column: 5],
+                   [
+                     {{:., [line: 1, column: 5], [Kernel, :to_string]},
+                      [
+                        from_interpolation: true,
+                        closing: [line: 1, column: 7],
+                        line: 1,
+                        column: 5
+                      ], [{:__block__, [], []}]},
+                     {:binary, [line: 1, column: 5], Elixir}
+                   ]},
+                  "bar"
+                ]}
+
+      code = ~S'''
+      """
+      foo#{alice}bar
+      """
+      '''
+
+      assert Spitfire.parse!(code) ==
+               {:<<>>, [delimiter: "\"\"\"", indentation: 0, line: 1, column: 1],
+                [
+                  "foo",
+                  {:"::", [line: 2, column: 4],
+                   [
+                     {{:., [line: 2, column: 4], [Kernel, :to_string]},
+                      [
+                        from_interpolation: true,
+                        closing: [line: 2, column: 11],
+                        line: 2,
+                        column: 4
+                      ], [{:alice, [line: 2, column: 6], Elixir}]},
+                     {:binary, [line: 2, column: 4], Elixir}
+                   ]},
+                  "bar\n"
+                ]}
     end
   end
 
