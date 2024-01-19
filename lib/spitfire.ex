@@ -397,6 +397,15 @@ defmodule Spitfire do
       :-> ->
         token = current_token(parser)
         meta = current_meta(parser)
+
+        # we use a then to create lexical scoping to 
+        # hide manipulating incrementing the parser
+        newlines =
+          then(parser, fn parser ->
+            parser = next_token(parser)
+            current_newlines(parser)
+          end)
+
         current_sd = parser.stab_depth
         parser = eat_at(parser, :eol, 1)
         exprs = []
@@ -406,7 +415,24 @@ defmodule Spitfire do
             parser = next_token(parser)
             {ast, parser} = parse_expression(parser, top: true)
 
+            # we use a then to create lexical scoping to 
+            # hide manipulating incrementing the parser
+            eoe =
+              then(parser, fn parser ->
+                parser = next_token(parser)
+                current_eoe(parser)
+              end)
+
             parser = eat_at(parser, :eol, 1)
+
+            ast =
+              case ast do
+                {t, meta, a} ->
+                  {t, [{:end_of_expression, eoe} | meta], a}
+
+                literal ->
+                  literal
+              end
 
             {[ast | exprs], eat_eol(parser)}
           end
@@ -457,8 +483,17 @@ defmodule Spitfire do
             lhs -> [lhs]
           end
 
+        meta =
+          then([depth: parser.stab_depth] ++ meta, fn meta ->
+            if newlines do
+              [{:newlines, newlines} | meta]
+            else
+              meta
+            end
+          end)
+
         ast =
-          [{token, [depth: parser.stab_depth] ++ meta, [lhs, rhs]}] ++ Enum.reverse(stabs)
+          [{token, meta, [lhs, rhs]}] ++ Enum.reverse(stabs)
 
         {ast, eat_eol(parser)}
     end
@@ -556,6 +591,7 @@ defmodule Spitfire do
             {ast, parser} = parse_expression(parser, top: true)
 
             parser = next_token(parser)
+            eoe = current_eoe(parser)
 
             parser =
               if current_token(parser) == :end do
@@ -564,7 +600,23 @@ defmodule Spitfire do
                 parser |> next_token() |> eat_eol()
               end
 
+            ast =
+              case ast do
+                {token, meta, args} ->
+                  {token, [{:end_of_expression, eoe} | meta], args}
+
+                ast ->
+                  ast
+              end
+
             {[ast | current_exprs], parser}
+          end
+
+        # we delete the eoe metadata in the last expression for compatibility with core
+        exprs =
+          case exprs do
+            [{t, meta, a} | rest] -> [{t, Keyword.delete(meta, :end_of_expression), a} | rest]
+            exprs -> exprs
           end
 
         case parser do
@@ -613,11 +665,13 @@ defmodule Spitfire do
   defp parse_dot_expression(parser, lhs) do
     token = current_token(parser)
     precedence = current_precedence(parser)
+    meta = current_meta(parser)
 
     case peek_token_type(parser) do
       type when type in [:identifier, :paren_identifier] ->
         parser = next_token(parser)
 
+        next_meta = current_meta(parser)
         {{rhs, _, args}, parser} = parse_expression(parser, precedence: precedence)
 
         args =
@@ -627,14 +681,15 @@ defmodule Spitfire do
             args
           end
 
-        ast = {{token, [], [lhs, rhs]}, [], args}
+        ast = {{token, meta, [lhs, rhs]}, next_meta, args}
 
         {ast, eat_eol(parser)}
 
       _ ->
         parser = next_token(parser)
+        next_meta = current_meta(parser)
         {rhs, parser} = parse_expression(parser)
-        ast = {{token, [], [lhs, rhs]}, [], []}
+        ast = {{token, meta, [lhs, rhs]}, next_meta, []}
 
         {ast, eat_eol(parser)}
     end
@@ -659,19 +714,22 @@ defmodule Spitfire do
           put_error(parser, {meta, "missing closing end for anonymous function"})
       end
 
+    meta = [{:closing, current_meta(parser)} | meta]
+
     {{:fn, meta, ast}, parser}
   end
 
   defp parse_dot_call_expression(parser, lhs) do
+    meta = current_meta(parser)
     parser = parser |> next_token() |> eat_eol()
 
     if peek_token(parser) == :")" do
-      ast = {{:., [], [lhs]}, [], []}
+      ast = {{:., meta, [lhs]}, [], []}
       {ast, next_token(parser)}
     else
       {pairs, parser} = parse_comma_list(parser |> next_token() |> eat_eol())
       {pairs, _} = Enum.unzip(pairs)
-      ast = {{:., [], [lhs]}, [], pairs}
+      ast = {{:., meta, [lhs]}, [], pairs}
 
       {ast, parser |> next_token() |> eat_eol()}
     end
@@ -900,11 +958,14 @@ defmodule Spitfire do
   end
 
   defp parse_map_literal(%{current_token: {:%{}, _}} = parser) do
+    parser = next_token(parser)
     meta = current_meta(parser)
-    parser = parser |> next_token() |> next_token() |> eat_eol()
+
+    parser = parser |> next_token() |> eat_eol()
 
     if current_token(parser) == :"}" do
-      {{:%{}, meta, []}, parser}
+      closing = current_meta(parser)
+      {{:%{}, [{:closing, closing} | meta], []}, parser}
     else
       {pairs, parser} = parse_comma_list(parser, is_map: true)
       {pairs, _} = Enum.unzip(pairs)
@@ -920,7 +981,8 @@ defmodule Spitfire do
             put_error(parser, {current_meta(parser), "missing closing brace for map"})
         end
 
-      {{:%{}, meta, pairs}, parser}
+      closing = current_meta(parser)
+      {{:%{}, [{:closing, closing} | meta], pairs}, parser}
     end
   end
 
@@ -931,7 +993,8 @@ defmodule Spitfire do
 
     cond do
       current_token(parser) == :"}" ->
-        {{:{}, meta, []}, parser}
+        closing = current_meta(parser)
+        {{:{}, [{:closing, closing} | meta], []}, parser}
 
       current_token(parser) in [:end, :"]", :")"] ->
         # if the current token is the wrong kind of ending delimiter, we revert to the previous parser
@@ -989,7 +1052,8 @@ defmodule Spitfire do
         if length(pairs) == 2 do
           {pairs |> List.wrap() |> List.to_tuple(), parser}
         else
-          {{:{}, meta, List.wrap(pairs)}, parser}
+          closing = current_meta(parser)
+          {{:{}, [{:closing, closing} | meta], List.wrap(pairs)}, parser}
         end
     end
   end
@@ -1068,7 +1132,9 @@ defmodule Spitfire do
     error_meta = current_meta(parser)
 
     if peek_token(parser) == :")" do
-      {{token, meta, []}, next_token(parser)}
+      parser = next_token(parser)
+      closing = current_meta(parser)
+      {{token, [{:closing, closing} | meta], []}, parser}
     else
       {pairs, parser} =
         parser
@@ -1089,7 +1155,8 @@ defmodule Spitfire do
             put_error(parser, {error_meta, "missing closing parentheses for function invocation"})
         end
 
-      {{token, meta, List.wrap(pairs)}, parser}
+      closing = current_meta(parser)
+      {{token, [{:closing, closing} | meta], List.wrap(pairs)}, parser}
     end
   end
 
@@ -1419,12 +1486,40 @@ defmodule Spitfire do
     [line: line, column: col]
   end
 
+  def current_meta(%{current_token: {token, _}}) when token in [:fake_closing_brace, :fake_closing_bracket] do
+    nil
+  end
+
   def current_meta(%{current_token: {_token, {line, col, _}, _}}) do
     [line: line, column: col]
   end
 
   def current_meta(%{current_token: {_token, {line, col, _}}}) do
     [line: line, column: col]
+  end
+
+  def current_eoe(%{current_token: {:eol, {line, col, newlines}}}) do
+    [newlines: newlines, line: line, column: col]
+  end
+
+  def current_eoe(%{current_token: {_, {line, col, _}, _}}) do
+    [line: line, column: col]
+  end
+
+  def current_eoe(%{current_token: {_, {line, col, _}}}) do
+    [line: line, column: col]
+  end
+
+  def current_eoe(_) do
+    nil
+  end
+
+  def current_newlines(%{current_token: {_token, {_line, _col, newlines}, _}}) do
+    newlines
+  end
+
+  def current_newlines(%{current_token: {_token, {_line, _col, newlines}}}) do
+    newlines
   end
 
   def token_loc({_, {row, col, _}, _}) do

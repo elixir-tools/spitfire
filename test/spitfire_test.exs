@@ -2449,6 +2449,95 @@ defmodule SpitfireTest do
                   "bar\n"
                 ]}
     end
+
+    test "end of expression metadata" do
+      codes = [
+        {~S'''
+         foo do
+           Some.thing(
+             bar
+           )
+           Some.thing_else!()
+         end
+         ''',
+         {:foo, [do: [line: 1, column: 5], end: [line: 6, column: 1], line: 1, column: 1],
+          [
+            [
+              do:
+                {:__block__, [],
+                 [
+                   {{:., [line: 2, column: 7],
+                     [
+                       {:__aliases__, [line: 2, column: 3], [:Some]},
+                       :thing
+                     ]},
+                    [
+                      end_of_expression: [newlines: 1, line: 4, column: 4],
+                      line: 2,
+                      column: 8
+                    ], [{:bar, [line: 3, column: 5], Elixir}]},
+                   {{:., [line: 5, column: 7],
+                     [
+                       {:__aliases__, [line: 5, column: 3], [:Some]},
+                       :thing_else!
+                     ]}, [line: 5, column: 8], []}
+                 ]}
+            ]
+          ]}},
+        {~S'''
+         fn foo ->
+           send foo, :hi
+
+           :ok
+         end
+         ''',
+         {:fn, [closing: [line: 5, column: 1], line: 1, column: 1],
+          [
+            {:->, [newlines: 1, depth: 1, line: 1, column: 8],
+             [
+               [{:foo, [line: 1, column: 4], Elixir}],
+               {:__block__, [],
+                [
+                  {:send,
+                   [
+                     end_of_expression: [newlines: 2, line: 2, column: 16],
+                     line: 2,
+                     column: 3
+                   ], [{:foo, [line: 2, column: 8], Elixir}, :hi]},
+                  :ok
+                ]}
+             ]}
+          ]}}
+      ]
+
+      for {code, expected} <- codes do
+        assert Spitfire.parse(code) == {:ok, expected}
+      end
+    end
+
+    test "closing metadata" do
+      codes = [
+        {~S'{}', {:{}, [closing: [line: 1, column: 2], line: 1, column: 1], []}},
+        {~S'{one, two, three}',
+         {:{}, [closing: [line: 1, column: 17], line: 1, column: 1],
+          [
+            {:one, [line: 1, column: 2], Elixir},
+            {:two, [line: 1, column: 7], Elixir},
+            {:three, [line: 1, column: 12], Elixir}
+          ]}},
+        {~S'%{}', {:%{}, [closing: [line: 1, column: 3], line: 1, column: 2], []}},
+        {~S'%{"one" => two, three: 4}',
+         {:%{}, [closing: [line: 1, column: 25], line: 1, column: 2],
+          [{"one", {:two, [line: 1, column: 12], Elixir}}, {:three, 4}]}},
+        {~S'foo()', {:foo, [closing: [line: 1, column: 5], line: 1, column: 1], []}},
+        {~S'foo(bar)',
+         {:foo, [closing: [line: 1, column: 8], line: 1, column: 1], [{:bar, [line: 1, column: 5], Elixir}]}}
+      ]
+
+      for {code, expected} <- codes do
+        assert Spitfire.parse(code) == {:ok, expected}
+      end
+    end
   end
 
   describe "code with errors" do
@@ -2489,7 +2578,9 @@ defmodule SpitfireTest do
       code = ~S'foo(%{alice: "bob")'
 
       assert Spitfire.parse(code) ==
-               {:error, {:foo, [line: 1, column: 1], [{:%{}, [line: 1, column: 5], [alice: "bob"]}]},
+               {:error,
+                {:foo, [{:closing, [line: 1, column: 19]}, line: 1, column: 1],
+                 [{:%{}, [{:closing, [line: 1, column: 14]}, line: 1, column: 6], [alice: "bob"]}]},
                 [{[line: 1, column: 14], "missing closing brace for map"}]}
     end
 
@@ -2503,7 +2594,7 @@ defmodule SpitfireTest do
       code = ~S'%{foo: :bar baz: :boo}'
 
       assert Spitfire.parse(code) ==
-               {:error, {:%{}, [line: 1, column: 1], [foo: :bar]},
+               {:error, {:%{}, [{:closing, [line: 1, column: 22]}, line: 1, column: 2], [foo: :bar]},
                 [{[line: 1, column: 18], "syntax error"}, {[line: 1, column: 13], "syntax error"}]}
     end
 
@@ -2526,7 +2617,12 @@ defmodule SpitfireTest do
                 [
                   [
                     do:
-                      {:__block__, [], [{{:., [], [{:__aliases__, [line: 2, column: 3], [:Some]}, :thing]}, [], []}, :ok]}
+                      {:__block__, [],
+                       [
+                         {{:., [{:line, 2}, {:column, 7}], [{:__aliases__, [line: 2, column: 3], [:Some]}, :thing]},
+                          [{:end_of_expression, [newlines: 1, line: 2, column: 15]}, {:line, 2}, {:column, 8}], []},
+                         :ok
+                       ]}
                   ]
                 ]},
                [{[line: 1, column: 5], "missing `end` for do block"}]
@@ -2556,7 +2652,13 @@ defmodule SpitfireTest do
                          [
                            do:
                              {:__block__, [],
-                              [{{:., [], [{:__aliases__, [line: 3, column: 5], [:Some]}, :thing]}, [], []}, :ok]}
+                              [
+                                {{:., [{:line, 3}, {:column, 9}],
+                                  [{:__aliases__, [line: 3, column: 5], [:Some]}, :thing]},
+                                 [{:end_of_expression, [newlines: 1, line: 3, column: 17]}, {:line, 3}, {:column, 10}],
+                                 []},
+                                :ok
+                              ]}
                          ]
                        ]
                      }
@@ -2580,12 +2682,12 @@ defmodule SpitfireTest do
                  :__block__,
                  [],
                  [
-                   {:foo, [line: 1, column: 1],
+                   {:foo, [{:closing, [line: 1, column: 9]}, line: 1, column: 1],
                     [
                       {:+, [line: 1, column: 7],
                        [1, {:__error__, [line: 1, column: 7], ["malformed right-hand side of + operator"]}]}
                     ]},
-                   {:bar, [line: 3, column: 1], [{:two, [line: 3, column: 5], Elixir}]}
+                   {:bar, [{:closing, [line: 3, column: 8]}, line: 3, column: 1], [{:two, [line: 3, column: 5], Elixir}]}
                  ]
                },
                [{[line: 1, column: 7], "malformed right-hand side of + operator"}]
@@ -2601,8 +2703,15 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code) == {
                :error,
-               {:foo, [{:line, 1}, {:column, 1}],
-                [{:+, [line: 1, column: 7], [1, {:bar, [line: 3, column: 1], [{:two, [line: 3, column: 5], Elixir}]}]}]},
+               {:foo, [{:closing, [line: 3, column: 8]}, {:line, 1}, {:column, 1}],
+                [
+                  {:+, [line: 1, column: 7],
+                   [
+                     1,
+                     {:bar, [{:closing, [line: 3, column: 8]}, line: 3, column: 1],
+                      [{:two, [line: 3, column: 5], Elixir}]}
+                   ]}
+                ]},
                [{[line: 1, column: 4], "missing closing parentheses for function invocation"}]
              }
     end
@@ -2623,16 +2732,22 @@ defmodule SpitfireTest do
                  [line: 1, column: 10],
                  [
                    {:new_list, [line: 1, column: 1], Elixir},
-                   {{:., [], [{:__aliases__, [line: 2, column: 3], [:Enum]}, :map]}, [],
+                   {{:., [{:line, 2}, {:column, 7}], [{:__aliases__, [line: 2, column: 3], [:Enum]}, :map]},
+                    [{:line, 2}, {:column, 8}],
                     [
                       {:some_list, [line: 2, column: 12], Elixir},
-                      {:fn, [line: 2, column: 23],
+                      {:fn, [{:closing, [line: 5, column: 19]}, line: 2, column: 23],
                        [
-                         {:->, [depth: 1, line: 2, column: 31],
+                         {:->, [{:newlines, 3}, depth: 1, line: 2, column: 31],
                           [
                             [{:item, [line: 2, column: 26], Elixir}],
-                            {:send, [line: 5, column: 1],
-                             [{:pid, [line: 5, column: 6], Elixir}, {:new_list, [line: 5, column: 11], Elixir}]}
+                            {:send,
+                             [
+                               {:end_of_expression, [newlines: 1, line: 5, column: 20]},
+                               {:closing, [line: 5, column: 19]},
+                               line: 5,
+                               column: 1
+                             ], [{:pid, [line: 5, column: 6], Elixir}, {:new_list, [line: 5, column: 11], Elixir}]}
                           ]}
                        ]}
                     ]}
@@ -2672,15 +2787,24 @@ defmodule SpitfireTest do
                      do:
                        {:__block__, [],
                         [
-                          {:import, [line: 2, column: 3], [{:__aliases__, [line: 2, column: 10], [:Baz]}]},
-                          {:def, [do: [line: 4, column: 11], end: [line: 7, column: 3], line: 4, column: 3],
+                          {:import, [{:end_of_expression, [newlines: 2, line: 2, column: 13]}, line: 2, column: 3],
+                           [{:__aliases__, [line: 2, column: 10], [:Baz]}]},
+                          {:def,
+                           [
+                             {:end_of_expression, [newlines: 2, line: 7, column: 6]},
+                             do: [line: 4, column: 11],
+                             end: [line: 7, column: 3],
+                             line: 4,
+                             column: 3
+                           ],
                            [
                              {:bat, [line: 4, column: 7], Elixir},
                              [
                                do:
                                  {:__block__, [],
                                   [
-                                    {:=, [line: 5, column: 9], [{:var, [line: 5, column: 5], Elixir}, 123]},
+                                    {:=, [{:end_of_expression, [newlines: 1, line: 5, column: 14]}, line: 5, column: 9],
+                                     [{:var, [line: 5, column: 5], Elixir}, 123]},
                                     {:{}, [line: 6, column: 5], []}
                                   ]}
                              ]
@@ -2723,18 +2847,26 @@ defmodule SpitfireTest do
                          :__block__,
                          [],
                          [
-                           {:import, [line: 2, column: 3], [{:__aliases__, [line: 2, column: 10], [:Baz]}]},
+                           {:import, [{:end_of_expression, [newlines: 2, line: 2, column: 13]}, line: 2, column: 3],
+                            [{:__aliases__, [line: 2, column: 10], [:Baz]}]},
                            {
                              :def,
-                             [do: [line: 4, column: 11], end: [line: 7, column: 3], line: 4, column: 3],
+                             [
+                               {:end_of_expression, [newlines: 2, line: 7, column: 6]},
+                               do: [line: 4, column: 11],
+                               end: [line: 7, column: 3],
+                               line: 4,
+                               column: 3
+                             ],
                              [
                                {:bat, [line: 4, column: 7], Elixir},
                                [
                                  do:
                                    {:__block__, [],
                                     [
-                                      {:=, [line: 5, column: 9], [{:var, [line: 5, column: 5], Elixir}, 123]},
-                                      {:{}, [line: 6, column: 5], [{:var, [line: 6, column: 6], Elixir}]}
+                                      {:=, [{:end_of_expression, [newlines: 1, line: 5, column: 14]}, line: 5, column: 9],
+                                       [{:var, [line: 5, column: 5], Elixir}, 123]},
+                                      {:{}, [{:closing, nil}, line: 6, column: 5], [{:var, [line: 6, column: 6], Elixir}]}
                                     ]}
                                ]
                              ]
@@ -2781,17 +2913,25 @@ defmodule SpitfireTest do
                          :__block__,
                          [],
                          [
-                           {:import, [line: 2, column: 3], [{:__aliases__, [line: 2, column: 10], [:Baz]}]},
+                           {:import, [{:end_of_expression, [newlines: 2, line: 2, column: 13]}, line: 2, column: 3],
+                            [{:__aliases__, [line: 2, column: 10], [:Baz]}]},
                            {
                              :def,
-                             [do: [line: 4, column: 11], end: [line: 7, column: 3], line: 4, column: 3],
+                             [
+                               {:end_of_expression, [newlines: 2, line: 7, column: 6]},
+                               do: [line: 4, column: 11],
+                               end: [line: 7, column: 3],
+                               line: 4,
+                               column: 3
+                             ],
                              [
                                {:bat, [line: 4, column: 7], Elixir},
                                [
                                  do:
                                    {:__block__, [],
                                     [
-                                      {:=, [line: 5, column: 9], [{:var, [line: 5, column: 5], Elixir}, 123]},
+                                      {:=, [{:end_of_expression, [newlines: 1, line: 5, column: 14]}, line: 5, column: 9],
+                                       [{:var, [line: 5, column: 5], Elixir}, 123]},
                                       [{:var, [line: 6, column: 6], Elixir}]
                                     ]}
                                ]
