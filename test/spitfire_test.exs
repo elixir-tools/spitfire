@@ -194,6 +194,54 @@ defmodule SpitfireTest do
              """
     end
 
+    test "parses charlists" do
+      code = ~s'''
+      'foobar' 
+      '''
+
+      assert Spitfire.parse(code) == {:ok, ~c"foobar"}
+
+      code = ~S"""
+      '''
+      foobar
+      '''
+      """
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                ~c"""
+                foobar
+                """}
+
+      code = ~S'''
+      'foo#{alice}bar' 
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {{:., [], [List, :to_charlist]}, [],
+                 [
+                   ~c"foo",
+                   {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [{:alice, [], Elixir}]}, {:binary, [], Elixir}]},
+                   ~c"bar"
+                 ]}}
+
+      code = ~S"""
+      '''
+      foo#{alice}bar
+      '''
+      """
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {{:., [], [List, :to_charlist]}, [],
+                 [
+                   "foo",
+                   {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [{:alice, [], Elixir}]}, {:binary, [], Elixir}]},
+                   "bar\n"
+                 ]}}
+    end
+
     test "parses atoms" do
       code = ~s'''
       :foobar
