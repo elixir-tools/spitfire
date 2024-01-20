@@ -135,6 +135,7 @@ defmodule Spitfire do
         :kw_identifier when is_list or is_map -> &parse_kw_identifier/1
         :kw_identifier when not is_list and not is_map -> &parse_bracketless_kw_list/1
         :int -> &parse_int/1
+        :flt -> &parse_float/1
         :atom -> &parse_atom/1
         :atom_quoted -> &parse_atom/1
         :atom_unsafe -> &parse_atom/1
@@ -789,6 +790,11 @@ defmodule Spitfire do
   defp parse_int(%{current_token: {:int, {_, _, int} = meta, _}} = parser) do
     int = encode_literal(parser, int, meta)
     {int, parser}
+  end
+
+  defp parse_float(%{current_token: {:flt, {_, _, float} = meta, _}} = parser) do
+    float = encode_literal(parser, float, meta)
+    {float, parser}
   end
 
   defp parse_string(%{current_token: {:bin_heredoc, meta, _indent, [string]}} = parser) do

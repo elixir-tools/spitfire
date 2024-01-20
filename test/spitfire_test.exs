@@ -168,6 +168,12 @@ defmodule SpitfireTest do
       """
 
       assert Spitfire.parse!(code) == 111_111
+
+      code = """
+      1.4
+      """
+
+      assert Spitfire.parse(code) == {:ok, 1.4}
     end
 
     test "parses strings" do
