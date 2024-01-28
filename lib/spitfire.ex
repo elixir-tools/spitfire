@@ -156,6 +156,7 @@ defmodule Spitfire do
         :"(" -> &parse_grouped_expression/1
         :"{" -> &parse_tuple_literal/1
         :%{} -> &parse_map_literal/1
+        :% -> &parse_struct_literal/1
         nil -> &parse_nil_literal/1
         _ -> nil
       end
@@ -1097,6 +1098,41 @@ defmodule Spitfire do
     end
   end
 
+  defp parse_struct_literal(%{current_token: {:%, _}} = parser) do
+    meta = current_meta(parser)
+    parser = next_token(parser)
+    {type, parser} = parse_expression(parser)
+
+    parser = next_token(parser)
+
+    brace_meta = current_meta(parser)
+    parser = parser |> next_token() |> eat_eol()
+
+    if current_token(parser) == :"}" do
+      closing = current_meta(parser)
+      ast = {:%, meta, [type, {:%{}, [{:closing, closing} | brace_meta], []}]}
+      {ast, parser}
+    else
+      {pairs, parser} = parse_comma_list(parser, is_map: true)
+      {pairs, _} = Enum.unzip(pairs)
+
+      parser = eat_at(parser, :eol, 1)
+
+      parser =
+        case peek_token(parser) do
+          :"}" ->
+            next_token(parser)
+
+          _ ->
+            put_error(parser, {current_meta(parser), "missing closing brace for struct"})
+        end
+
+      closing = current_meta(parser)
+      ast = {:%, meta, [type, {:%{}, [{:closing, closing} | brace_meta], pairs}]}
+      {ast, parser}
+    end
+  end
+
   defp parse_tuple_literal(%{current_token: {:"{", _}} = parser) do
     meta = current_meta(parser)
     orig_parser = parser
@@ -1267,6 +1303,7 @@ defmodule Spitfire do
         end
 
       closing = current_meta(parser)
+
       {{token, [{:closing, closing} | meta], List.wrap(pairs)}, parser}
     end
   end
@@ -1319,7 +1356,8 @@ defmodule Spitfire do
   defp parse_identifier(%{current_token: {type, _, token}} = parser) when type in [:identifier, :do_identifier] do
     meta = current_meta(parser)
 
-    if peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do, :., :"}", :"]"] ++ @operators) do
+    if token in [:__MODULE__, :__ENV__, :__DIR__, :__CALLER__] or
+         peek_token(parser) in ([:";", :eol, :eof, :",", :")", :do, :., :"}", :"]"] ++ @operators) do
       {{token, meta, Elixir}, parser}
     else
       parser = next_token(parser)
@@ -1351,7 +1389,12 @@ defmodule Spitfire do
 
   def tokenize(code, opts) do
     tokens =
-      case code |> String.to_charlist() |> :elixir_tokenizer.tokenize(1, Keyword.put(opts, :check_terminators, false)) do
+      case code
+           |> String.to_charlist()
+           |> :elixir_tokenizer.tokenize(
+             1,
+             opts |> Keyword.put(:check_terminators, false) |> Keyword.put(:cursor_completion, false)
+           ) do
         {:ok, _, _, _, tokens} ->
           tokens
 
@@ -1721,6 +1764,10 @@ defmodule Spitfire do
 
   defp valid_peek?(:"}", ptype) do
     ptype in (@operators ++ [:"[", :";", :eol, :eof, :",", :")", :do, :., :"}", :"]", :end])
+  end
+
+  defp valid_peek?(:alias, ptype) when ptype in [:"{"] do
+    true
   end
 
   defp valid_peek?(_ctype, ptype) do
