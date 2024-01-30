@@ -106,7 +106,24 @@ defmodule Spitfire do
             parser
           end
 
+        ast =
+          case ast do
+            {token, meta, args} ->
+              eoe = current_eoe(parser)
+              {token, [{:end_of_expression, eoe} | meta], args}
+
+            ast ->
+              ast
+          end
+
         {[ast | exprs], eat_eol(parser)}
+      end
+
+    # we delete the eoe metadata in the last expression for compatibility with core
+    exprs =
+      case exprs do
+        [{t, meta, a} | rest] -> [{t, Keyword.delete(meta, :end_of_expression), a} | rest]
+        exprs -> exprs
       end
 
     {
@@ -145,6 +162,7 @@ defmodule Spitfire do
         :bin_heredoc -> &parse_string/1
         :list_string -> &parse_string/1
         :list_heredoc -> &parse_string/1
+        :char -> &parse_char/1
         :sigil -> &parse_sigil/1
         :fn -> &parse_anon_function/1
         :at_op -> &parse_prefix_expression/1
@@ -441,6 +459,13 @@ defmodule Spitfire do
             {[ast | exprs], eat_eol(parser)}
           end
 
+        # we delete the eoe metadata in the last expression for compatibility with core
+        exprs =
+          case exprs do
+            [{t, meta, a} | rest] -> [{t, Keyword.delete(meta, :end_of_expression), a} | rest]
+            exprs -> exprs
+          end
+
         rhs =
           case exprs do
             [ast] -> ast
@@ -579,10 +604,10 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_do_block(%{current_token: {:do, _}} = parser, lhs) do
+  defp parse_do_block(%{current_token: {:do, meta}} = parser, lhs) do
     do_meta = current_meta(parser)
+    exprs = [{encode_literal(parser, :do, meta), []}]
     parser = parser |> next_token() |> eat_eol()
-    exprs = [do: []]
 
     parser = inc_stab_depth(parser)
 
@@ -619,13 +644,16 @@ defmodule Spitfire do
         # we delete the eoe metadata in the last expression for compatibility with core
         exprs =
           case exprs do
-            [{t, meta, a} | rest] -> [{t, Keyword.delete(meta, :end_of_expression), a} | rest]
-            exprs -> exprs
+            [{t, meta, a} | rest] ->
+              [{t, Keyword.delete(meta, :end_of_expression), a} | rest]
+
+            exprs ->
+              exprs
           end
 
         case parser do
-          %{current_token: {:block_identifier, _, token}} ->
-            {[{token, []}, {type, exprs} | rest], parser |> next_token() |> eat_eol()}
+          %{current_token: {:block_identifier, meta, token}} ->
+            {[{encode_literal(parser, token, meta), []}, {type, exprs} | rest], parser |> next_token() |> eat_eol()}
 
           _ ->
             {[{type, exprs} | rest], parser}
@@ -769,6 +797,7 @@ defmodule Spitfire do
                   current_token: nil,
                   peek_token: nil,
                   nestings: [],
+                  literal_encoder: parser.literal_encoder,
                   stab_depth: 0
                 }
 
@@ -832,6 +861,7 @@ defmodule Spitfire do
                     current_token: nil,
                     peek_token: nil,
                     nestings: [],
+                    literal_encoder: parser.literal_encoder,
                     stab_depth: 0
                   }
                   |> next_token()
@@ -882,6 +912,7 @@ defmodule Spitfire do
                     current_token: nil,
                     peek_token: nil,
                     nestings: [],
+                    literal_encoder: parser.literal_encoder,
                     stab_depth: 0
                   }
                   |> next_token()
@@ -910,7 +941,7 @@ defmodule Spitfire do
     {{{:., [], [List, :to_charlist]}, [{:delimiter, ~s|"""|} | meta], args}, parser}
   end
 
-  defp parse_string(%{current_token: {:bin_string, meta, [string]}} = parser) do
+  defp parse_string(%{current_token: {:bin_string, meta, [string]}} = parser) when is_binary(string) do
     string = encode_literal(parser, string, meta)
     {string, parser}
   end
@@ -937,6 +968,7 @@ defmodule Spitfire do
                     current_token: nil,
                     peek_token: nil,
                     nestings: [],
+                    literal_encoder: parser.literal_encoder,
                     stab_depth: 0
                   }
                   |> next_token()
@@ -985,6 +1017,7 @@ defmodule Spitfire do
                     current_token: nil,
                     peek_token: nil,
                     nestings: [],
+                    literal_encoder: parser.literal_encoder,
                     stab_depth: 0
                   }
                   |> next_token()
@@ -1004,6 +1037,11 @@ defmodule Spitfire do
       end
 
     {{{:., [], [List, :to_charlist]}, [{:delimiter, "\""} | meta], args}, parser}
+  end
+
+  defp parse_char(%{current_token: {:char, {_, _, _token} = meta, num}} = parser) do
+    char = encode_literal(parser, num, meta)
+    {char, parser}
   end
 
   defp parse_sigil(%{current_token: {:sigil, _meta, token, tokens, mods, indentation, delimiter}} = parser) do
@@ -1028,6 +1066,7 @@ defmodule Spitfire do
                     current_token: nil,
                     peek_token: nil,
                     nestings: [],
+                    literal_encoder: parser.literal_encoder,
                     stab_depth: 0
                   }
                   |> next_token()
@@ -1133,7 +1172,7 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_tuple_literal(%{current_token: {:"{", _}} = parser) do
+  defp parse_tuple_literal(%{current_token: {:"{", orig_meta}} = parser) do
     meta = current_meta(parser)
     orig_parser = parser
     parser = parser |> next_token() |> eat_eol()
@@ -1197,7 +1236,8 @@ defmodule Spitfire do
           end
 
         if length(pairs) == 2 do
-          {pairs |> List.wrap() |> List.to_tuple(), parser}
+          tuple = encode_literal(parser, pairs |> List.wrap() |> List.to_tuple(), orig_meta)
+          {tuple, parser}
         else
           closing = current_meta(parser)
           {{:{}, [{:closing, closing} | meta], List.wrap(pairs)}, parser}
@@ -1527,6 +1567,10 @@ defmodule Spitfire do
     token
   end
 
+  def peek_token(%{peek_token: {type, _, _, _}}) when type in [:list_heredoc, :bin_heredoc] do
+    type
+  end
+
   def peek_token(%{peek_token: {token, _, _}}) do
     token
   end
@@ -1725,7 +1769,13 @@ defmodule Spitfire do
   end
 
   defp encode_literal(parser, literal, {line, col, _}) do
-    meta = [line: line, column: col]
+    # TODO: needs to handle different metadata for different types
+    # - int: token
+    # - string: delimiter
+    # - list: closing
+    # - atom: none
+
+    meta = additional_meta(literal, parser) ++ [line: line, column: col]
 
     case parser.literal_encoder.(literal, meta) do
       {:ok, ast} ->
@@ -1735,6 +1785,53 @@ defmodule Spitfire do
         Logger.error(reason)
         literal
     end
+  end
+
+  defp additional_meta(_literal, %{current_token: {:list_string, _, _}}) do
+    [delimiter: "'"]
+  end
+
+  defp additional_meta(_, %{current_token: {type, _, indent, _token}}) when type in [:list_heredoc] do
+    [delimiter: ~s"'''", indentation: indent]
+  end
+
+  defp additional_meta(literal, parser) when is_list(literal) do
+    parser = next_token(parser)
+    closing = current_meta(parser)
+    [closing: closing]
+  end
+
+  defp additional_meta(literal, parser) when is_tuple(literal) do
+    closing = current_meta(parser)
+    [closing: closing]
+  end
+
+  defp additional_meta(_, %{current_token: {type, _, token}}) when type in [:int, :flt] do
+    [token: to_string(token)]
+  end
+
+  defp additional_meta(_, %{current_token: {type, _, _token}}) when type in [:bin_string, :atom_quoted] do
+    [delimiter: ~s'"']
+  end
+
+  defp additional_meta(_, %{current_token: {type, _, indent, _token}}) when type in [:bin_heredoc] do
+    [delimiter: ~s'"""', indentation: indent]
+  end
+
+  defp additional_meta(_literal, %{current_token: {:char, _, token}}) do
+    [token: "?#{List.to_string([token])}"]
+  end
+
+  defp additional_meta(literal, _) when is_atom(literal) do
+    []
+  end
+
+  defp additional_meta(_, %{current_token: {type, _, _}}) when type in [:do, :atom, :identifier, :block_identifier] do
+    []
+  end
+
+  defp additional_meta(_, %{current_token: {type, _}}) when type in [:do, nil] do
+    []
   end
 
   defp put_error(parser, error) do

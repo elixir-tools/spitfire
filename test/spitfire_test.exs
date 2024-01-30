@@ -90,26 +90,6 @@ defmodule SpitfireTest do
                 ]}
     end
 
-    test "literal encoder" do
-      code = ~S'''
-      1
-      "two"
-      :three
-      [four]
-      '''
-
-      assert Kernel.==(
-               Spitfire.parse!(code, literal_encoder: fn l, m -> {:ok, {:__literal__, m, l}} end),
-               {:__block__, [],
-                [
-                  {:__literal__, [line: 1, column: 1], 1},
-                  {:__literal__, [line: 2, column: 1], "two"},
-                  {:__literal__, [line: 3, column: 1], :three},
-                  {:__literal__, [line: 4, column: 1], [{:four, [line: 4, column: 2], Elixir}]}
-                ]}
-             )
-    end
-
     test "type syntax" do
       code = ~S'''
       @type foo :: String.t()
@@ -2442,6 +2422,88 @@ defmodule SpitfireTest do
   # to bootstrap the original structure. As more metadata is added, we want to move them to the describe below so that all the
   # meta is properly tested
   describe "with original ==" do
+    test "literal encoder" do
+      codes = [
+        {~S'''
+         1
+         "two"
+         :three
+         [four]
+         try do
+           :ok
+         rescue
+           _ ->
+             :error
+         end
+         ''',
+         {:__block__, [],
+          [
+            {:__literal__,
+             [
+               end_of_expression: [newlines: 1, line: 1, column: 2],
+               token: "1",
+               line: 1,
+               column: 1
+             ], 1},
+            {:__literal__,
+             [
+               end_of_expression: [newlines: 1, line: 2, column: 6],
+               delimiter: "\"",
+               line: 2,
+               column: 1
+             ], "two"},
+            {:__literal__, [end_of_expression: [newlines: 1, line: 3, column: 7], line: 3, column: 1], :three},
+            {:__literal__,
+             [
+               end_of_expression: [newlines: 1, line: 4, column: 7],
+               closing: [line: 4, column: 6],
+               line: 4,
+               column: 1
+             ], [{:four, [line: 4, column: 2], Elixir}]},
+            {:try, [do: [line: 5, column: 5], end: [line: 10, column: 1], line: 5, column: 1],
+             [
+               [
+                 {{:__literal__, [line: 5, column: 5], :do}, {:__literal__, [line: 6, column: 3], :ok}},
+                 {{:__literal__, [line: 7, column: 1], :rescue},
+                  [
+                    {:->, [newlines: 1, depth: 1, line: 8, column: 5],
+                     [
+                       [{:_, [line: 8, column: 3], Elixir}],
+                       {:__literal__, [line: 9, column: 5], :error}
+                     ]}
+                  ]}
+               ]
+             ]}
+          ]}},
+        {~S'1.752', {:__literal__, [token: "1.752", line: 1, column: 1], 1.752}},
+        {~S'0xABCD', {:__literal__, [token: "0xABCD", line: 1, column: 1], 43_981}},
+        {~S'0o01234567', {:__literal__, [token: "0o01234567", line: 1, column: 1], 342_391}},
+        {~S'0b10101010', {:__literal__, [token: "0b10101010", line: 1, column: 1], 170}},
+        {~S'?é', {:__literal__, [token: "?é", line: 1, column: 1], 233}},
+        {~S'"foo"', {:__literal__, [delimiter: "\"", line: 1, column: 1], "foo"}},
+        {~S"'foo'", {:__literal__, [delimiter: "'", line: 1, column: 1], ~c"foo"}},
+        {~S':"foo"', {:__literal__, [delimiter: "\"", line: 1, column: 1], :foo}},
+        {~S":foo", {:__literal__, [line: 1, column: 1], :foo}},
+        {~S'''
+         """
+         foo
+         """
+         ''', {:__literal__, [delimiter: "\"\"\"", indentation: 0, line: 1, column: 1], "foo\n"}},
+        {~S"""
+         '''
+         foo
+         '''
+         """, {:__literal__, [delimiter: "'''", indentation: 0, line: 1, column: 1], ~c"foo\n"}},
+        {~S'{one, two}',
+         {:__literal__, [closing: [line: 1, column: 10], line: 1, column: 1],
+          {{:one, [line: 1, column: 2], Elixir}, {:two, [line: 1, column: 7], Elixir}}}}
+      ]
+
+      for {code, expected} <- codes do
+        assert Spitfire.parse(code, literal_encoder: fn l, m -> {:ok, {:__literal__, m, l}} end) == {:ok, expected}
+      end
+    end
+
     test "sigils" do
       codes = [
         {~S'~s"foo"', {:sigil_s, [delimiter: "\"", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["foo"]}, []]}},
@@ -2552,6 +2614,27 @@ defmodule SpitfireTest do
                    ]},
                   "bar\n"
                 ]}
+
+      code = ~S'''
+      "#{foo}"
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {:<<>>, [delimiter: "\"", line: 1, column: 1],
+                 [
+                   {:"::", [line: 1, column: 2],
+                    [
+                      {{:., [line: 1, column: 2], [Kernel, :to_string]},
+                       [
+                         from_interpolation: true,
+                         closing: [line: 1, column: 7],
+                         line: 1,
+                         column: 2
+                       ], [{:foo, [line: 1, column: 4], Elixir}]},
+                      {:binary, [line: 1, column: 2], Elixir}
+                    ]}
+                 ]}}
     end
 
     test "end of expression metadata" do
@@ -2926,7 +3009,13 @@ defmodule SpitfireTest do
                  :__block__,
                  [],
                  [
-                   {:foo, [{:closing, [line: 1, column: 9]}, line: 1, column: 1],
+                   {:foo,
+                    [
+                      {:end_of_expression, [newlines: 2, line: 1, column: 10]},
+                      {:closing, [line: 1, column: 9]},
+                      line: 1,
+                      column: 1
+                    ],
                     [
                       {:+, [line: 1, column: 7],
                        [1, {:__error__, [line: 1, column: 7], ["malformed right-hand side of + operator"]}]}
@@ -2987,7 +3076,6 @@ defmodule SpitfireTest do
                             [{:item, [line: 2, column: 26], Elixir}],
                             {:send,
                              [
-                               {:end_of_expression, [newlines: 1, line: 5, column: 20]},
                                {:closing, [line: 5, column: 19]},
                                line: 5,
                                column: 1
