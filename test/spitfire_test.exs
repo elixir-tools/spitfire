@@ -50,6 +50,35 @@ defmodule SpitfireTest do
                {{:., [line: 1, column: 4], [Access, :get]}, [line: 1, column: 4, from_brackets: true],
                 [{:foo, [line: 1, column: 1], Elixir}, :bar]}
 
+      code = "foo[:bar][:baz]"
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {{:., [from_brackets: true, closing: [line: 1, column: 15], line: 1, column: 10], [Access, :get]},
+                 [from_brackets: true, closing: [line: 1, column: 15], line: 1, column: 10],
+                 [
+                   {{:., [closing: [line: 1, column: 9], line: 1, column: 4], [Access, :get]},
+                    [closing: [line: 1, column: 9], line: 1, column: 4], [{:foo, [line: 1, column: 1], Elixir}, :bar]},
+                   :baz
+                 ]}}
+
+      code = ~S'(meta[:end_of_expression] || meta)[:line]'
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {{:., [from_brackets: true, closing: [line: 1, column: 41], line: 1, column: 35], [Access, :get]},
+                 [from_brackets: true, closing: [line: 1, column: 41], line: 1, column: 35],
+                 [
+                   {:||, [line: 1, column: 27],
+                    [
+                      {{:., [closing: [line: 1, column: 25], line: 1, column: 6], [Access, :get]},
+                       [closing: [line: 1, column: 25], line: 1, column: 6],
+                       [{:meta, [line: 1, column: 2], Elixir}, :end_of_expression]},
+                      {:meta, [line: 1, column: 30], Elixir}
+                    ]},
+                   :line
+                 ]}}
+
       code = "%{bar: :foo}[:bar]"
 
       assert Spitfire.parse!(code) ==
@@ -661,7 +690,8 @@ defmodule SpitfireTest do
          ''', {:%{}, [line: 1, column: 1], [{:foo, "bar"}, {:alice, "bob"}]}},
         {~s'''
          %{
-           "foo" => "bar",
+           "foo" =>
+             "bar",
            "alice" => "bob"
           }
          ''', {:%{}, [line: 1, column: 1], [{"foo", "bar"}, {"alice", "bob"}]}},
@@ -698,6 +728,18 @@ defmodule SpitfireTest do
             {{:%{}, [line: 6, column: 3], []}, nil},
             {{:bing, [line: 7, column: 3], Elixir}, {:bong, [line: 7, column: 11], Elixir}},
             {:foo, :bar}
+          ]}},
+        {~s'''
+         %{
+           foo: :bar,
+           baz:
+             beaux()
+         }
+         ''',
+         {:%{}, [line: 1, column: 1],
+          [
+            {:foo, :bar},
+            {:baz, {:beaux, [], []}}
           ]}}
       ]
 
@@ -748,6 +790,12 @@ defmodule SpitfireTest do
           [
             {:__MODULE__, [line: 1, column: 2], Elixir},
             {:%{}, [closing: [line: 1, column: 21], line: 1, column: 12], [foo: {:bar, [line: 1, column: 18], Elixir}]}
+          ]}},
+        {~S'%module{foo: bar}',
+         {:%, [line: 1, column: 1],
+          [
+            {:module, [line: 1, column: 2], Elixir},
+            {:%{}, [closing: [line: 1, column: 17], line: 1, column: 8], [foo: {:bar, [line: 1, column: 14], Elixir}]}
           ]}}
       ]
 
@@ -764,6 +812,9 @@ defmodule SpitfireTest do
         {~s'''
          1 - 2
          ''', {:-, [line: 1, column: 3], [1, 2]}},
+        {~s'''
+         1 - -2
+         ''', {:-, [line: 1, column: 3], [1, {:-, [line: 1, column: 5], [2]}]}},
         {~s'''
          1 * 2
          ''', {:*, [line: 1, column: 3], [1, 2]}},
@@ -1255,11 +1306,19 @@ defmodule SpitfireTest do
           [
             {:->, [depth: 1, line: 1, column: 9],
              [[{:one, [line: 1, column: 4], Elixir}], {:one, [line: 2, column: 3], Elixir}]}
+          ]}},
+        {~S'foo(fn a -> a end)',
+         {:foo, [closing: [line: 1, column: 18], line: 1, column: 1],
+          [
+            {:fn, [closing: [line: 1, column: 15], line: 1, column: 5],
+             [
+               {:->, [line: 1, column: 10], [[{:a, [line: 1, column: 8], Elixir}], {:a, [line: 1, column: 13], Elixir}]}
+             ]}
           ]}}
       ]
 
       for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+        assert Spitfire.parse(code) == {:ok, expected}
       end
     end
 
@@ -2422,6 +2481,174 @@ defmodule SpitfireTest do
   # to bootstrap the original structure. As more metadata is added, we want to move them to the describe below so that all the
   # meta is properly tested
   describe "with original ==" do
+    test "big with" do
+      code = ~S'''
+      with {:ok, _} <- bar(fn a ->
+               with :d <- b do
+                 :f
+               end
+             end) do
+        :ok
+      end
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {:with, [do: [line: 5, column: 13], end: [line: 7, column: 1], line: 1, column: 1],
+                 [
+                   {:<-, [line: 1, column: 15],
+                    [
+                      {:ok, {:_, [line: 1, column: 12], Elixir}},
+                      {:bar, [closing: [line: 5, column: 11], line: 1, column: 18],
+                       [
+                         {:fn, [closing: [line: 5, column: 8], line: 1, column: 22],
+                          [
+                            {:->, [newlines: 1, depth: 1, line: 1, column: 27],
+                             [
+                               [{:a, [line: 1, column: 25], Elixir}],
+                               {:with,
+                                [
+                                  do: [line: 2, column: 23],
+                                  end: [line: 4, column: 10],
+                                  line: 2,
+                                  column: 10
+                                ],
+                                [
+                                  {:<-, [line: 2, column: 18], [:d, {:b, [line: 2, column: 21], Elixir}]},
+                                  [do: :f]
+                                ]}
+                             ]}
+                          ]}
+                       ]}
+                    ]},
+                   [do: :ok]
+                 ]}}
+    end
+
+    test "bitstrings" do
+      code = ~S'<<?., char, rest::binary>>'
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {:<<>>, [closing: [line: 1, column: 25], line: 1, column: 1],
+                 [
+                   46,
+                   {:char, [line: 1, column: 7], Elixir},
+                   {:"::", [line: 1, column: 17],
+                    [
+                      {:rest, [line: 1, column: 13], Elixir},
+                      {:binary, [line: 1, column: 19], Elixir}
+                    ]}
+                 ]}}
+    end
+
+    test "anonymous function typespecs" do
+      code = ~S'''
+      @spec start_link((-> term), GenServer.options()) :: on_start
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {:@, [line: 1, column: 1],
+                 [
+                   {:spec, [line: 1, column: 2],
+                    [
+                      {:"::", [line: 1, column: 50],
+                       [
+                         {:start_link, [closing: [line: 1, column: 48], line: 1, column: 7],
+                          [
+                            [
+                              {:->, [line: 1, column: 19], [[], {:term, [line: 1, column: 22], Elixir}]}
+                            ],
+                            {{:., [line: 1, column: 38],
+                              [
+                                {:__aliases__, [last: [line: 1, column: 29], line: 1, column: 29], [:GenServer]},
+                                :options
+                              ]}, [closing: [line: 1, column: 47], line: 1, column: 39], []}
+                          ]},
+                         {:on_start, [line: 1, column: 53], Elixir}
+                       ]}
+                    ]}
+                 ]}}
+
+      code = ~S'''
+      @spec get(agent, (state -> a), timeout) :: a when a: var
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {:@, [line: 1, column: 1],
+                 [
+                   {:spec, [line: 1, column: 2],
+                    [
+                      {:when, [line: 1, column: 46],
+                       [
+                         {:"::", [line: 1, column: 41],
+                          [
+                            {:get, [closing: [line: 1, column: 39], line: 1, column: 7],
+                             [
+                               {:agent, [line: 1, column: 11], Elixir},
+                               [
+                                 {:->, [depth: 0, line: 1, column: 25],
+                                  [
+                                    [{:state, [line: 1, column: 19], Elixir}],
+                                    {:a, [line: 1, column: 28], Elixir}
+                                  ]}
+                               ],
+                               {:timeout, [line: 1, column: 32], Elixir}
+                             ]},
+                            {:a, [line: 1, column: 44], Elixir}
+                          ]},
+                         [a: {:var, [line: 1, column: 54], Elixir}]
+                       ]}
+                    ]}
+                 ]}}
+    end
+
+    test "rescue with def" do
+      code = ~S'''
+      def foo(%mod{} = bar) do
+        :ok
+      end
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {:def, [do: [line: 1, column: 23], end: [line: 3, column: 1], line: 1, column: 1],
+                 [
+                   {:foo, [closing: [line: 1, column: 21], line: 1, column: 5],
+                    [
+                      {:=, [line: 1, column: 16],
+                       [
+                         {:%, [line: 1, column: 9],
+                          [
+                            {:mod, [line: 1, column: 10], Elixir},
+                            {:%{}, [closing: [line: 1, column: 14], line: 1, column: 13], []}
+                          ]},
+                         {:bar, [line: 1, column: 18], Elixir}
+                       ]}
+                    ]},
+                   [do: :ok]
+                 ]}}
+    end
+
+    test "default args" do
+      code = ~S'''
+      def foo(arg \\ :value) do
+        :ok
+      end
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {:def, [do: [line: 1, column: 24], end: [line: 3, column: 1], line: 1, column: 1],
+                 [
+                   {:foo, [closing: [line: 1, column: 22], line: 1, column: 5],
+                    [{:\\, [line: 1, column: 13], [{:arg, [line: 1, column: 9], Elixir}, :value]}]},
+                   [do: :ok]
+                 ]}}
+    end
+
     test "literal encoder" do
       codes = [
         {~S'''
@@ -2655,19 +2882,20 @@ defmodule SpitfireTest do
                  [
                    {{:., [line: 2, column: 7],
                      [
-                       {:__aliases__, [line: 2, column: 3], [:Some]},
+                       {:__aliases__, [{:last, [line: 2, column: 3]}, line: 2, column: 3], [:Some]},
                        :thing
                      ]},
                     [
                       end_of_expression: [newlines: 1, line: 4, column: 4],
+                      closing: [line: 4, column: 3],
                       line: 2,
                       column: 8
                     ], [{:bar, [line: 3, column: 5], Elixir}]},
                    {{:., [line: 5, column: 7],
                      [
-                       {:__aliases__, [line: 5, column: 3], [:Some]},
+                       {:__aliases__, [{:last, [line: 5, column: 3]}, line: 5, column: 3], [:Some]},
                        :thing_else!
-                     ]}, [line: 5, column: 8], []}
+                     ]}, [{:closing, [line: 5, column: 20]}, line: 5, column: 8], []}
                  ]}
             ]
           ]}},
@@ -2757,111 +2985,119 @@ defmodule SpitfireTest do
       '''
 
       assert Spitfire.parse(code) ==
-               {:ok,
-                {:defmodule, [do: [line: 1, column: 15], end: [line: 16, column: 1], line: 1, column: 1],
-                 [
-                   {:__aliases__, [line: 1, column: 11], [:Foo]},
+               {
+                 :ok,
+                 {
+                   :defmodule,
+                   [do: [line: 1, column: 15], end: [line: 16, column: 1], line: 1, column: 1],
                    [
-                     do:
-                       {:__block__, [],
-                        [
-                          {:defstruct,
-                           [
-                             end_of_expression: [newlines: 2, line: 2, column: 30],
-                             line: 2,
-                             column: 3
-                           ], [[:foo, {:bar, "yo"}]]},
-                          {:defmodule,
-                           [
-                             end_of_expression: [newlines: 2, line: 10, column: 6],
-                             do: [line: 4, column: 19],
-                             end: [line: 10, column: 3],
-                             line: 4,
-                             column: 3
-                           ],
-                           [
-                             {:__aliases__, [line: 4, column: 13], [:State]},
+                     {:__aliases__, [{:last, [line: 1, column: 11]}, {:line, 1}, {:column, 11}], [:Foo]},
+                     [
+                       do: {
+                         :__block__,
+                         [],
+                         [
+                           {:defstruct, [end_of_expression: [newlines: 2, line: 2, column: 30], line: 2, column: 3],
+                            [[:foo, {:bar, "yo"}]]},
+                           {
+                             :defmodule,
                              [
-                               do:
-                                 {:__block__, [],
-                                  [
-                                    {:defstruct,
-                                     [
-                                       end_of_expression: [newlines: 2, line: 5, column: 20],
-                                       line: 5,
-                                       column: 5
-                                     ], [[:yo]]},
-                                    {:def,
-                                     [
-                                       do: [line: 7, column: 20],
-                                       end: [line: 9, column: 5],
-                                       line: 7,
-                                       column: 5
-                                     ],
-                                     [
-                                       {:new, [closing: [line: 7, column: 18], line: 7, column: 9],
-                                        [{:attrs, [line: 7, column: 13], Elixir}]},
+                               end_of_expression: [newlines: 2, line: 10, column: 6],
+                               do: [line: 4, column: 19],
+                               end: [line: 10, column: 3],
+                               line: 4,
+                               column: 3
+                             ],
+                             [
+                               {:__aliases__, [{:last, [line: 4, column: 13]}, {:line, 4}, {:column, 13}], [:State]},
+                               [
+                                 do: {
+                                   :__block__,
+                                   [],
+                                   [
+                                     {:defstruct,
+                                      [end_of_expression: [newlines: 2, line: 5, column: 20], line: 5, column: 5],
+                                      [[:yo]]},
+                                     {
+                                       :def,
+                                       [do: [line: 7, column: 20], end: [line: 9, column: 5], line: 7, column: 5],
                                        [
-                                         do:
-                                           {:struct, [closing: [line: 8, column: 34], line: 8, column: 7],
-                                            [
-                                              {:%, [line: 8, column: 14],
-                                               [
-                                                 {:__MODULE__, [line: 8, column: 15], Elixir},
-                                                 {:%{},
-                                                  [
-                                                    closing: [line: 8, column: 26],
-                                                    line: 8,
-                                                    column: 25
-                                                  ], []}
-                                               ]},
-                                              {:attrs, [line: 8, column: 29], Elixir}
-                                            ]}
+                                         {:new, [closing: [line: 7, column: 18], line: 7, column: 9],
+                                          [{:attrs, [line: 7, column: 13], Elixir}]},
+                                         [
+                                           do: {
+                                             :struct,
+                                             [closing: [line: 8, column: 34], line: 8, column: 7],
+                                             [
+                                               {
+                                                 :%,
+                                                 [line: 8, column: 14],
+                                                 [
+                                                   {:__MODULE__, [line: 8, column: 15], Elixir},
+                                                   {:%{}, [closing: [line: 8, column: 26], line: 8, column: 25], []}
+                                                 ]
+                                               },
+                                               {:attrs, [line: 8, column: 29], Elixir}
+                                             ]
+                                           }
+                                         ]
                                        ]
-                                     ]}
-                                  ]}
+                                     }
+                                   ]
+                                 }
+                               ]
                              ]
-                           ]},
-                          {:@,
-                           [
-                             end_of_expression: [newlines: 1, line: 12, column: 47],
-                             line: 12,
-                             column: 3
-                           ],
-                           [
-                             {:spec, [line: 12, column: 4],
-                              [
-                                {:"::", [line: 12, column: 34],
+                           },
+                           {
+                             :@,
+                             [end_of_expression: [newlines: 1, line: 12, column: 47], line: 12, column: 3],
+                             [
+                               {
+                                 :spec,
+                                 [line: 12, column: 4],
                                  [
-                                   {:run, [closing: [line: 12, column: 32], line: 12, column: 9],
-                                    [
-                                      {:any, [closing: [line: 12, column: 17], line: 12, column: 13], []},
-                                      {:any, [closing: [line: 12, column: 24], line: 12, column: 20], []},
-                                      {:any, [closing: [line: 12, column: 31], line: 12, column: 27], []}
-                                    ]},
-                                   :something
-                                 ]}
-                              ]}
-                           ]},
-                          {:def,
-                           [
-                             do: [line: 13, column: 26],
-                             end: [line: 15, column: 3],
-                             line: 13,
-                             column: 3
-                           ],
-                           [
-                             {:run, [closing: [line: 13, column: 24], line: 13, column: 7],
-                              [
-                                {:foo, [line: 13, column: 11], Elixir},
-                                {:bar, [line: 13, column: 16], Elixir},
-                                {:baz, [line: 13, column: 21], Elixir}
-                              ]},
-                             [do: :something]
-                           ]}
-                        ]}
+                                   {
+                                     :"::",
+                                     [line: 12, column: 34],
+                                     [
+                                       {
+                                         :run,
+                                         [closing: [line: 12, column: 32], line: 12, column: 9],
+                                         [
+                                           {:any, [closing: [line: 12, column: 17], line: 12, column: 13], []},
+                                           {:any, [closing: [line: 12, column: 24], line: 12, column: 20], []},
+                                           {:any, [closing: [line: 12, column: 31], line: 12, column: 27], []}
+                                         ]
+                                       },
+                                       :something
+                                     ]
+                                   }
+                                 ]
+                               }
+                             ]
+                           },
+                           {
+                             :def,
+                             [do: [line: 13, column: 26], end: [line: 15, column: 3], line: 13, column: 3],
+                             [
+                               {
+                                 :run,
+                                 [closing: [line: 13, column: 24], line: 13, column: 7],
+                                 [
+                                   {:foo, [line: 13, column: 11], Elixir},
+                                   {:bar, [line: 13, column: 16], Elixir},
+                                   {:baz, [line: 13, column: 21], Elixir}
+                                 ]
+                               },
+                               [do: :something]
+                             ]
+                           }
+                         ]
+                       }
+                     ]
                    ]
-                 ]}}
+                 }
+               }
     end
   end
 
@@ -2922,7 +3158,10 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code) ==
                {:error, {:%{}, [{:closing, [line: 1, column: 22]}, line: 1, column: 2], [foo: :bar]},
-                [{[line: 1, column: 18], "syntax error"}, {[line: 1, column: 13], "syntax error"}]}
+                [
+                  {[line: 1, column: 13], "syntax error"},
+                  {[line: 1, column: 18], "syntax error"}
+                ]}
     end
 
     test "missing comma in tuple" do
@@ -2940,18 +3179,35 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code) == {
                :error,
-               {:foo, [do: [line: 1, column: 5], end: [line: 1, column: 5], line: 1, column: 1],
-                [
-                  [
-                    do:
-                      {:__block__, [],
+               {
+                 :foo,
+                 [do: [line: 1, column: 5], end: [line: 1, column: 5], line: 1, column: 1],
+                 [
+                   [
+                     do: {
+                       :__block__,
+                       [],
                        [
-                         {{:., [{:line, 2}, {:column, 7}], [{:__aliases__, [line: 2, column: 3], [:Some]}, :thing]},
-                          [{:end_of_expression, [newlines: 1, line: 2, column: 15]}, {:line, 2}, {:column, 8}], []},
+                         {
+                           {
+                             :.,
+                             [line: 2, column: 7],
+                             [{:__aliases__, [{:last, [line: 2, column: 3]}, {:line, 2}, {:column, 3}], [:Some]}, :thing]
+                           },
+                           [
+                             {:end_of_expression, [newlines: 1, line: 2, column: 15]},
+                             {:closing, [line: 2, column: 14]},
+                             {:line, 2},
+                             {:column, 8}
+                           ],
+                           []
+                         },
                          :ok
-                       ]}
-                  ]
-                ]},
+                       ]
+                     }
+                   ]
+                 ]
+               },
                [{[line: 1, column: 5], "missing `end` for do block"}]
              }
     end
@@ -2974,18 +3230,33 @@ defmodule SpitfireTest do
                    [
                      do: {
                        :foo,
-                       [{:do, [line: 2, column: 7]}, {:end, [line: 5, column: 1]}, {:line, 2}, {:column, 3}],
+                       [do: [line: 2, column: 7], end: [line: 5, column: 1], line: 2, column: 3],
                        [
                          [
-                           do:
-                             {:__block__, [],
-                              [
-                                {{:., [{:line, 3}, {:column, 9}],
-                                  [{:__aliases__, [line: 3, column: 5], [:Some]}, :thing]},
-                                 [{:end_of_expression, [newlines: 1, line: 3, column: 17]}, {:line, 3}, {:column, 10}],
-                                 []},
-                                :ok
-                              ]}
+                           do: {
+                             :__block__,
+                             [],
+                             [
+                               {
+                                 {
+                                   :.,
+                                   [line: 3, column: 9],
+                                   [
+                                     {:__aliases__, [{:last, [line: 3, column: 5]}, {:line, 3}, {:column, 5}], [:Some]},
+                                     :thing
+                                   ]
+                                 },
+                                 [
+                                   {:end_of_expression, [newlines: 1, line: 3, column: 17]},
+                                   {:closing, [line: 3, column: 16]},
+                                   {:line, 3},
+                                   {:column, 10}
+                                 ],
+                                 []
+                               },
+                               :ok
+                             ]
+                           }
                          ]
                        ]
                      }
@@ -3065,29 +3336,37 @@ defmodule SpitfireTest do
                  [line: 1, column: 10],
                  [
                    {:new_list, [line: 1, column: 1], Elixir},
-                   {{:., [{:line, 2}, {:column, 7}], [{:__aliases__, [line: 2, column: 3], [:Enum]}, :map]},
-                    [{:line, 2}, {:column, 8}],
-                    [
-                      {:some_list, [line: 2, column: 12], Elixir},
-                      {:fn, [{:closing, [line: 5, column: 19]}, line: 2, column: 23],
-                       [
-                         {:->, [{:newlines, 3}, depth: 1, line: 2, column: 31],
-                          [
-                            [{:item, [line: 2, column: 26], Elixir}],
-                            {:send,
+                   {
+                     {:., [line: 2, column: 7],
+                      [{:__aliases__, [{:last, [line: 2, column: 3]}, {:line, 2}, {:column, 3}], [:Enum]}, :map]},
+                     [{:closing, [line: 5, column: 19]}, {:line, 2}, {:column, 8}],
+                     [
+                       {:some_list, [line: 2, column: 12], Elixir},
+                       {
+                         :fn,
+                         [closing: [line: 5, column: 19], line: 2, column: 23],
+                         [
+                           {
+                             :->,
+                             [newlines: 3, depth: 1, line: 2, column: 31],
                              [
-                               {:closing, [line: 5, column: 19]},
-                               line: 5,
-                               column: 1
-                             ], [{:pid, [line: 5, column: 6], Elixir}, {:new_list, [line: 5, column: 11], Elixir}]}
-                          ]}
-                       ]}
-                    ]}
+                               [{:item, [line: 2, column: 26], Elixir}],
+                               {
+                                 :send,
+                                 [closing: [line: 5, column: 19], line: 5, column: 1],
+                                 [{:pid, [line: 5, column: 6], Elixir}, {:new_list, [line: 5, column: 11], Elixir}]
+                               }
+                             ]
+                           }
+                         ]
+                       }
+                     ]
+                   }
                  ]
                },
                [
-                 {[line: 2, column: 11], "missing closing parentheses for function invocation"},
-                 {[line: 2, column: 23], "missing closing end for anonymous function"}
+                 {[line: 2, column: 23], "missing closing end for anonymous function"},
+                 {[line: 2, column: 11], "missing closing parentheses for function invocation"}
                ]
              }
     end
@@ -3111,41 +3390,62 @@ defmodule SpitfireTest do
       assert {:error, _ast, _} = result = Spitfire.parse(code)
 
       assert result ==
-               {:error,
-                {:defmodule, [do: [line: 1, column: 15], end: [line: 12, column: 1], line: 1, column: 1],
-                 [
-                   {:__aliases__, [line: 1, column: 11], [:Foo]},
+               {
+                 :error,
+                 {
+                   :defmodule,
+                   [do: [line: 1, column: 15], end: [line: 12, column: 1], line: 1, column: 1],
                    [
-                     do:
-                       {:__block__, [],
-                        [
-                          {:import, [{:end_of_expression, [newlines: 2, line: 2, column: 13]}, line: 2, column: 3],
-                           [{:__aliases__, [line: 2, column: 10], [:Baz]}]},
-                          {:def,
-                           [
-                             {:end_of_expression, [newlines: 2, line: 7, column: 6]},
-                             do: [line: 4, column: 11],
-                             end: [line: 7, column: 3],
-                             line: 4,
-                             column: 3
-                           ],
-                           [
-                             {:bat, [line: 4, column: 7], Elixir},
+                     {:__aliases__, [{:last, [line: 1, column: 11]}, {:line, 1}, {:column, 11}], [:Foo]},
+                     [
+                       do: {
+                         :__block__,
+                         [],
+                         [
+                           {
+                             :import,
+                             [end_of_expression: [newlines: 2, line: 2, column: 13], line: 2, column: 3],
+                             [{:__aliases__, [{:last, [line: 2, column: 10]}, {:line, 2}, {:column, 10}], [:Baz]}]
+                           },
+                           {
+                             :def,
                              [
-                               do:
-                                 {:__block__, [],
-                                  [
-                                    {:=, [{:end_of_expression, [newlines: 1, line: 5, column: 14]}, line: 5, column: 9],
-                                     [{:var, [line: 5, column: 5], Elixir}, 123]},
-                                    {:{}, [line: 6, column: 5], []}
-                                  ]}
+                               end_of_expression: [newlines: 2, line: 7, column: 6],
+                               do: [line: 4, column: 11],
+                               end: [line: 7, column: 3],
+                               line: 4,
+                               column: 3
+                             ],
+                             [
+                               {:bat, [line: 4, column: 7], Elixir},
+                               [
+                                 do: {
+                                   :__block__,
+                                   [],
+                                   [
+                                     {
+                                       :=,
+                                       [end_of_expression: [newlines: 1, line: 5, column: 14], line: 5, column: 9],
+                                       [{:var, [line: 5, column: 5], Elixir}, 123]
+                                     },
+                                     {:{}, [line: 6, column: 5], []}
+                                   ]
+                                 }
+                               ]
                              ]
-                           ]},
-                          {:def, [do: [line: 9, column: 22], end: [line: 11, column: 3], line: 9, column: 3],
-                           [{:local_function, [line: 9, column: 7], Elixir}, [do: {:__block__, [], []}]]}
-                        ]}
+                           },
+                           {
+                             :def,
+                             [do: [line: 9, column: 22], end: [line: 11, column: 3], line: 9, column: 3],
+                             [{:local_function, [line: 9, column: 7], Elixir}, [do: {:__block__, [], []}]]
+                           }
+                         ]
+                       }
+                     ]
                    ]
-                 ]}, [{[line: 6, column: 5], "missing closing brace for tuple"}]}
+                 },
+                 [{[line: 6, column: 5], "missing closing brace for tuple"}]
+               }
     end
 
     test "example from github issue with tuple elements" do
@@ -3173,18 +3473,21 @@ defmodule SpitfireTest do
                    :defmodule,
                    [do: [line: 1, column: 15], end: [line: 12, column: 1], line: 1, column: 1],
                    [
-                     {:__aliases__, [line: 1, column: 11], [:Foo]},
+                     {:__aliases__, [{:last, [line: 1, column: 11]}, {:line, 1}, {:column, 11}], [:Foo]},
                      [
                        do: {
                          :__block__,
                          [],
                          [
-                           {:import, [{:end_of_expression, [newlines: 2, line: 2, column: 13]}, line: 2, column: 3],
-                            [{:__aliases__, [line: 2, column: 10], [:Baz]}]},
+                           {
+                             :import,
+                             [end_of_expression: [newlines: 2, line: 2, column: 13], line: 2, column: 3],
+                             [{:__aliases__, [{:last, [line: 2, column: 10]}, {:line, 2}, {:column, 10}], [:Baz]}]
+                           },
                            {
                              :def,
                              [
-                               {:end_of_expression, [newlines: 2, line: 7, column: 6]},
+                               end_of_expression: [newlines: 2, line: 7, column: 6],
                                do: [line: 4, column: 11],
                                end: [line: 7, column: 3],
                                line: 4,
@@ -3193,18 +3496,26 @@ defmodule SpitfireTest do
                              [
                                {:bat, [line: 4, column: 7], Elixir},
                                [
-                                 do:
-                                   {:__block__, [],
-                                    [
-                                      {:=, [{:end_of_expression, [newlines: 1, line: 5, column: 14]}, line: 5, column: 9],
-                                       [{:var, [line: 5, column: 5], Elixir}, 123]},
-                                      {:{}, [{:closing, nil}, line: 6, column: 5], [{:var, [line: 6, column: 6], Elixir}]}
-                                    ]}
+                                 do: {
+                                   :__block__,
+                                   [],
+                                   [
+                                     {
+                                       :=,
+                                       [end_of_expression: [newlines: 1, line: 5, column: 14], line: 5, column: 9],
+                                       [{:var, [line: 5, column: 5], Elixir}, 123]
+                                     },
+                                     {:{}, [closing: nil, line: 6, column: 5], [{:var, [line: 6, column: 6], Elixir}]}
+                                   ]
+                                 }
                                ]
                              ]
                            },
-                           {:def, [do: [line: 9, column: 22], end: [line: 11, column: 3], line: 9, column: 3],
-                            [{:local_function, [line: 9, column: 7], Elixir}, [do: {:__block__, [], []}]]}
+                           {
+                             :def,
+                             [do: [line: 9, column: 22], end: [line: 11, column: 3], line: 9, column: 3],
+                             [{:local_function, [line: 9, column: 7], Elixir}, [do: {:__block__, [], []}]]
+                           }
                          ]
                        }
                      ]
@@ -3232,52 +3543,62 @@ defmodule SpitfireTest do
 
       assert {:error, _ast, _} = result = Spitfire.parse(code)
 
-      assert result ==
+      assert result == {
+               :error,
                {
-                 :error,
-                 {
-                   :defmodule,
-                   [do: [line: 1, column: 15], end: [line: 12, column: 1], line: 1, column: 1],
+                 :defmodule,
+                 [do: [line: 1, column: 15], end: [line: 12, column: 1], line: 1, column: 1],
+                 [
+                   {:__aliases__, [{:last, [line: 1, column: 11]}, {:line, 1}, {:column, 11}], [:Foo]},
                    [
-                     {:__aliases__, [line: 1, column: 11], [:Foo]},
-                     [
-                       do: {
-                         :__block__,
-                         [],
-                         [
-                           {:import, [{:end_of_expression, [newlines: 2, line: 2, column: 13]}, line: 2, column: 3],
-                            [{:__aliases__, [line: 2, column: 10], [:Baz]}]},
-                           {
-                             :def,
+                     do: {
+                       :__block__,
+                       [],
+                       [
+                         {
+                           :import,
+                           [end_of_expression: [newlines: 2, line: 2, column: 13], line: 2, column: 3],
+                           [{:__aliases__, [{:last, [line: 2, column: 10]}, {:line, 2}, {:column, 10}], [:Baz]}]
+                         },
+                         {
+                           :def,
+                           [
+                             end_of_expression: [newlines: 2, line: 7, column: 6],
+                             do: [line: 4, column: 11],
+                             end: [line: 7, column: 3],
+                             line: 4,
+                             column: 3
+                           ],
+                           [
+                             {:bat, [line: 4, column: 7], Elixir},
                              [
-                               {:end_of_expression, [newlines: 2, line: 7, column: 6]},
-                               do: [line: 4, column: 11],
-                               end: [line: 7, column: 3],
-                               line: 4,
-                               column: 3
-                             ],
-                             [
-                               {:bat, [line: 4, column: 7], Elixir},
-                               [
-                                 do:
-                                   {:__block__, [],
-                                    [
-                                      {:=, [{:end_of_expression, [newlines: 1, line: 5, column: 14]}, line: 5, column: 9],
-                                       [{:var, [line: 5, column: 5], Elixir}, 123]},
-                                      [{:var, [line: 6, column: 6], Elixir}]
-                                    ]}
-                               ]
+                               do: {
+                                 :__block__,
+                                 [],
+                                 [
+                                   {
+                                     :=,
+                                     [end_of_expression: [newlines: 1, line: 5, column: 14], line: 5, column: 9],
+                                     [{:var, [line: 5, column: 5], Elixir}, 123]
+                                   },
+                                   [{:var, [line: 6, column: 6], Elixir}]
+                                 ]
+                               }
                              ]
-                           },
-                           {:def, [do: [line: 9, column: 22], end: [line: 11, column: 3], line: 9, column: 3],
-                            [{:local_function, [line: 9, column: 7], Elixir}, [do: {:__block__, [], []}]]}
-                         ]
-                       }
-                     ]
+                           ]
+                         },
+                         {
+                           :def,
+                           [do: [line: 9, column: 22], end: [line: 11, column: 3], line: 9, column: 3],
+                           [{:local_function, [line: 9, column: 7], Elixir}, [do: {:__block__, [], []}]]
+                         }
+                       ]
+                     }
                    ]
-                 },
-                 [{[line: 6, column: 5], "missing closing bracket for list"}]
-               }
+                 ]
+               },
+               [{[line: 6, column: 5], "missing closing bracket for list"}]
+             }
     end
   end
 end
