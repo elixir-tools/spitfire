@@ -1,0 +1,297 @@
+result,file,errors
+timeout,/home/mitchell/src/elixir/lib/elixir/lib/base.ex,
+timeout,/home/mitchell/src/elixir/lib/elixir/lib/bitwise.ex,
+timeout,/home/mitchell/src/elixir/lib/elixir/lib/calendar/naive_datetime.ex,
+timeout,/home/mitchell/src/elixir/lib/elixir/lib/code/formatter.ex,
+timeout,/home/mitchell/src/elixir/lib/elixir/lib/code/fragment.ex,
+timeout,/home/mitchell/src/elixir/lib/elixir/lib/code/typespec.ex,
+timeout,/home/mitchell/src/elixir/lib/elixir/lib/inspect/algebra.ex,
+timeout,/home/mitchell/src/elixir/lib/elixir/lib/protocol.ex,
+timeout,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/callbacks.ex,
+timeout,/home/mitchell/src/elixir/lib/iex/lib/iex/introspection.ex,
+failure,/home/mitchell/src/elixir/lib/eex/lib/eex.ex,"[{[line: 145, column: 34], ""syntax error""}, {[line: 145, column: 35], ""syntax error""}, {[line: 145, column: 58], ""unknown token: ,""}, {[line: 146, column: 36], ""syntax error""}, {[line: 146, column: 37], ""syntax error""}, {[line: 146, column: 60], ""unknown token: ,""}, {[line: 190, column: 34], ""syntax error""}, {[line: 190, column: 35], ""syntax error""}, {[line: 190, column: 58], ""unknown token: ,""}, {[line: 191, column: 36], ""syntax error""}, {[line: 191, column: 37], ""syntax error""}, {[line: 191, column: 60], ""unknown token: ,""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/access.ex,"[{[line: 313, column: 5], ""unknown token: block_identifier""}, {[line: 314, column: 18], ""unknown token: }""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/behaviour.ex,"[{[line: 75, column: 22], ""syntax error""}, {[line: 75, column: 47], ""unknown token: type_op""}, {[line: 75, column: 66], ""unknown token: when_op""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/config/provider.ex,"[{[line: 306, column: 7], ""unknown token: block_identifier""}, {[line: 397, column: 7], ""unknown token: block_identifier""}, {[line: 398, column: 14], ""unknown token: when_op""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/dynamic_supervisor.ex,"[{[line: 799, column: 5], ""unknown token: block_identifier""}, {[line: 800, column: 23], ""unknown token: }""}, {[line: 800, column: 25], ""unknown token: when_op""}, {[line: 939, column: 5], ""unknown token: block_identifier""}, {[line: 966, column: 7], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/enum.ex,"[{[line: 1548, column: 5], ""unknown token: block_identifier""}, {[line: 1615, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/exception.ex,"[{[line: 70, column: 5], ""unknown token: block_identifier""}, {[line: 71, column: 14], ""unknown token: when_op""}, {[line: 418, column: 5], ""unknown token: block_identifier""}, {[line: 452, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/float.ex,"[{[line: 190, column: 3], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/gen_event.ex,"[{[line: 270, column: 5], ""unknown token: block_identifier""}, {[line: 271, column: 16], ""unknown token: }""}, {[line: 842, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/gen_event/stream.ex,"[{[line: 126, column: 5], ""unknown token: block_identifier""}, {[line: 167, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/gen_server.ex,"[{[line: 1111, column: 9], ""unknown token: block_identifier""}, {[line: 1112, column: 20], ""unknown token: }""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/inspect.ex,"[{[line: 608, column: 5], ""unknown token: block_identifier""}, {[line: 609, column: 22], ""unknown token: }""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/integer.ex,"[{[line: 107, column: 10], ""unknown token: power_op""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/io/ansi.ex,"[{[line: 6, column: 26], ""syntax error""}, {[line: 6, column: 29], ""unknown token: type_op""}, {[line: 7, column: 24], ""syntax error""}, {[line: 7, column: 27], ""unknown token: do""}, {[line: 12, column: 22], ""syntax error""}, {[line: 16, column: 1], ""unknown token: end""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/kernel.ex,"[{[line: 1, column: 1], ""unknown token: eol""}, {[line: 1442, column: 4], ""unknown token: op_identifier""}, {[line: 1442, column: 10], ""syntax error""}, {[line: 1443, column: 4], ""unknown token: op_identifier""}, {[line: 1443, column: 10], ""syntax error""}, {[line: 1444, column: 3], ""unknown token: op_identifier""}, {[line: 1444, column: 14], ""unknown token: do""}, {[line: 1445, column: 12], ""unknown token: .""}, {[line: 1460, column: 4], ""unknown token: op_identifier""}, {[line: 1460, column: 10], ""syntax error""}, {[line: 1461, column: 4], ""unknown token: op_identifier""}, {[line: 1461, column: 10], ""syntax error""}, {[line: 1462, column: 4], ""unknown token: op_identifier""}, {[line: 1462, column: 10], ""syntax error""}, {[line: 1463, column: 4], ""unknown token: op_identifier""}, {[line: 1463, column: 10], ""syntax error""}, {[line: 1464, column: 3], ""unknown token: op_identifier""}, {[line: 1953, column: 21], ""missing closing parentheses for function invocation""}, {[line: 1961, column: 5], ""unknown token: )""}, {[line: 1986, column: 21], ""missing closing parentheses for function invocation""}, {[line: 1993, column: 5], ""unknown token: )""}, {[line: 1999, column: 21], ""missing closing parentheses for function invocation""}, {[line: 2006, column: 5], ""unknown token: )""}, {[line: 3831, column: 21], ""missing closing parentheses for function invocation""}, {[line: 3838, column: 5], ""unknown token: )""}, {[line: 4113, column: 13], ""unknown token: range_op""}, {[line: 4113, column: 15], ""missing closing parentheses""}, {[line: 4350, column: 17], ""unknown token: power_op""}, {[line: 4351, column: 17], ""unknown token: power_op""}, {[line: 4352, column: 15], ""unknown token: power_op""}, {[line: 4353, column: 17], ""unknown token: power_op""}, {[line: 4354, column: 15], ""unknown token: power_op""}, {[line: 4355, column: 12], ""unknown token: power_op""}, {[line: 4359, column: 12], ""unknown token: power_op""}, {[line: 5937, column: 38], ""syntax error""}, {[line: 6667, column: 1], ""unknown token: end""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/kernel/cli.ex,"[{[line: 153, column: 9], ""unknown token: block_identifier""}, {[line: 416, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/kernel/error_handler.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/kernel/lexical_tracker.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/kernel/parallel_compiler.ex,"[{[line: 269, column: 7], ""unknown token: block_identifier""}, {[line: 270, column: 15], ""unknown token: .""}, {[line: 270, column: 31], ""unknown token: .""}, {[line: 309, column: 5], ""unknown token: block_identifier""}, {[line: 558, column: 31], ""missing closing parentheses for function invocation""}, {[line: 558, column: 15], ""missing closing parentheses for function invocation""}, {[line: 558, column: 82], ""unknown token: )""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/kernel/special_forms.ex,"[{[line: 62, column: 24], ""syntax error""}, {[line: 62, column: 25], ""syntax error""}, {[line: 62, column: 30], ""unknown token: ,""}, {[line: 82, column: 25], ""syntax error""}, {[line: 82, column: 26], ""syntax error""}, {[line: 82, column: 31], ""unknown token: ,""}, {[line: 154, column: 23], ""syntax error""}, {[line: 154, column: 24], ""syntax error""}, {[line: 154, column: 36], ""unknown token: ,""}, {[line: 374, column: 26], ""syntax error""}, {[line: 374, column: 27], ""syntax error""}, {[line: 374, column: 32], ""unknown token: ,""}, {[line: 496, column: 23], ""syntax error""}, {[line: 496, column: 24], ""syntax error""}, {[line: 496, column: 36], ""unknown token: ,""}, {[line: 1366, column: 29], ""syntax error""}, {[line: 1366, column: 30], ""syntax error""}, {[line: 1366, column: 35], ""unknown token: ,""}, {[line: 1382, column: 38], ""syntax error""}, {[line: 1382, column: 39], ""syntax error""}, {[line: 1382, column: 44], ""unknown token: ,""}, {[line: 1740, column: 24], ""syntax error""}, {[line: 1740, column: 25], ""syntax error""}, {[line: 1740, column: 33], ""unknown token: ,""}, {[line: 1757, column: 31], ""syntax error""}, {[line: 1757, column: 32], ""syntax error""}, {[line: 1757, column: 37], ""unknown token: ,""}, {[line: 1835, column: 23], ""syntax error""}, {[line: 1835, column: 24], ""syntax error""}, {[line: 1835, column: 29], ""unknown token: ,""}, {[line: 1869, column: 33], ""syntax error""}, {[line: 1869, column: 34], ""syntax error""}, {[line: 1869, column: 39], ""unknown token: ,""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/kernel/utils.ex,"[{[line: 127, column: 9], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/list.ex,"[{[line: 1098, column: 5], ""unknown token: block_identifier""}, {[line: 1099, column: 14], ""unknown token: when_op""}, {[line: 1150, column: 5], ""unknown token: block_identifier""}, {[line: 1151, column: 14], ""unknown token: when_op""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/macro.ex,"[{[line: 1400, column: 26], ""missing closing parentheses for function invocation""}, {[line: 1400, column: 14], ""missing closing parentheses for function invocation""}, {[line: 1400, column: 69], ""unknown token: )""}, {[line: 2644, column: 11], ""missing closing parentheses for function invocation""}, {[line: 2643, column: 32], ""missing closing end for anonymous function""}, {[line: 2674, column: 40], ""syntax error""}, {[line: 2807, column: 1], ""unknown token: end""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/map_set.ex,"[{[line: 430, column: 15], ""unknown token: at_op""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/module.ex,"[{[line: 1063, column: 5], ""unknown token: block_identifier""}, {[line: 2071, column: 5], ""unknown token: block_identifier""}, {[line: 2103, column: 5], ""unknown token: block_identifier""}, {[line: 2104, column: 19], ""unknown token: when_op""}, {[line: 2124, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/module/locals_tracker.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/record.ex,"[{[line: 256, column: 29], ""syntax error""}, {[line: 256, column: 30], ""syntax error""}, {[line: 256, column: 42], ""unknown token: do""}, {[line: 257, column: 15], ""unknown token: .""}, {[line: 260, column: 29], ""syntax error""}, {[line: 260, column: 30], ""syntax error""}, {[line: 260, column: 44], ""unknown token: do""}, {[line: 261, column: 15], ""unknown token: .""}, {[line: 264, column: 3], ""unknown token: end""}, {[line: 274, column: 30], ""syntax error""}, {[line: 274, column: 31], ""syntax error""}, {[line: 274, column: 43], ""unknown token: do""}, {[line: 275, column: 15], ""unknown token: .""}, {[line: 278, column: 30], ""syntax error""}, {[line: 278, column: 31], ""syntax error""}, {[line: 278, column: 45], ""unknown token: do""}, {[line: 279, column: 15], ""unknown token: .""}, {[line: 281, column: 5], ""unknown token: end""}, {[line: 282, column: 3], ""unknown token: end""}, {[line: 338, column: 9], ""unknown token: block_identifier""}, {[line: 526, column: 1], ""unknown token: end""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/registry.ex,"[{[line: 176, column: 4], ""unknown token: op_identifier""}, {[line: 176, column: 14], ""syntax error""}, {[line: 177, column: 4], ""unknown token: op_identifier""}, {[line: 177, column: 14], ""syntax error""}, {[line: 440, column: 9], ""unknown token: block_identifier""}, {[line: 441, column: 26], ""unknown token: }""}, {[line: 441, column: 28], ""unknown token: when_op""}, {[line: 441, column: 37], ""unknown token: comp_op""}, {[line: 441, column: 45], ""unknown token: )""}, {[line: 441, column: 45], ""missing closing parentheses""}, {[line: 1089, column: 5], ""unknown token: block_identifier""}, {[line: 1090, column: 21], ""unknown token: ]""}, {[line: 1508, column: 4], ""unknown token: op_identifier""}, {[line: 1508, column: 14], ""syntax error""}, {[line: 1509, column: 4], ""unknown token: op_identifier""}, {[line: 1509, column: 14], ""syntax error""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/stream.ex,"[{[line: 590, column: 5], ""unknown token: block_identifier""}, {[line: 591, column: 53], ""unknown token: }""}, {[line: 948, column: 5], ""unknown token: block_identifier""}, {[line: 949, column: 30], ""unknown token: }""}, {[line: 968, column: 7], ""unknown token: block_identifier""}, {[line: 996, column: 5], ""unknown token: block_identifier""}, {[line: 1033, column: 5], ""unknown token: block_identifier""}, {[line: 1034, column: 18], ""unknown token: }""}, {[line: 1058, column: 5], ""unknown token: block_identifier""}, {[line: 1061, column: 31], ""unknown token: }""}, {[line: 1061, column: 33], ""unknown token: when_op""}, {[line: 1061, column: 41], ""unknown token: comp_op""}, {[line: 1374, column: 5], ""unknown token: block_identifier""}, {[line: 1375, column: 26], ""unknown token: }""}, {[line: 1631, column: 5], ""unknown token: block_identifier""}, {[line: 1632, column: 23], ""unknown token: }""}, {[line: 1659, column: 5], ""unknown token: block_identifier""}, {[line: 1672, column: 5], ""unknown token: block_identifier""}, {[line: 1673, column: 18], ""unknown token: }""}, {[line: 1691, column: 5], ""unknown token: block_identifier""}, {[line: 1692, column: 31], ""unknown token: }""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/supervisor/spec.ex,"[{[line: 109, column: 25], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/system.ex,"[{[line: 572, column: 9], ""unknown token: block_identifier""}, {[line: 1122, column: 5], ""unknown token: block_identifier""}, {[line: 1123, column: 19], ""unknown token: }""}, {[line: 1152, column: 9], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/task.ex,"[{[line: 871, column: 5], ""unknown token: block_identifier""}, {[line: 913, column: 5], ""unknown token: block_identifier""}, {[line: 1119, column: 5], ""unknown token: block_identifier""}, {[line: 1246, column: 5], ""unknown token: block_identifier""}, {[line: 1247, column: 24], ""unknown token: }""}, {[line: 1397, column: 5], ""unknown token: block_identifier""}, {[line: 1407, column: 5], ""unknown token: block_identifier""}, {[line: 1422, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/lib/task/supervised.ex,"[{[line: 40, column: 5], ""unknown token: block_identifier""}, {[line: 344, column: 5], ""unknown token: block_identifier""}, {[line: 345, column: 33], ""unknown token: }""}, {[line: 392, column: 9], ""unknown token: block_identifier""}, {[line: 420, column: 5], ""unknown token: block_identifier""}, {[line: 432, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/elixir/unicode/unicode.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/assertions.ex,"[{[line: 366, column: 23], ""missing closing parentheses for function invocation""}, {[line: 384, column: 7], ""unknown token: )""}, {[line: 530, column: 9], ""unknown token: block_identifier""}, {[line: 825, column: 5], ""unknown token: block_identifier""}, {[line: 928, column: 7], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/capture_io.ex,"[{[line: 292, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/capture_log.ex,"[{[line: 122, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/capture_server.ex,"[{[line: 152, column: 5], ""unknown token: block_identifier""}, {[line: 192, column: 3], ""unknown token: block_identifier""}, {[line: 193, column: 12], ""unknown token: .""}]"
+failure,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/case.ex,"[{[line: 396, column: 24], ""syntax error""}, {[line: 396, column: 25], ""syntax error""}, {[line: 396, column: 37], ""unknown token: )""}, {[line: 418, column: 24], ""syntax error""}, {[line: 418, column: 25], ""syntax error""}, {[line: 418, column: 27], ""unknown token: ,""}, {[line: 487, column: 27], ""syntax error""}, {[line: 487, column: 28], ""syntax error""}, {[line: 487, column: 41], ""unknown token: )""}]"
+failure,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/doc_test.ex,"[{[line: 226, column: 27], ""syntax error""}, {[line: 226, column: 28], ""syntax error""}, {[line: 226, column: 30], ""unknown token: ,""}, {[line: 257, column: 27], ""syntax error""}, {[line: 257, column: 28], ""syntax error""}, {[line: 257, column: 30], ""unknown token: ,""}, {[line: 472, column: 7], ""unknown token: block_identifier""}, {[line: 518, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/on_exit_handler.ex,"[{[line: 23, column: 5], ""unknown token: block_identifier""}, {[line: 62, column: 5], ""unknown token: block_identifier""}, {[line: 97, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/runner.ex,"[{[line: 22, column: 11], ""unknown token: block_identifier""}, {[line: 142, column: 5], ""unknown token: block_identifier""}, {[line: 429, column: 7], ""unknown token: block_identifier""}, {[line: 430, column: 20], ""unknown token: }""}, {[line: 443, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/iex/lib/iex.ex,"[{[line: 910, column: 9], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/iex/lib/iex/cli.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/iex/lib/iex/evaluator.ex,"[{[line: 123, column: 11], ""unknown token: eol""}, {[line: 124, column: 11], ""syntax error""}, {[line: 148, column: 5], ""unknown token: block_identifier""}, {[line: 164, column: 5], ""unknown token: block_identifier""}, {[line: 179, column: 5], ""unknown token: block_identifier""}, {[line: 286, column: 5], ""unknown token: block_identifier""}, {[line: 287, column: 14], ""unknown token: .""}]"
+failure,/home/mitchell/src/elixir/lib/iex/lib/iex/helpers.ex,"[{[line: 772, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/iex/lib/iex/info.ex,"[{[line: 353, column: 7], ""unknown token: block_identifier""}, {[line: 354, column: 15], ""unknown token: ]""}, {[line: 354, column: 17], ""unknown token: match_op""}, {[line: 394, column: 7], ""unknown token: block_identifier""}, {[line: 395, column: 23], ""unknown token: }""}]"
+failure,/home/mitchell/src/elixir/lib/iex/lib/iex/pry.ex,"%MatchError{term: [{{:quote, [line: 626, column: 7], Elixir}, %{tokens: [{:eol, {626, 15, 1}}, {:identifier, {627, 9, ~c""env""}, :env}, {:match_op, {627, 13, nil}, :=}, {:identifier, {627, 15, ~c""__ENV__""}, :__ENV__}, {:eol, {627, 22, 1}}, {:identifier, {628, 9, ~c""options""}, :options}, {:match_op, {628, 17, nil}, :=}, {:paren_identifier, {628, 19, ~c""unquote""}, :unquote}, {:""("", {628, 26, nil}}, {:identifier, {628, 27, ~c""options""}, :options}, {:"")"", {628, 34, nil}}, {:eol, {628, 35, 2}}, {:identifier, {630, 9, ~c""options""}, :options}, {:match_op, {630, 17, nil}, :=}, {:eol, {630, 18, 1}}, {:identifier, {631, 11, ~c""if""}, :if}, {:alias, {631, 14, ~c""IO""}, :IO}, {:., {631, 16, nil}}, {:alias, {631, 17, ~c""ANSI""}, :ANSI}, {:., {631, 21, nil}}, {:paren_identifier, {631, 22, ~c""enabled?""}, :enabled?}, {:""("", {631, 30, nil}}, {:"")"", {631, 31, nil}}, {:do, {631, 33, nil}}, {:eol, {631, 35, 1}}, {:alias, {632, 13, ~c""Keyword""}, :Keyword}, {:., {632, 20, nil}}, {:paren_identifier, {632, 21, ~c""put_new""}, :put_new}, {:""("", {632, 28, nil}}, {:identifier, {632, 29, ~c""options""}, :options}, {:"","", {632, 36, 0}}, {:atom, {632, 38, ~c""syntax_colors""}, :syntax_colors}, {:"","", {632, 52, 0}}, {:alias, {632, 54, ~c""IO""}, :IO}, {:., {632, 56, nil}}, {:alias, {632, 57, ~c""ANSI""}, :ANSI}, {:., {632, 61, nil}}, {:paren_identifier, {632, 62, ~c""syntax_colors""}, :syntax_colors}, {:""("", {632, 75, nil}}, {:"")"", {632, 76, nil}}, {:"")"", {632, 77, ...}}, {:eol, {632, ...}}, {:block_identifier, {...}, ...}, {:eol, ...}, {...}, ...], literal_encoder: #Function<0.106599347/2 in Spitfire.new/2>, errors: [], current_token: {:do_identifier, {626, 7, ~c""quote""}, :quote}, stab_depth: 2, peek_token: {:do, {626, 13, nil}}, nestings: []}}]}"
+failure,/home/mitchell/src/elixir/lib/logger/lib/logger.ex,"%CaseClauseError{term: {{:%{}, [closing: [line: 1027, column: 12], line: 1027, column: 11], []}, {:quote, [line: 1028, column: 10], Elixir}}}"
+failure,/home/mitchell/src/elixir/lib/logger/lib/logger/backends/console.ex,"[{[line: 284, column: 5], ""unknown token: block_identifier""}, {[line: 285, column: 20], ""unknown token: }""}]"
+failure,/home/mitchell/src/elixir/lib/logger/lib/logger/backends/handler.ex,"[{[line: 54, column: 3], ""unknown token: block_identifier""}, {[line: 55, column: 10], ""unknown token: ,""}]"
+failure,/home/mitchell/src/elixir/lib/logger/lib/logger/translator.ex,"[{[line: 547, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/logger/lib/logger/utils.ex,"[{[line: 38, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/app_loader.ex,"[{[line: 15, column: 5], ""unknown token: block_identifier""}, {[line: 16, column: 37], ""unknown token: }""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/compilers/elixir.ex,"[{[line: 208, column: 7], ""unknown token: block_identifier""}, {[line: 209, column: 13], ""unknown token: .""}, {[line: 300, column: 5], ""unknown token: block_identifier""}, {[line: 301, column: 51], ""unknown token: }""}, {[line: 842, column: 5], ""unknown token: block_identifier""}, {[line: 843, column: 86], ""unknown token: }""}, {[line: 939, column: 5], ""unknown token: block_identifier""}, {[line: 940, column: 72], ""unknown token: }""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/compilers/erlang.ex,"[{[line: 235, column: 5], ""unknown token: block_identifier""}, {[line: 236, column: 27], ""unknown token: }""}, {[line: 236, column: 29], ""unknown token: when_op""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/compilers/test.ex,"[{[line: 100, column: 9], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/dep/converger.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/dep/elixir_scm.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/dep/fetcher.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/dep/loader.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/dep/lock.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/generator.ex,"[{[line: 226, column: 36], ""syntax error""}, {[line: 226, column: 38], ""unknown token: ,""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/project.ex,"[{[line: 904, column: 11], ""unknown token: block_identifier""}, {[line: 905, column: 17], ""unknown token: .""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/scm/git.ex,"[{[line: 343, column: 5], ""unknown token: block_identifier""}, {[line: 344, column: 19], ""unknown token: }""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/shell/process.ex,"[{[line: 64, column: 5], ""unknown token: block_identifier""}, {[line: 127, column: 5], ""unknown token: block_identifier""}, {[line: 155, column: 5], ""unknown token: block_identifier""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/new.ex,"[{[line: 248, column: 8], ""unknown token: eol""}, {[line: 249, column: 9], ""missing closing parentheses""}, {[line: 249, column: 16], ""syntax error""}, {[line: 259, column: 7], ""unknown token: )""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/profile.fprof.ex,"[{[line: 229, column: 5], ""unknown token: block_identifier""}, {[line: 230, column: 15], ""unknown token: .""}]"
+failure,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/xref.ex,"[{[line: 511, column: 5], ""unknown token: block_identifier""}, {[line: 512, column: 11], ""unknown token: .""}]"
+failure,/home/mitchell/src/elixir/lib/mix/test/fixtures/deps_on_git_repo/lib/deps_on_git_repo.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/mix/test/fixtures/git_repo/lib/git_repo.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/mix/test/fixtures/git_repo/sparse_dir/lib/git_sparse_repo.ex,"[{[line: 1, column: 1], ""unknown token: eol""}]"
+failure,/home/mitchell/src/elixir/lib/mix/tmp/test raises SyntaxError when parsing invalid source file/a.ex,"[{[line: 1, column: 13], ""unknown token: match_op""}, {[line: 1, column: 23], ""unknown token: rel_op""}, {[line: 1, column: 24], ""missing closing brace for struct""}, {[line: 1, column: 25], ""syntax error""}]"
+success,/home/mitchell/src/elixir/lib/eex/lib/eex/compiler.ex,
+success,/home/mitchell/src/elixir/lib/eex/lib/eex/engine.ex,
+success,/home/mitchell/src/elixir/lib/eex/lib/eex/smart_engine.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/agent.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/agent/server.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/application.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/atom.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/calendar.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/calendar/date.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/calendar/date_range.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/calendar/datetime.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/calendar/iso.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/calendar/time.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/calendar/time_zone_database.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/code.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/code/identifier.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/code/normalizer.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/collectable.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/config.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/config/reader.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/dict.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/file.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/file/stat.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/file/stream.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/function.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/hash_dict.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/hash_set.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/io.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/io/ansi/docs.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/io/stream.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/kernel/parallel_require.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/kernel/typespec.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/keyword.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/list/chars.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/macro/env.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/map.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/module/behaviour.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/module/parallel_checker.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/module/types.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/module/types/descr.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/module/types/expr.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/module/types/helpers.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/module/types/of.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/module/types/pattern.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/node.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/option_parser.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/partition_supervisor.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/path.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/port.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/process.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/range.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/record/extractor.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/regex.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/set.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/stream/reducers.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/string.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/string/chars.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/string_io.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/supervisor.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/supervisor/default.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/task/supervisor.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/tuple.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/uri.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/version.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/compile_sample.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/consolidation/sample.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/consolidation/with_any.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/assertions.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/boolean_check.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/callback.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/cond.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/defmacrop.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/for_bitstring.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/for_boolean_check.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/is_struct.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/macrocallback.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/protocol_opaque.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/raise.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/remote_call.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/rewrite.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/struct_update.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/try.ex,
+success,/home/mitchell/src/elixir/lib/elixir/test/elixir/fixtures/dialyzer/with.ex,
+success,/home/mitchell/src/elixir/lib/elixir/unicode/security.ex,
+success,/home/mitchell/src/elixir/lib/elixir/unicode/tokenizer.ex,
+success,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit.ex,
+success,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/case_template.ex,
+success,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/cli_formatter.ex,
+success,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/diff.ex,
+success,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/event_manager.ex,
+success,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/failures_manifest.ex,
+success,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/filters.ex,
+success,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/formatter.ex,
+success,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/runner_stats.ex,
+success,/home/mitchell/src/elixir/lib/ex_unit/lib/ex_unit/server.ex,
+success,/home/mitchell/src/elixir/lib/iex/lib/iex/app.ex,
+success,/home/mitchell/src/elixir/lib/iex/lib/iex/autocomplete.ex,
+success,/home/mitchell/src/elixir/lib/iex/lib/iex/broker.ex,
+success,/home/mitchell/src/elixir/lib/iex/lib/iex/config.ex,
+success,/home/mitchell/src/elixir/lib/iex/lib/iex/history.ex,
+success,/home/mitchell/src/elixir/lib/iex/lib/iex/server.ex,
+success,/home/mitchell/src/elixir/lib/logger/lib/logger/app.ex,
+success,/home/mitchell/src/elixir/lib/logger/lib/logger/backends/config.ex,
+success,/home/mitchell/src/elixir/lib/logger/lib/logger/backends/internal.ex,
+success,/home/mitchell/src/elixir/lib/logger/lib/logger/backends/supervisor.ex,
+success,/home/mitchell/src/elixir/lib/logger/lib/logger/backends/watcher.ex,
+success,/home/mitchell/src/elixir/lib/logger/lib/logger/formatter.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/cli.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/config.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/dep.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/dep/umbrella.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/exceptions.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/hex.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/local.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/local/installer.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/project_stack.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/rebar.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/release.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/remote_converger.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/scm.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/scm/path.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/shell.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/shell/io.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/shell/quiet.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/state.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/task.compiler.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/task.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/app.config.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/app.start.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/app.tree.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/archive.build.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/archive.check.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/archive.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/archive.install.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/archive.uninstall.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/clean.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/cmd.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/compile.all.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/compile.app.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/compile.elixir.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/compile.erlang.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/compile.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/compile.leex.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/compile.protocols.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/compile.yecc.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/deps.clean.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/deps.compile.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/deps.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/deps.get.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/deps.loadpaths.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/deps.precompile.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/deps.tree.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/deps.unlock.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/deps.update.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/do.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/escript.build.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/escript.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/escript.install.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/escript.uninstall.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/eval.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/format.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/help.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/iex.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/loadconfig.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/loadpaths.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/local.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/local.hex.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/local.public_keys.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/local.rebar.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/profile.cprof.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/profile.eprof.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/release.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/release.init.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/run.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/test.coverage.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/test.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/will_recompile.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks_server.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/utils.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/archive/lib/local.sample.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/deps_status/custom/raw_repo/lib/raw_repo.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/escript_test/lib/escript_test.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/no_mixfile/lib/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/no_mixfile/lib/b.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/release_test/lib/release_test.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/test_stale/lib/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/test_stale/lib/b.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/umbrella_dep/deps/umbrella/apps/bar/lib/bar.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/umbrella_dep/deps/umbrella/apps/foo/lib/foo.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/umbrella_test/apps/bar/lib/bar.ex,
+success,/home/mitchell/src/elixir/lib/mix/test/fixtures/umbrella_test/apps/foo/lib/foo.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test checks if file is formatted with --check-formatted/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test does not cache inputs from .formatter.exs/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test does not cache inputs from .formatter.exs/b.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test does not write file to disk on dry-run/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test expands patterns in inputs from .formatter.exs/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test formats the given file correctly/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test formats the given files/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test formats the given pattern/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test is a no-op if the file is already formatted/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test prints an error on conflicting .formatter.exs files/lib/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test reads exported configuration from dependencies and subdirectories/lib/extra/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test reads exported configuration from dependencies and subdirectories/lib/sub/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test reads exported configuration from dependencies/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test reads exported configuration from subdirectories/lib/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test reads file from stdin and prints to stdout/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test uses inputs and configuration from --dot-formatter/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test uses inputs and configuration from .formatter.exs/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test uses inputs and configuration from root path/lib/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test uses multiple plugins from .formatter.exs targeting the same sigil/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test uses multiple plugins from .formatter.exs with the same sigil in declared order/a.ex,
+success,/home/mitchell/src/elixir/lib/mix/tmp/test uses sigil plugins from .formatter.exs/a.ex,

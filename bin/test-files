@@ -12,14 +12,14 @@ defmodule Main do
     path = List.first(argv, "/home/mitchell/src/next-ls/lib/**/*.ex")
     files = Path.wildcard(path)
     for file <- files, {:ok, content} <- [File.read(file)] do
-      content
+      {file, content}
     end
   end
 
   def run(files) do
-    Task.async_stream(files, fn file ->
+    Task.async_stream(files, fn {file, content} ->
       try do
-        case Spitfire.parse(file) do
+        case Spitfire.parse(content) do
           {:ok, _ast} -> [ok: file]
           {:error, _ast, errors} -> [error: file, errors: errors]
         end
@@ -40,7 +40,7 @@ defmodule Main do
         [{:ok, file}] -> file
         [error: file, errors: errors] -> {file, errors}
         [error: file, exception: e] -> {file, e}
-        {:timeout, file} -> file
+        {:timeout, {file, _content}} -> file
       end)
   end
 
