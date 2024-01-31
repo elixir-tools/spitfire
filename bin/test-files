@@ -1,0 +1,75 @@
+#!/usr/bin/env elixir
+
+Mix.install([
+  {:spitfire, path: "."},
+  :nimble_csv
+])
+
+defmodule Main do
+  alias NimbleCSV.RFC4180, as: CSV
+
+  def collect_files(argv) do
+    path = List.first(argv, "/home/mitchell/src/next-ls/lib/**/*.ex")
+    files = Path.wildcard(path)
+    for file <- files, {:ok, content} <- [File.read(file)] do
+      content
+    end
+  end
+
+  def run(files) do
+    Task.async_stream(files, fn file ->
+      try do
+        case Spitfire.parse(file) do
+          {:ok, _ast} -> [ok: file]
+          {:error, _ast, errors} -> [error: file, errors: errors]
+        end
+      rescue
+        e ->
+          [error: file, exception: e]
+      end
+    end, on_timeout: :kill_task, zip_input_on_exit: true)
+    |> Stream.map(fn
+      {:ok, r} -> r
+      {:exit, {file, :timeout}} -> {:timeout, file}
+    end)
+    |> Enum.group_by(fn 
+        [{:ok, _file}] -> :ok
+        [{:error, _file} | _] -> :error
+        {:timeout, _f} -> :timeout
+      end, fn 
+        [{:ok, file}] -> file
+        [error: file, errors: errors] -> {file, errors}
+        [error: file, exception: e] -> {file, e}
+        {:timeout, file} -> file
+      end)
+  end
+
+  def to_csv(data) do
+    headers = ~w(result file errors)
+    rows = 
+      for {result_type, results} <- data, row <- results do
+        case {result_type, row} do
+          {:ok, file} -> ["success", file, ""]
+          {:error, {file, errors}} -> ["failure", file, inspect(errors)]
+          {:timeout, file} -> ["timeout", file, ""]
+        end
+      end
+
+    CSV.dump_to_iodata([headers | rows]) |> then(&File.write!("results.csv", &1))
+  end
+end
+
+files = Main.collect_files(System.argv())
+
+{time, data} = :timer.tc(fn -> Main.run(files) end, :millisecond)
+
+data |> Main.to_csv()
+
+data = 
+  Map.new(data, fn {k, v} ->
+    {k, Enum.count(v)}
+  end)
+
+IO.puts("Results written to results.csv")
+IO.puts("Parsed concurrently in #{time}ms")
+IO.puts("Currently parsing: #{data.ok / (data.error + data.timeout + data.ok) * 100}%")
