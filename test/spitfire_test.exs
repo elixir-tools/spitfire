@@ -560,11 +560,24 @@ defmodule SpitfireTest do
          ''', {:foo, [line: 1, column: 1], [[alice: {:alice, [line: 1, column: 12], Elixir}], [do: :ok]]}},
         {~s'''
          [:one, two: :three]
-         ''', [:one, {:two, :three}]}
+         ''', [:one, {:two, :three}]},
+        {~s'''
+         @moduledoc deprecated:
+            "Use the new child specifications outlined in the Supervisor module instead"
+         ''',
+         {:@, [line: 1, column: 1],
+          [
+            {:moduledoc, [line: 1, column: 2],
+             [
+               [
+                 deprecated: "Use the new child specifications outlined in the Supervisor module instead"
+               ]
+             ]}
+          ]}}
       ]
 
       for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+        assert Spitfire.parse(code) == {:ok, expected}
       end
     end
 

@@ -302,6 +302,7 @@ defmodule Spitfire do
 
   defp parse_kw_identifier(%{current_token: {:kw_identifier, meta, token}} = parser) do
     parser = parser |> next_token() |> eat_eol()
+
     {expr, parser} = parse_expression(parser, precedence: @kw_identifier)
 
     token = encode_literal(parser, token, meta)
@@ -310,7 +311,7 @@ defmodule Spitfire do
   end
 
   defp parse_bracketless_kw_list(%{current_token: {:kw_identifier, meta, token}} = parser) do
-    parser = next_token(parser)
+    parser = parser |> next_token() |> eat_eol()
 
     {value, parser} = parse_expression(parser, precedence: @kw_identifier)
     token = encode_literal(parser, token, meta)
