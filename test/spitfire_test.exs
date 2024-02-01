@@ -1280,11 +1280,50 @@ defmodule SpitfireTest do
          somevar.foo arg, arg2
          ''',
          {{:., [], [{:somevar, [line: 1, column: 1], Elixir}, :foo]}, [],
-          [{:arg, [line: 1, column: 13], Elixir}, {:arg2, [line: 1, column: 18], Elixir}]}}
+          [{:arg, [line: 1, column: 13], Elixir}, {:arg2, [line: 1, column: 18], Elixir}]}},
+        {~S'''
+         defp unquote(:"#{name}_text")(), do: unquote(contents)
+         ''',
+         {:defp, [line: 1, column: 1],
+          [
+            {{:unquote, [closing: [line: 1, column: 29], line: 1, column: 6],
+              [
+                {{:., [line: 1, column: 14], [:erlang, :binary_to_atom]}, [delimiter: "\"", line: 1, column: 14],
+                 [
+                   {:<<>>, [line: 1, column: 14],
+                    [
+                      {:"::", [line: 1, column: 16],
+                       [
+                         {{:., [line: 1, column: 16], [Kernel, :to_string]},
+                          [
+                            from_interpolation: true,
+                            closing: [line: 1, column: 22],
+                            line: 1,
+                            column: 16
+                          ], [{:name, [line: 1, column: 18], Elixir}]},
+                         {:binary, [line: 1, column: 16], Elixir}
+                       ]},
+                      "_text"
+                    ]},
+                   :utf8
+                 ]}
+              ]},
+             [
+               closing: [line: 1, column: 31],
+               closing: [line: 1, column: 29],
+               line: 1,
+               column: 6
+             ], []},
+            [
+              do:
+                {:unquote, [closing: [line: 1, column: 54], line: 1, column: 38],
+                 [{:contents, [line: 1, column: 46], Elixir}]}
+            ]
+          ]}}
       ]
 
       for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+        assert Spitfire.parse(code) == {:ok, expected}
       end
     end
 

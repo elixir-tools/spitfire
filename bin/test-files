@@ -72,4 +72,4 @@ data =
 
 IO.puts("Results written to results.csv")
 IO.puts("Parsed concurrently in #{time}ms")
-IO.puts("Currently parsing: #{data.ok / (data.error + data.timeout + data.ok) * 100}%")
+IO.puts("Currently parsing: #{data.ok / (Map.get(data, :error, 0) + Map.get(data, :timeout, 0) + data.ok) * 100}%")

@@ -256,6 +256,7 @@ defmodule Spitfire do
               :stab_op -> &parse_stab_expression/2
               :do -> &parse_do_block/2
               :dot_call_op -> &parse_dot_call_expression/2
+              :"(" -> &parse_call_expression/2
               :. -> &parse_dot_expression/2
               :"," when is_top -> &parse_comma/2
               _ -> nil
@@ -1549,6 +1550,39 @@ defmodule Spitfire do
     end
   end
 
+  defp parse_call_expression(%{current_token: {:"(", _}} = parser, lhs) do
+    meta = current_meta(parser)
+
+    if peek_token(parser) == :")" do
+      parser = next_token(parser)
+      closing = current_meta(parser)
+      {{lhs, [{:closing, closing} | meta], []}, parser}
+    else
+      {pairs, parser} =
+        parser
+        |> next_token()
+        |> eat_eol()
+        |> parse_comma_list()
+
+      {pairs, _} = Enum.unzip(pairs)
+
+      parser = eat_at(parser, :eol, 1)
+
+      parser =
+        case peek_token(parser) do
+          :")" ->
+            next_token(parser)
+
+          _ ->
+            put_error(parser, {meta, "missing closing parentheses for function invocation"})
+        end
+
+      closing = current_meta(parser)
+
+      {{lhs, [{:closing, closing} | meta], List.wrap(pairs)}, parser}
+    end
+  end
+
   defp parse_lone_identifier(%{current_token: {_type, _, token}} = parser) do
     meta = current_meta(parser)
     {{token, meta, Elixir}, parser}
@@ -2004,6 +2038,10 @@ defmodule Spitfire do
   end
 
   defp valid_peek?(_ctype, :"[") do
+    true
+  end
+
+  defp valid_peek?(:")", :"(") do
     true
   end
 
