@@ -6,10 +6,9 @@ The goal of the project is to make it easier for editor tooling to provide code 
 
 ## Progress
 
-- [ ] Parse all Elixir Syntax into core compatible AST (check test suite for currently implemented syntax)
+- [ ] Parse all Elixir Syntax into core compatible AST [CSV parsing results from various projects](https://github.com/elixir-tools/spitfire/blob/main/results.csv)
 - [ ] Error tolerance
 - [ ] Environment querying API
-
 
 ## Scope
 
