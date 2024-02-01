@@ -239,6 +239,7 @@ defmodule Spitfire do
               :type_op -> &parse_infix_expression/2
               :dual_op -> &parse_infix_expression/2
               :mult_op -> &parse_infix_expression/2
+              :power_op -> &parse_infix_expression/2
               :"[" -> &parse_access_expression/2
               :concat_op -> &parse_infix_expression/2
               :assoc_op -> &parse_assoc_op/2
@@ -1477,6 +1478,7 @@ defmodule Spitfire do
     :"=>",
     :->,
     :+,
+    :**,
     :-,
     :/,
     :*,
@@ -1488,6 +1490,7 @@ defmodule Spitfire do
     :or,
     :**,
     :range_op,
+    :power_op,
     :stab_op,
     :xor_op,
     :rel_op,
@@ -1794,6 +1797,7 @@ defmodule Spitfire do
              :dual_op,
              :mult_op,
              :stab_op,
+             :power_op,
              :match_op,
              :unary_op
            ] do

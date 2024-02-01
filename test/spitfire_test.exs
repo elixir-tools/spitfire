@@ -810,6 +810,9 @@ defmodule SpitfireTest do
          1 + 2
          ''', {:+, [line: 1, column: 3], [1, 2]}},
         {~s'''
+         1 ** 2
+         ''', {:**, [line: 1, column: 3], [1, 2]}},
+        {~s'''
          1 - 2
          ''', {:-, [line: 1, column: 3], [1, 2]}},
         {~s'''
@@ -953,7 +956,7 @@ defmodule SpitfireTest do
       ]
 
       for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+        assert Spitfire.parse(code) == {:ok, expected}
       end
     end
 
