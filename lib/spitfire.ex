@@ -1225,10 +1225,13 @@ defmodule Spitfire do
   end
 
   defp parse_struct_type(parser) do
+    # structs can only have certain expressions to denote the type,
+    # so we special case them here rather than parse an arbitrary expression
     prefix =
       case current_token_type(parser) do
         :identifier -> &parse_lone_identifier/1
         :alias -> &parse_alias/1
+        :at_op -> &parse_lone_module_attr/1
         _ -> nil
       end
 
@@ -1548,6 +1551,13 @@ defmodule Spitfire do
   defp parse_lone_identifier(%{current_token: {_type, _, token}} = parser) do
     meta = current_meta(parser)
     {{token, meta, Elixir}, parser}
+  end
+
+  defp parse_lone_module_attr(%{current_token: {:at_op, _, token}} = parser) do
+    meta = current_meta(parser)
+    parser = next_token(parser)
+    {ident, parser} = parse_lone_identifier(parser)
+    {{token, meta, [ident]}, parser}
   end
 
   def tokenize(code, opts) do

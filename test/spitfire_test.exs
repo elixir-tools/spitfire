@@ -796,6 +796,12 @@ defmodule SpitfireTest do
           [
             {:module, [line: 1, column: 2], Elixir},
             {:%{}, [closing: [line: 1, column: 17], line: 1, column: 8], [foo: {:bar, [line: 1, column: 14], Elixir}]}
+          ]}},
+        {~S'%@foo{foo: bar}',
+         {:%, [line: 1, column: 1],
+          [
+            {:@, [line: 1, column: 2], [{:foo, [line: 1, column: 3], Elixir}]},
+            {:%{}, [closing: [line: 1, column: 15], line: 1, column: 6], [foo: {:bar, [line: 1, column: 12], Elixir}]}
           ]}}
       ]
 
