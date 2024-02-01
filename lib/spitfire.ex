@@ -73,6 +73,12 @@ defmodule Spitfire do
   def parse(code, opts \\ []) do
     parser = code |> new(opts) |> next_token() |> next_token()
 
+    # eat all the beginning eol tokens in case the file starts with a comment
+    parser =
+      while current_token(parser) == :eol <- parser do
+        next_token(parser)
+      end
+
     case parse_program(parser) do
       {ast, %{errors: []}} ->
         {:ok, ast}

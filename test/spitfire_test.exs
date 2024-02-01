@@ -2681,6 +2681,16 @@ defmodule SpitfireTest do
                  ]}}
     end
 
+    test "starts with a comment" do
+      code = """
+      # hi there
+      some_code = :foo
+      """
+
+      assert Spitfire.parse(code) ==
+               {:ok, {:=, [line: 2, column: 11], [{:some_code, [line: 2, column: 1], Elixir}, :foo]}}
+    end
+
     test "default args" do
       code = ~S'''
       def foo(arg \\ :value) do
