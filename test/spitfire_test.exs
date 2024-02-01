@@ -2632,6 +2632,55 @@ defmodule SpitfireTest do
                  ]}}
     end
 
+    test "multiple block identifiers" do
+      code = ~S'''
+      try do
+        foo()
+      rescue
+        e in E ->
+          bar()
+      else
+        {:ok, value} -> value
+        :error -> default
+      end
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {:try, [do: [line: 1, column: 5], end: [line: 9, column: 1], line: 1, column: 1],
+                 [
+                   [
+                     do: {:foo, [closing: [line: 2, column: 7], line: 2, column: 3], []},
+                     rescue: [
+                       {:->, [newlines: 1, depth: 1, line: 4, column: 10],
+                        [
+                          [
+                            {:in, [line: 4, column: 5],
+                             [
+                               {:e, [line: 4, column: 3], Elixir},
+                               {:__aliases__, [last: [line: 4, column: 8], line: 4, column: 8], [:E]}
+                             ]}
+                          ],
+                          {:bar, [closing: [line: 5, column: 9], line: 5, column: 5], []}
+                        ]}
+                     ],
+                     else: [
+                       {:->, [depth: 1, line: 7, column: 16],
+                        [
+                          [ok: {:value, [line: 7, column: 9], Elixir}],
+                          {:value,
+                           [
+                             end_of_expression: [newlines: 1, line: 7, column: 24],
+                             line: 7,
+                             column: 19
+                           ], Elixir}
+                        ]},
+                       {:->, [depth: 1, line: 8, column: 10], [[:error], {:default, [line: 8, column: 13], Elixir}]}
+                     ]
+                   ]
+                 ]}}
+    end
+
     test "default args" do
       code = ~S'''
       def foo(arg \\ :value) do

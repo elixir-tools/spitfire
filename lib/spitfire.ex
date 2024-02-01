@@ -440,7 +440,7 @@ defmodule Spitfire do
         parser = put_in(parser.nestings, [])
 
         {exprs, parser} =
-          while peek_token(parser) not in [:eof, :end, :")"] <- {exprs, parser} do
+          while peek_token(parser) not in [:eof, :end, :")", :block_identifier] <- {exprs, parser} do
             parser = next_token(parser)
             {ast, parser} = parse_expression(parser, top: true)
 
@@ -634,7 +634,7 @@ defmodule Spitfire do
             eoe = current_eoe(parser)
 
             parser =
-              if current_token(parser) == :end do
+              if current_token(parser) in [:end, :block_identifier] do
                 parser
               else
                 parser |> next_token() |> eat_eol()
