@@ -8,10 +8,18 @@ Mix.install([
 defmodule Main do
   alias NimbleCSV.RFC4180, as: CSV
 
+  @ignore [
+    "/lib/**/ebin/**/*",
+    "/lib/**/_build/**/*",
+    "/lib/**/tmp/**/*"
+  ]
+
+
   def collect_files(argv) do
-    path = List.first(argv, "/home/mitchell/src/next-ls/lib/**/*.ex")
-    files = Path.wildcard(path)
-    for file <- files, {:ok, content} <- [File.read(file)] do
+    root = List.first(argv)
+    files = Path.wildcard(Path.join(root, "lib/**/*.ex"))
+    ignore = Enum.flat_map(@ignore, &Path.wildcard(Path.join(root, &1)))
+    for file <- files, file not in ignore, {:ok, content} <- [File.read(file)] do
       {file, content}
     end
   end

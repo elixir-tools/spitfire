@@ -10,7 +10,6 @@ failure,/home/mitchell/src/elixir/lib/iex/lib/iex/introspection.ex,"[{[line: 303
 failure,/home/mitchell/src/elixir/lib/iex/lib/iex/pry.ex,"%MatchError{term: [{{:quote, [line: 626, column: 7], Elixir}, %{tokens: [{:eol, {626, 15, 1}}, {:identifier, {627, 9, ~c""env""}, :env}, {:match_op, {627, 13, nil}, :=}, {:identifier, {627, 15, ~c""__ENV__""}, :__ENV__}, {:eol, {627, 22, 1}}, {:identifier, {628, 9, ~c""options""}, :options}, {:match_op, {628, 17, nil}, :=}, {:paren_identifier, {628, 19, ~c""unquote""}, :unquote}, {:""("", {628, 26, nil}}, {:identifier, {628, 27, ~c""options""}, :options}, {:"")"", {628, 34, nil}}, {:eol, {628, 35, 2}}, {:identifier, {630, 9, ~c""options""}, :options}, {:match_op, {630, 17, nil}, :=}, {:eol, {630, 18, 1}}, {:identifier, {631, 11, ~c""if""}, :if}, {:alias, {631, 14, ~c""IO""}, :IO}, {:., {631, 16, nil}}, {:alias, {631, 17, ~c""ANSI""}, :ANSI}, {:., {631, 21, nil}}, {:paren_identifier, {631, 22, ~c""enabled?""}, :enabled?}, {:""("", {631, 30, nil}}, {:"")"", {631, 31, nil}}, {:do, {631, 33, nil}}, {:eol, {631, 35, 1}}, {:alias, {632, 13, ~c""Keyword""}, :Keyword}, {:., {632, 20, nil}}, {:paren_identifier, {632, 21, ~c""put_new""}, :put_new}, {:""("", {632, 28, nil}}, {:identifier, {632, 29, ~c""options""}, :options}, {:"","", {632, 36, 0}}, {:atom, {632, 38, ~c""syntax_colors""}, :syntax_colors}, {:"","", {632, 52, 0}}, {:alias, {632, 54, ~c""IO""}, :IO}, {:., {632, 56, nil}}, {:alias, {632, 57, ~c""ANSI""}, :ANSI}, {:., {632, 61, nil}}, {:paren_identifier, {632, 62, ~c""syntax_colors""}, :syntax_colors}, {:""("", {632, 75, nil}}, {:"")"", {632, 76, nil}}, {:"")"", {632, 77, ...}}, {:eol, {632, ...}}, {:block_identifier, {...}, ...}, {:eol, ...}, {...}, ...], literal_encoder: #Function<0.108669155/2 in Spitfire.new/2>, errors: [], current_token: {:do_identifier, {626, 7, ~c""quote""}, :quote}, stab_depth: 2, peek_token: {:do, {626, 13, nil}}, nestings: []}}]}"
 failure,/home/mitchell/src/elixir/lib/logger/lib/logger.ex,"%CaseClauseError{term: {{:%{}, [closing: [line: 1027, column: 12], line: 1027, column: 11], []}, {:quote, [line: 1028, column: 10], Elixir}}}"
 failure,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/new.ex,"[{[line: 248, column: 8], ""unknown token: eol""}, {[line: 249, column: 9], ""missing closing parentheses""}, {[line: 249, column: 16], ""syntax error""}, {[line: 259, column: 7], ""unknown token: )""}]"
-failure,/home/mitchell/src/elixir/lib/mix/tmp/test raises SyntaxError when parsing invalid source file/a.ex,"[{[line: 1, column: 13], ""unknown token: match_op""}, {[line: 1, column: 23], ""unknown token: rel_op""}, {[line: 1, column: 24], ""missing closing brace for struct""}, {[line: 1, column: 25], ""syntax error""}]"
 success,/home/mitchell/src/elixir/lib/eex/lib/eex.ex,
 success,/home/mitchell/src/elixir/lib/eex/lib/eex/compiler.ex,
 success,/home/mitchell/src/elixir/lib/eex/lib/eex/engine.ex,
@@ -274,24 +273,3 @@ success,/home/mitchell/src/elixir/lib/mix/test/fixtures/umbrella_dep/deps/umbrel
 success,/home/mitchell/src/elixir/lib/mix/test/fixtures/umbrella_dep/deps/umbrella/apps/foo/lib/foo.ex,
 success,/home/mitchell/src/elixir/lib/mix/test/fixtures/umbrella_test/apps/bar/lib/bar.ex,
 success,/home/mitchell/src/elixir/lib/mix/test/fixtures/umbrella_test/apps/foo/lib/foo.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test checks if file is formatted with --check-formatted/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test does not cache inputs from .formatter.exs/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test does not cache inputs from .formatter.exs/b.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test does not write file to disk on dry-run/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test expands patterns in inputs from .formatter.exs/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test formats the given file correctly/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test formats the given files/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test formats the given pattern/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test is a no-op if the file is already formatted/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test prints an error on conflicting .formatter.exs files/lib/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test reads exported configuration from dependencies and subdirectories/lib/extra/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test reads exported configuration from dependencies and subdirectories/lib/sub/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test reads exported configuration from dependencies/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test reads exported configuration from subdirectories/lib/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test reads file from stdin and prints to stdout/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test uses inputs and configuration from --dot-formatter/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test uses inputs and configuration from .formatter.exs/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test uses inputs and configuration from root path/lib/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test uses multiple plugins from .formatter.exs targeting the same sigil/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test uses multiple plugins from .formatter.exs with the same sigil in declared order/a.ex,
-success,/home/mitchell/src/elixir/lib/mix/tmp/test uses sigil plugins from .formatter.exs/a.ex,
