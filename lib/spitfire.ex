@@ -1516,7 +1516,8 @@ defmodule Spitfire do
     :dot_call_op,
     :when_op
   ]
-  defp parse_identifier(%{current_token: {type, _, token}} = parser) when type in [:identifier, :do_identifier] do
+
+  defp parse_identifier(%{current_token: {:identifier, _, token}} = parser) do
     meta = current_meta(parser)
 
     if token in [:__MODULE__, :__ENV__, :__DIR__, :__CALLER__] or
@@ -1542,11 +1543,27 @@ defmodule Spitfire do
       parser = pop_nesting(parser)
 
       if parser.nestings == [] && current_token(parser) == :do do
-        res = parse_do_block(parser, {token, meta, Enum.reverse(args)})
-        res
+        parse_do_block(parser, {token, meta, Enum.reverse(args)})
       else
         {{token, meta, Enum.reverse(args)}, parser}
       end
+    end
+  end
+
+  defp parse_identifier(%{current_token: {:do_identifier, _, token}} = parser) do
+    meta = current_meta(parser)
+
+    parser = next_token(parser)
+
+    # if nesting is empty, that means we are not currently an argument for a function call
+    # and can assume we are a "lone do_identifier" and parse the block
+    # foo do
+    #   :ok
+    # end
+    if parser.nestings == [] do
+      parse_do_block(parser, {token, meta, []})
+    else
+      {{token, meta, Elixir}, parser}
     end
   end
 

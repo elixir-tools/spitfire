@@ -1043,11 +1043,38 @@ defmodule SpitfireTest do
           else
           :partner
          end
-         ''', {:if, [line: 1, column: 1], [{:arg, [line: 1, column: 4], Elixir}, [do: "howdy", else: :partner]]}}
+         ''', {:if, [line: 1, column: 1], [{:arg, [line: 1, column: 4], Elixir}, [do: "howdy", else: :partner]]}},
+        {~S'''
+         {%{},
+            quote do
+              Enum.into(unquote(metadata), unquote(escape_metadata(maybe_application)))
+            end}
+         ''',
+         {{:%{}, [closing: [line: 1, column: 4], line: 1, column: 3], []},
+          {:quote, [do: [line: 2, column: 16], end: [line: 4, column: 10], line: 2, column: 10],
+           [
+             [
+               do:
+                 {{:., [line: 3, column: 16],
+                   [
+                     {:__aliases__, [last: [line: 3, column: 12], line: 3, column: 12], [:Enum]},
+                     :into
+                   ]}, [closing: [line: 3, column: 84], line: 3, column: 17],
+                  [
+                    {:unquote, [closing: [line: 3, column: 38], line: 3, column: 22],
+                     [{:metadata, [line: 3, column: 30], Elixir}]},
+                    {:unquote, [closing: [line: 3, column: 83], line: 3, column: 41],
+                     [
+                       {:escape_metadata, [closing: [line: 3, column: 82], line: 3, column: 49],
+                        [{:maybe_application, [line: 3, column: 65], Elixir}]}
+                     ]}
+                  ]}
+             ]
+           ]}}}
       ]
 
       for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+        assert Spitfire.parse(code) == {:ok, expected}
       end
     end
 

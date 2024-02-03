@@ -14,7 +14,6 @@ defmodule Main do
     "/lib/**/tmp/**/*"
   ]
 
-
   def collect_files(argv) do
     root = List.first(argv)
     files = Path.wildcard(Path.join(root, "lib/**/*.ex"))
