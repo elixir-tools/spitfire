@@ -35,7 +35,7 @@ defmodule SpitfireTest do
                           ]},
                          {:def, [line: 5, column: 3],
                           [
-                            {:run, [line: 5, column: 7], [{:arg, [line: 5, column: 11], Elixir}]},
+                            {:run, [line: 5, column: 7], [{:arg, [line: 5, column: 11], nil}]},
                             [do: {:__block__, [], [{:bar, [line: 6, column: 5], []}, :ok]}]
                           ]}
                        ]}
@@ -48,7 +48,7 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse!(code) ==
                {{:., [line: 1, column: 4], [Access, :get]}, [line: 1, column: 4, from_brackets: true],
-                [{:foo, [line: 1, column: 1], Elixir}, :bar]}
+                [{:foo, [line: 1, column: 1], nil}, :bar]}
 
       code = "foo[:bar][:baz]"
 
@@ -58,7 +58,7 @@ defmodule SpitfireTest do
                  [from_brackets: true, closing: [line: 1, column: 15], line: 1, column: 10],
                  [
                    {{:., [closing: [line: 1, column: 9], line: 1, column: 4], [Access, :get]},
-                    [closing: [line: 1, column: 9], line: 1, column: 4], [{:foo, [line: 1, column: 1], Elixir}, :bar]},
+                    [closing: [line: 1, column: 9], line: 1, column: 4], [{:foo, [line: 1, column: 1], nil}, :bar]},
                    :baz
                  ]}}
 
@@ -73,8 +73,8 @@ defmodule SpitfireTest do
                     [
                       {{:., [closing: [line: 1, column: 25], line: 1, column: 6], [Access, :get]},
                        [closing: [line: 1, column: 25], line: 1, column: 6],
-                       [{:meta, [line: 1, column: 2], Elixir}, :end_of_expression]},
-                      {:meta, [line: 1, column: 30], Elixir}
+                       [{:meta, [line: 1, column: 2], nil}, :end_of_expression]},
+                      {:meta, [line: 1, column: 30], nil}
                     ]},
                    :line
                  ]}}
@@ -131,7 +131,7 @@ defmodule SpitfireTest do
                    [
                      {:"::", [line: 1, column: 11],
                       [
-                        {:foo, [line: 1, column: 7], Elixir},
+                        {:foo, [line: 1, column: 7], nil},
                         {{:., [], [{:__aliases__, [line: 1, column: 14], [:String]}, :t]}, [], []}
                       ]}
                    ]}
@@ -152,10 +152,10 @@ defmodule SpitfireTest do
                          [
                            {:"::", [line: 1, column: 15],
                             [
-                              {:one, [line: 1, column: 11], Elixir},
+                              {:one, [line: 1, column: 11], nil},
                               {{:., [], [{:__aliases__, [line: 1, column: 18], [:String]}, :t]}, [], []}
                             ]},
-                           {:number, [line: 1, column: 30], Elixir}
+                           {:number, [line: 1, column: 30], nil}
                          ]},
                         {:|, [line: 1, column: 45], [:ok, :error]}
                       ]}
@@ -168,7 +168,7 @@ defmodule SpitfireTest do
       ^foo
       '''
 
-      assert Spitfire.parse!(code) == {:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}
+      assert Spitfire.parse!(code) == {:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}
     end
 
     test "parses numbers" do
@@ -231,7 +231,7 @@ defmodule SpitfireTest do
                 {{:., [], [List, :to_charlist]}, [],
                  [
                    ~c"foo",
-                   {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [{:alice, [], Elixir}]}, {:binary, [], Elixir}]},
+                   {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [{:alice, [], nil}]}, {:binary, [], nil}]},
                    ~c"bar"
                  ]}}
 
@@ -246,7 +246,7 @@ defmodule SpitfireTest do
                 {{:., [], [List, :to_charlist]}, [],
                  [
                    "foo",
-                   {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [{:alice, [], Elixir}]}, {:binary, [], Elixir}]},
+                   {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [{:alice, [], nil}]}, {:binary, [], nil}]},
                    "bar\n"
                  ]}}
     end
@@ -278,7 +278,7 @@ defmodule SpitfireTest do
                       [
                         {{:., [line: 1, column: 1], [Kernel, :to_string]}, [line: 1, column: 1, from_interpolation: true],
                          [{:__block__, [], []}]},
-                        {:binary, [], Elixir}
+                        {:binary, [], nil}
                       ]}
                    ]},
                   :utf8
@@ -297,8 +297,8 @@ defmodule SpitfireTest do
                      {:"::", [line: 1, column: 1],
                       [
                         {{:., [line: 1, column: 1], [Kernel, :to_string]}, [line: 1, column: 1, from_interpolation: true],
-                         [{:bar, [line: 1, column: 8], Elixir}]},
-                        {:binary, [], Elixir}
+                         [{:bar, [line: 1, column: 8], nil}]},
+                        {:binary, [], nil}
                       ]}
                    ]},
                   :utf8
@@ -311,8 +311,7 @@ defmodule SpitfireTest do
       """
 
       assert Spitfire.parse!(code) ==
-               {:<-, [line: 1, column: 7],
-                [{:apple, [line: 1, column: 1], Elixir}, {:apples, [line: 1, column: 10], Elixir}]}
+               {:<-, [line: 1, column: 7], [{:apple, [line: 1, column: 1], nil}, {:apples, [line: 1, column: 10], nil}]}
     end
 
     test "parses right stab" do
@@ -320,7 +319,7 @@ defmodule SpitfireTest do
       -> bar
       """
 
-      assert Spitfire.parse!(code) == [{:->, [line: 1, column: 1], [[], {:bar, [line: 1, column: 4], Elixir}]}]
+      assert Spitfire.parse!(code) == [{:->, [line: 1, column: 1], [[], {:bar, [line: 1, column: 4], nil}]}]
 
       code = """
       -> :ok
@@ -334,7 +333,7 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse!(code) == [
                {:->, [depth: 0, line: 1, column: 5],
-                [[{:foo, [line: 1, column: 1], Elixir}], {:bar, [line: 1, column: 8], Elixir}]}
+                [[{:foo, [line: 1, column: 1], nil}], {:bar, [line: 1, column: 8], nil}]}
              ]
 
       code = """
@@ -345,11 +344,11 @@ defmodule SpitfireTest do
                {:->, [depth: 0, line: 1, column: 15],
                 [
                   [
-                    {:foo, [line: 1, column: 1], Elixir},
-                    {:bar, [line: 1, column: 6], Elixir},
-                    {:baz, [line: 1, column: 11], Elixir}
+                    {:foo, [line: 1, column: 1], nil},
+                    {:bar, [line: 1, column: 6], nil},
+                    {:baz, [line: 1, column: 11], nil}
                   ],
-                  {:bar, [line: 1, column: 18], Elixir}
+                  {:bar, [line: 1, column: 18], nil}
                 ]}
              ]
 
@@ -366,11 +365,11 @@ defmodule SpitfireTest do
                {:->, [depth: 0, line: 1, column: 19],
                 [
                   [
-                    {:alice, [line: 1, column: 1], Elixir},
-                    {:bob, [line: 1, column: 8], Elixir},
-                    {:carol, [line: 1, column: 13], Elixir}
+                    {:alice, [line: 1, column: 1], nil},
+                    {:bob, [line: 1, column: 8], nil},
+                    {:carol, [line: 1, column: 13], nil}
                   ],
-                  {:__block__, [], [:error, {:bar, [line: 3, column: 3], Elixir}]}
+                  {:__block__, [], [:error, {:bar, [line: 3, column: 3], nil}]}
                 ]}
              ]
 
@@ -386,15 +385,15 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse!(code) == [
                {:->, [depth: 0, line: 1, column: 5],
-                [[{:foo, [line: 1, column: 1], Elixir}], {:__block__, [], [:ok, {:baz, [line: 3, column: 3], Elixir}]}]},
+                [[{:foo, [line: 1, column: 1], nil}], {:__block__, [], [:ok, {:baz, [line: 3, column: 3], nil}]}]},
                {:->, [depth: 0, line: 5, column: 19],
                 [
                   [
-                    {:alice, [line: 5, column: 1], Elixir},
-                    {:bob, [line: 5, column: 8], Elixir},
-                    {:carol, [line: 5, column: 13], Elixir}
+                    {:alice, [line: 5, column: 1], nil},
+                    {:bob, [line: 5, column: 8], nil},
+                    {:carol, [line: 5, column: 13], nil}
                   ],
-                  {:__block__, [], [:error, {:bar, [line: 7, column: 3], Elixir}]}
+                  {:__block__, [], [:error, {:bar, [line: 7, column: 3], nil}]}
                 ]}
              ]
 
@@ -405,7 +404,7 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse!(code) == [
                {:->, [depth: 0, line: 1, column: 6],
-                [[{:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}], :ok]}
+                [[{:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}], :ok]}
              ]
 
       code = ~S'''
@@ -415,7 +414,7 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse!(code) == [
                {:->, [depth: 0, line: 1, column: 6],
-                [[{:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}], :ok]}
+                [[{:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}], :ok]}
              ]
     end
 
@@ -449,8 +448,8 @@ defmodule SpitfireTest do
          ''',
          {:for, [line: 1, column: 1],
           [
-            {:<-, [line: 1, column: 7], [{:i, [line: 1, column: 5], Elixir}, {:.., [line: 1, column: 11], [0, 100]}]},
-            [do: {:+, [line: 2, column: 5], [{:i, [line: 2, column: 3], Elixir}, {:i, [line: 2, column: 7], Elixir}]}]
+            {:<-, [line: 1, column: 7], [{:i, [line: 1, column: 5], nil}, {:.., [line: 1, column: 11], [0, 100]}]},
+            [do: {:+, [line: 2, column: 5], [{:i, [line: 2, column: 3], nil}, {:i, [line: 2, column: 7], nil}]}]
           ]}}
       ]
 
@@ -472,26 +471,26 @@ defmodule SpitfireTest do
           [
             {:<-, [line: 1, column: 20],
              [
-               {:ok, {:school, [line: 1, column: 12], Elixir}},
+               {:ok, {:school, [line: 1, column: 12], nil}},
                {{:., [], [{:__aliases__, [line: 1, column: 23], [:State]}, :get_school]}, [],
-                [{:id, [line: 1, column: 40], Elixir}]}
+                [{:id, [line: 1, column: 40], nil}]}
              ]},
             {:<-, [line: 2, column: 22],
              [
-               {:ok, {:teachers, [line: 2, column: 12], Elixir}},
+               {:ok, {:teachers, [line: 2, column: 12], nil}},
                {{:., [], [{:__aliases__, [line: 2, column: 25], [:School]}, :list_teachers]}, [],
-                [{:school, [line: 2, column: 46], Elixir}]}
+                [{:school, [line: 2, column: 46], nil}]}
              ]},
             {:<-, [line: 3, column: 21],
              [
-               {:ok, {:teacher, [line: 3, column: 12], Elixir}},
+               {:ok, {:teacher, [line: 3, column: 12], nil}},
                {{:., [], [{:__aliases__, [line: 3, column: 24], [:Teacher]}, :coolest]}, [],
-                [{:teachers, [line: 3, column: 40], Elixir}]}
+                [{:teachers, [line: 3, column: 40], nil}]}
              ]},
             [
               do:
                 {{:., [], [{:__aliases__, [line: 4, column: 3], [:Email]}, :send]}, [],
-                 [{:teacher, [line: 4, column: 14], Elixir}, "You are the coolest teacher"]}
+                 [{:teacher, [line: 4, column: 14], nil}, "You are the coolest teacher"]}
             ]
           ]}}
       ]
@@ -511,9 +510,9 @@ defmodule SpitfireTest do
       assert Spitfire.parse!(code) ==
                {:__block__, [],
                 [
-                  {:foobar, [line: 1, column: 1], Elixir},
-                  {:alice, [line: 2, column: 1], Elixir},
-                  {:bob, [line: 3, column: 1], Elixir}
+                  {:foobar, [line: 1, column: 1], nil},
+                  {:alice, [line: 2, column: 1], nil},
+                  {:bob, [line: 3, column: 1], nil}
                 ]}
     end
 
@@ -524,17 +523,17 @@ defmodule SpitfireTest do
          ''', {:ok, []}},
         {~s'''
          [arg]
-         ''', {:ok, [{:arg, [line: 1, column: 2], Elixir}]}},
+         ''', {:ok, [{:arg, [line: 1, column: 2], nil}]}},
         {~s'''
          [one, :two, "three"]
-         ''', {:ok, [{:one, [line: 1, column: 2], Elixir}, :two, "three"]}},
+         ''', {:ok, [{:one, [line: 1, column: 2], nil}, :two, "three"]}},
         {~s'''
           [
             one,
             :two,
             "three"
           ]
-         ''', {:ok, [{:one, [line: 2, column: 4], Elixir}, :two, "three"]}}
+         ''', {:ok, [{:one, [line: 2, column: 4], nil}, :two, "three"]}}
       ]
 
       for {code, expected} <- codes do
@@ -549,15 +548,15 @@ defmodule SpitfireTest do
          ''',
          {:foo, [line: 1, column: 1],
           [
-            {:one, [line: 1, column: 5], Elixir},
-            {:two, [line: 1, column: 10], Elixir},
-            [alice: {:alice, [line: 1, column: 22], Elixir}, bob: {:bob, [line: 1, column: 34], Elixir}]
+            {:one, [line: 1, column: 5], nil},
+            {:two, [line: 1, column: 10], nil},
+            [alice: {:alice, [line: 1, column: 22], nil}, bob: {:bob, [line: 1, column: 34], nil}]
           ]}},
         {~s'''
          foo alice: alice do
            :ok
          end
-         ''', {:foo, [line: 1, column: 1], [[alice: {:alice, [line: 1, column: 12], Elixir}], [do: :ok]]}},
+         ''', {:foo, [line: 1, column: 1], [[alice: {:alice, [line: 1, column: 12], nil}], [do: :ok]]}},
         {~s'''
          [:one, two: :three]
          ''', [:one, {:two, :three}]},
@@ -591,7 +590,7 @@ defmodule SpitfireTest do
       assert Spitfire.parse!(code) ==
                {:case, [line: 1, column: 1],
                 [
-                  {:foo, [line: 1, column: 6], Elixir},
+                  {:foo, [line: 1, column: 6], nil},
                   [
                     do: [
                       {:->, [depth: 1, line: 2, column: 41],
@@ -601,11 +600,11 @@ defmodule SpitfireTest do
                             [
                               :kw_identifier,
                               {:or, [line: 2, column: 31],
-                               [{:is_list, [line: 2, column: 23], Elixir}, {:is_map, [line: 2, column: 34], Elixir}]}
+                               [{:is_list, [line: 2, column: 23], nil}, {:is_map, [line: 2, column: 34], nil}]}
                             ]}
                          ],
                          {:&, [line: 2, column: 44],
-                          [{:/, [line: 2, column: 64], [{:parse_kw_identifier, [line: 2, column: 45], Elixir}, 1]}]}
+                          [{:/, [line: 2, column: 64], [{:parse_kw_identifier, [line: 2, column: 45], nil}, 1]}]}
                        ]}
                     ]
                   ]
@@ -619,8 +618,8 @@ defmodule SpitfireTest do
          ''',
          {:=, [line: 1, column: 14],
           [
-            [{:|, [line: 1, column: 6], [{:one, [line: 1, column: 2], Elixir}, {:rest, [line: 1, column: 8], Elixir}]}],
-            {:my_list, [line: 1, column: 16], Elixir}
+            [{:|, [line: 1, column: 6], [{:one, [line: 1, column: 2], nil}, {:rest, [line: 1, column: 8], nil}]}],
+            {:my_list, [line: 1, column: 16], nil}
           ]}},
         {~s'''
          [one, two | rest] = my_list
@@ -628,10 +627,10 @@ defmodule SpitfireTest do
          {:=, [line: 1, column: 19],
           [
             [
-              {:one, [line: 1, column: 2], Elixir},
-              {:|, [line: 1, column: 11], [{:two, [line: 1, column: 7], Elixir}, {:rest, [line: 1, column: 13], Elixir}]}
+              {:one, [line: 1, column: 2], nil},
+              {:|, [line: 1, column: 11], [{:two, [line: 1, column: 7], nil}, {:rest, [line: 1, column: 13], nil}]}
             ],
-            {:my_list, [line: 1, column: 21], Elixir}
+            {:my_list, [line: 1, column: 21], nil}
           ]}}
       ]
 
@@ -647,24 +646,24 @@ defmodule SpitfireTest do
          ''', {:{}, [line: 1, column: 1], []}},
         {~s'''
          {one, :two}
-         ''', {{:one, [line: 1, column: 2], Elixir}, :two}},
+         ''', {{:one, [line: 1, column: 2], nil}, :two}},
         {~s'''
          {
            one,
            :two,
            "three"
          }
-         ''', {:{}, [line: 1, column: 1], [{:one, [line: 2, column: 3], Elixir}, :two, "three"]}},
+         ''', {:{}, [line: 1, column: 1], [{:one, [line: 2, column: 3], nil}, :two, "three"]}},
         {~s'''
          {one, :two, "three"}
-         ''', {:{}, [line: 1, column: 1], [{:one, [line: 1, column: 2], Elixir}, :two, "three"]}},
+         ''', {:{}, [line: 1, column: 1], [{:one, [line: 1, column: 2], nil}, :two, "three"]}},
         {~s'''
          {
            one,
            :two,
            "three"
          }
-         ''', {:{}, [line: 1, column: 1], [{:one, [line: 2, column: 3], Elixir}, :two, "three"]}}
+         ''', {:{}, [line: 1, column: 1], [{:one, [line: 2, column: 3], nil}, :two, "three"]}}
       ]
 
       for {code, expected} <- codes do
@@ -718,7 +717,7 @@ defmodule SpitfireTest do
             {:three, :four},
             {[], [1]},
             {{:%{}, [line: 1, column: 55], []}, nil},
-            {{:bing, [line: 1, column: 67], Elixir}, {:bong, [line: 1, column: 75], Elixir}},
+            {{:bing, [line: 1, column: 67], nil}, {:bong, [line: 1, column: 75], nil}},
             {:foo, :bar}
           ]}},
         {~s'''
@@ -739,7 +738,7 @@ defmodule SpitfireTest do
             {:three, :four},
             {[], [1]},
             {{:%{}, [line: 6, column: 3], []}, nil},
-            {{:bing, [line: 7, column: 3], Elixir}, {:bong, [line: 7, column: 11], Elixir}},
+            {{:bing, [line: 7, column: 3], nil}, {:bong, [line: 7, column: 11], nil}},
             {:foo, :bar}
           ]}},
         {~s'''
@@ -784,14 +783,14 @@ defmodule SpitfireTest do
              {:__aliases__, [last: [line: 1, column: 6], line: 1, column: 2], [:Foo, :Bar]},
              {:%{}, [closing: [line: 1, column: 75], line: 1, column: 9],
               [
-                name: {:name, [line: 1, column: 16], Elixir},
+                name: {:name, [line: 1, column: 16], nil},
                 properties:
                   {:%, [line: 1, column: 34],
                    [
                      {:__aliases__, [last: [line: 1, column: 35], line: 1, column: 35], [:Properties]},
                      {:%{}, [closing: [line: 1, column: 74], line: 1, column: 45],
                       [
-                        key: {:key, [line: 1, column: 51], Elixir},
+                        key: {:key, [line: 1, column: 51], nil},
                         value: {:get_value, [closing: [line: 1, column: 73], line: 1, column: 63], []}
                       ]}
                    ]}
@@ -801,20 +800,20 @@ defmodule SpitfireTest do
         {~S'%__MODULE__{foo: bar}',
          {:%, [line: 1, column: 1],
           [
-            {:__MODULE__, [line: 1, column: 2], Elixir},
-            {:%{}, [closing: [line: 1, column: 21], line: 1, column: 12], [foo: {:bar, [line: 1, column: 18], Elixir}]}
+            {:__MODULE__, [line: 1, column: 2], nil},
+            {:%{}, [closing: [line: 1, column: 21], line: 1, column: 12], [foo: {:bar, [line: 1, column: 18], nil}]}
           ]}},
         {~S'%module{foo: bar}',
          {:%, [line: 1, column: 1],
           [
-            {:module, [line: 1, column: 2], Elixir},
-            {:%{}, [closing: [line: 1, column: 17], line: 1, column: 8], [foo: {:bar, [line: 1, column: 14], Elixir}]}
+            {:module, [line: 1, column: 2], nil},
+            {:%{}, [closing: [line: 1, column: 17], line: 1, column: 8], [foo: {:bar, [line: 1, column: 14], nil}]}
           ]}},
         {~S'%@foo{foo: bar}',
          {:%, [line: 1, column: 1],
           [
-            {:@, [line: 1, column: 2], [{:foo, [line: 1, column: 3], Elixir}]},
-            {:%{}, [closing: [line: 1, column: 15], line: 1, column: 6], [foo: {:bar, [line: 1, column: 12], Elixir}]}
+            {:@, [line: 1, column: 2], [{:foo, [line: 1, column: 3], nil}]},
+            {:%{}, [closing: [line: 1, column: 15], line: 1, column: 6], [foo: {:bar, [line: 1, column: 12], nil}]}
           ]}}
       ]
 
@@ -914,7 +913,7 @@ defmodule SpitfireTest do
          ''',
          {:not, [line: 1, column: 5],
           [
-            {:in, [], [{:foo, [line: 1, column: 1], Elixir}, {:bar, [line: 1, column: 12], Elixir}]}
+            {:in, [], [{:foo, [line: 1, column: 1], nil}, {:bar, [line: 1, column: 12], nil}]}
           ]}},
         {~s'''
          1 ^^^ foo()
@@ -929,49 +928,48 @@ defmodule SpitfireTest do
           ]}},
         {~s'''
          one..two
-         ''', {:.., [line: 1, column: 4], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 6], Elixir}]}},
+         ''', {:.., [line: 1, column: 4], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 6], nil}]}},
         {~s'''
          one..two//2
-         ''',
-         {:"..//", [line: 1, column: 4], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 6], Elixir}, 2]}},
+         ''', {:"..//", [line: 1, column: 4], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 6], nil}, 2]}},
         {~s'''
          one <> two
-         ''', {:<>, [line: 1, column: 5], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 8], Elixir}]}},
+         ''', {:<>, [line: 1, column: 5], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 8], nil}]}},
         {~s'''
          one ++ two
-         ''', {:++, [line: 1, column: 5], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 8], Elixir}]}},
+         ''', {:++, [line: 1, column: 5], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 8], nil}]}},
         {~s'''
          one -- two
-         ''', {:--, [line: 1, column: 5], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 8], Elixir}]}},
+         ''', {:--, [line: 1, column: 5], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 8], nil}]}},
         {~s'''
          one +++ two
-         ''', {:+++, [line: 1, column: 5], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 9], Elixir}]}},
+         ''', {:+++, [line: 1, column: 5], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 9], nil}]}},
         {~s'''
          one --- two
-         ''', {:---, [line: 1, column: 5], [{:one, [line: 1, column: 1], Elixir}, {:two, [line: 1, column: 9], Elixir}]}},
+         ''', {:---, [line: 1, column: 5], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 9], nil}]}},
         {~s'''
          one ++ two ++ three
          ''',
          {:++, [line: 1, column: 5],
           [
-            {:one, [line: 1, column: 1], Elixir},
-            {:++, [line: 1, column: 12], [{:two, [line: 1, column: 8], Elixir}, {:three, [line: 1, column: 15], Elixir}]}
+            {:one, [line: 1, column: 1], nil},
+            {:++, [line: 1, column: 12], [{:two, [line: 1, column: 8], nil}, {:three, [line: 1, column: 15], nil}]}
           ]}},
         {~s'''
          @foo
-         ''', {:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}},
+         ''', {:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}},
         {~s'''
          !foo
-         ''', {:!, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}},
+         ''', {:!, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}},
         {~s'''
          not foo
-         ''', {:not, [line: 1, column: 1], [{:foo, [line: 1, column: 5], Elixir}]}},
+         ''', {:not, [line: 1, column: 1], [{:foo, [line: 1, column: 5], nil}]}},
         {~s'''
          ^foo
-         ''', {:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], Elixir}]}},
+         ''', {:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}},
         {~s'''
          ~~~foo
-         ''', {:"~~~", [line: 1, column: 1], [{:foo, [line: 1, column: 4], Elixir}]}}
+         ''', {:"~~~", [line: 1, column: 1], [{:foo, [line: 1, column: 4], nil}]}}
       ]
 
       for {code, expected} <- codes do
@@ -1027,7 +1025,7 @@ defmodule SpitfireTest do
          ''',
          {:foo, [line: 1, column: 1],
           [
-            {:arg, [line: 1, column: 5], Elixir},
+            {:arg, [line: 1, column: 5], nil},
             [
               do:
                 {:__block__, [],
@@ -1043,7 +1041,7 @@ defmodule SpitfireTest do
           else
           :partner
          end
-         ''', {:if, [line: 1, column: 1], [{:arg, [line: 1, column: 4], Elixir}, [do: "howdy", else: :partner]]}},
+         ''', {:if, [line: 1, column: 1], [{:arg, [line: 1, column: 4], nil}, [do: "howdy", else: :partner]]}},
         {~S'''
          {%{},
             quote do
@@ -1062,11 +1060,11 @@ defmodule SpitfireTest do
                    ]}, [closing: [line: 3, column: 84], line: 3, column: 17],
                   [
                     {:unquote, [closing: [line: 3, column: 38], line: 3, column: 22],
-                     [{:metadata, [line: 3, column: 30], Elixir}]},
+                     [{:metadata, [line: 3, column: 30], nil}]},
                     {:unquote, [closing: [line: 3, column: 83], line: 3, column: 41],
                      [
                        {:escape_metadata, [closing: [line: 3, column: 82], line: 3, column: 49],
-                        [{:maybe_application, [line: 3, column: 65], Elixir}]}
+                        [{:maybe_application, [line: 3, column: 65], nil}]}
                      ]}
                   ]}
              ]
@@ -1076,6 +1074,120 @@ defmodule SpitfireTest do
       for {code, expected} <- codes do
         assert Spitfire.parse(code) == {:ok, expected}
       end
+    end
+
+    test "multi line grouped expressions" do
+      code = ~S'''
+      (
+        min_line = line(meta)
+        max_line = closing_line(meta)
+        Enum.any?(comments, fn %{line: line} -> line > min_line and line < max_line end)
+      )
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {:__block__, [closing: [line: 5, column: 1], line: 1, column: 1],
+                 [
+                   {:=, [end_of_expression: [newlines: 1, line: 2, column: 24], line: 2, column: 12],
+                    [
+                      {:min_line, [line: 2, column: 3], nil},
+                      {:line, [closing: [line: 2, column: 23], line: 2, column: 14],
+                       [{:meta, [line: 2, column: 19], nil}]}
+                    ]},
+                   {:=, [end_of_expression: [newlines: 1, line: 3, column: 32], line: 3, column: 12],
+                    [
+                      {:max_line, [line: 3, column: 3], nil},
+                      {:closing_line, [closing: [line: 3, column: 31], line: 3, column: 14],
+                       [{:meta, [line: 3, column: 27], nil}]}
+                    ]},
+                   {{:., [line: 4, column: 7],
+                     [
+                       {:__aliases__, [last: [line: 4, column: 3], line: 4, column: 3], [:Enum]},
+                       :any?
+                     ]}, [closing: [line: 4, column: 82], line: 4, column: 8],
+                    [
+                      {:comments, [line: 4, column: 13], nil},
+                      {:fn, [closing: [line: 4, column: 79], line: 4, column: 23],
+                       [
+                         {:->, [line: 4, column: 40],
+                          [
+                            [
+                              {:%{}, [closing: [line: 4, column: 38], line: 4, column: 27],
+                               [line: {:line, [line: 4, column: 34], nil}]}
+                            ],
+                            {:and, [line: 4, column: 59],
+                             [
+                               {:>, [line: 4, column: 48],
+                                [
+                                  {:line, [line: 4, column: 43], nil},
+                                  {:min_line, [line: 4, column: 50], nil}
+                                ]},
+                               {:<, [line: 4, column: 68],
+                                [
+                                  {:line, [line: 4, column: 63], nil},
+                                  {:max_line, [line: 4, column: 70], nil}
+                                ]}
+                             ]}
+                          ]}
+                       ]}
+                    ]}
+                 ]}}
+
+      code = ~S'''
+      (min_line = line(meta)
+      max_line = closing_line(meta)
+      Enum.any?(comments, fn %{line: line} -> line > min_line and line < max_line end))
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {:__block__, [closing: [line: 3, column: 83], line: 1, column: 1],
+                 [
+                   {:=, [end_of_expression: [newlines: 1, line: 1, column: 23], line: 1, column: 11],
+                    [
+                      {:min_line, [line: 1, column: 2], nil},
+                      {:line, [closing: [line: 1, column: 22], line: 1, column: 13],
+                       [{:meta, [line: 1, column: 18], nil}]}
+                    ]},
+                   {:=, [end_of_expression: [newlines: 1, line: 2, column: 32], line: 2, column: 12],
+                    [
+                      {:max_line, [line: 2, column: 3], nil},
+                      {:closing_line, [closing: [line: 2, column: 31], line: 2, column: 14],
+                       [{:meta, [line: 2, column: 27], nil}]}
+                    ]},
+                   {{:., [line: 3, column: 7],
+                     [
+                       {:__aliases__, [last: [line: 3, column: 3], line: 3, column: 3], [:Enum]},
+                       :any?
+                     ]}, [closing: [line: 3, column: 82], line: 3, column: 8],
+                    [
+                      {:comments, [line: 3, column: 13], nil},
+                      {:fn, [closing: [line: 3, column: 79], line: 3, column: 23],
+                       [
+                         {:->, [line: 3, column: 40],
+                          [
+                            [
+                              {:%{}, [closing: [line: 3, column: 38], line: 3, column: 27],
+                               [line: {:line, [line: 3, column: 34], nil}]}
+                            ],
+                            {:and, [line: 3, column: 59],
+                             [
+                               {:>, [line: 3, column: 48],
+                                [
+                                  {:line, [line: 3, column: 43], nil},
+                                  {:min_line, [line: 3, column: 50], nil}
+                                ]},
+                               {:<, [line: 3, column: 68],
+                                [
+                                  {:line, [line: 3, column: 63], nil},
+                                  {:max_line, [line: 3, column: 70], nil}
+                                ]}
+                             ]}
+                          ]}
+                       ]}
+                    ]}
+                 ]}}
     end
 
     test "case expr" do
@@ -1090,11 +1202,11 @@ defmodule SpitfireTest do
          {:ok,
           {:case, [line: 1, column: 1],
            [
-             {:foo, [line: 1, column: 6], Elixir},
+             {:foo, [line: 1, column: 6], nil},
              [
                do: [
                  {:->, [depth: 1, line: 2, column: 6],
-                  [[{:bar, [line: 2, column: 2], Elixir}], {:bar, [line: 3, column: 4], Elixir}]}
+                  [[{:bar, [line: 2, column: 2], nil}], {:bar, [line: 3, column: 4], nil}]}
                ]
              ]
            ]}}},
@@ -1127,12 +1239,12 @@ defmodule SpitfireTest do
                        [
                          do: [
                            {:->, [depth: 2, line: 4, column: 12], [[:FOO], :bar]},
-                           {:->, [depth: 2, line: 6, column: 9], [[{:_, [line: 6, column: 7], Elixir}], :error]}
+                           {:->, [depth: 2, line: 6, column: 9], [[{:_, [line: 6, column: 7], nil}], :error]}
                          ]
                        ]
                      ]}
                   ]},
-                 {:->, [depth: 1, line: 10, column: 5], [[{:_, [line: 10, column: 3], Elixir}], :error]}
+                 {:->, [depth: 1, line: 10, column: 5], [[{:_, [line: 10, column: 3], nil}], :error]}
                ]
              ]
            ]}}},
@@ -1151,34 +1263,34 @@ defmodule SpitfireTest do
          {:ok,
           {:case, [line: 1, column: 1],
            [
-             {:infix, [line: 1, column: 6], Elixir},
+             {:infix, [line: 1, column: 6], nil},
              [
                do: [
                  {:->, [depth: 1, line: 2, column: 7],
-                  [[nil], {{:left, [line: 3, column: 6], Elixir}, {:parser, [line: 3, column: 12], Elixir}}]},
+                  [[nil], {{:left, [line: 3, column: 6], nil}, {:parser, [line: 3, column: 12], nil}}]},
                  {:->, [depth: 1, line: 5, column: 40],
                   [
                     [
                       {:when, [line: 5, column: 13],
                        [
-                         {:^, [line: 5, column: 3], [{:do_block, [line: 5, column: 4], Elixir}]},
+                         {:^, [line: 5, column: 3], [{:do_block, [line: 5, column: 4], nil}]},
                          {:!=, [line: 5, column: 34],
                           [
-                            {{:., [], [{:parser, [line: 5, column: 18], Elixir}, :nestings]}, [], []},
+                            {{:., [], [{:parser, [line: 5, column: 18], nil}, :nestings]}, [], []},
                             []
                           ]}
                        ]}
                     ],
-                    {{:left, [line: 6, column: 6], Elixir},
-                     {:next_token, [line: 6, column: 12], [{:parser, [line: 6, column: 23], Elixir}]}}
+                    {{:left, [line: 6, column: 6], nil},
+                     {:next_token, [line: 6, column: 12], [{:parser, [line: 6, column: 23], nil}]}}
                   ]},
                  {:->, [depth: 1, line: 8, column: 5],
                   [
-                    [{:_, [line: 8, column: 3], Elixir}],
-                    {{:., [], [{:infix, [line: 9, column: 5], Elixir}]}, [],
+                    [{:_, [line: 8, column: 3], nil}],
+                    {{:., [], [{:infix, [line: 9, column: 5], nil}]}, [],
                      [
-                       {:next_token, [line: 9, column: 12], [{:parser, [line: 9, column: 23], Elixir}]},
-                       {:left, [line: 9, column: 32], Elixir}
+                       {:next_token, [line: 9, column: 12], [{:parser, [line: 9, column: 23], nil}]},
+                       {:left, [line: 9, column: 32], nil}
                      ]}
                   ]}
                ]
@@ -1200,8 +1312,8 @@ defmodule SpitfireTest do
           [
             {:b, [line: 1, column: 3],
              [
-               {:c, [line: 1, column: 5], Elixir},
-               {:d, [line: 1, column: 8], Elixir}
+               {:c, [line: 1, column: 5], nil},
+               {:d, [line: 1, column: 8], nil}
              ]}
           ]}},
         {~s'''
@@ -1212,8 +1324,8 @@ defmodule SpitfireTest do
           [
             {:b, [line: 1, column: 3],
              [
-               {:c, [line: 1, column: 5], Elixir},
-               {:d, [line: 1, column: 8], Elixir}
+               {:c, [line: 1, column: 5], nil},
+               {:d, [line: 1, column: 8], nil}
              ]},
             [do: {:__block__, [], []}]
           ]}}
@@ -1231,19 +1343,16 @@ defmodule SpitfireTest do
          ''', {:foo, [line: 1, column: 1], []}},
         {~s'''
          foo(arg, arg2)
-         ''',
-         {:foo, [line: 1, column: 1], [{:arg, [line: 1, column: 5], Elixir}, {:arg2, [line: 1, column: 10], Elixir}]}},
+         ''', {:foo, [line: 1, column: 1], [{:arg, [line: 1, column: 5], nil}, {:arg2, [line: 1, column: 10], nil}]}},
         {~s'''
          foo(
            arg,
            arg2
          )
-         ''',
-         {:foo, [line: 1, column: 1], [{:arg, [line: 2, column: 3], Elixir}, {:arg2, [line: 3, column: 3], Elixir}]}},
+         ''', {:foo, [line: 1, column: 1], [{:arg, [line: 2, column: 3], nil}, {:arg2, [line: 3, column: 3], nil}]}},
         {~s'''
          foo arg, arg2
-         ''',
-         {:foo, [line: 1, column: 1], [{:arg, [line: 1, column: 5], Elixir}, {:arg2, [line: 1, column: 10], Elixir}]}},
+         ''', {:foo, [line: 1, column: 1], [{:arg, [line: 1, column: 5], nil}, {:arg2, [line: 1, column: 10], nil}]}},
         {~s'''
          Remote.foo
          ''', {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [], []}},
@@ -1254,7 +1363,7 @@ defmodule SpitfireTest do
          Remote.foo(arg, arg2)
          ''',
          {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [],
-          [{:arg, [line: 1, column: 12], Elixir}, {:arg2, [line: 1, column: 17], Elixir}]}},
+          [{:arg, [line: 1, column: 12], nil}, {:arg2, [line: 1, column: 17], nil}]}},
         {~s'''
          Remote.foo(
            arg,
@@ -1262,12 +1371,12 @@ defmodule SpitfireTest do
          )
          ''',
          {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [],
-          [{:arg, [line: 2, column: 3], Elixir}, {:arg2, [line: 3, column: 3], Elixir}]}},
+          [{:arg, [line: 2, column: 3], nil}, {:arg2, [line: 3, column: 3], nil}]}},
         {~s'''
          Remote.foo arg, arg2
          ''',
          {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [],
-          [{:arg, [line: 1, column: 12], Elixir}, {:arg2, [line: 1, column: 17], Elixir}]}},
+          [{:arg, [line: 1, column: 12], nil}, {:arg2, [line: 1, column: 17], nil}]}},
         {~s'''
          :erlang.foo
          ''', {{:., [], [:erlang, :foo]}, [], []}},
@@ -1276,38 +1385,36 @@ defmodule SpitfireTest do
          ''', {{:., [], [:erlang, :foo]}, [], []}},
         {~s'''
          :erlang.foo(arg, arg2)
-         ''',
-         {{:., [], [:erlang, :foo]}, [], [{:arg, [line: 1, column: 13], Elixir}, {:arg2, [line: 1, column: 18], Elixir}]}},
+         ''', {{:., [], [:erlang, :foo]}, [], [{:arg, [line: 1, column: 13], nil}, {:arg2, [line: 1, column: 18], nil}]}},
         {~s'''
          :erlang.foo arg, arg2
-         ''',
-         {{:., [], [:erlang, :foo]}, [], [{:arg, [line: 1, column: 13], Elixir}, {:arg2, [line: 1, column: 18], Elixir}]}},
+         ''', {{:., [], [:erlang, :foo]}, [], [{:arg, [line: 1, column: 13], nil}, {:arg2, [line: 1, column: 18], nil}]}},
         {~s'''
          somevar.foo
-         ''', {{:., [], [{:somevar, [line: 1, column: 1], Elixir}, :foo]}, [], []}},
+         ''', {{:., [], [{:somevar, [line: 1, column: 1], nil}, :foo]}, [], []}},
         {~s'''
          somevar.foo()
-         ''', {{:., [], [{:somevar, [line: 1, column: 1], Elixir}, :foo]}, [], []}},
+         ''', {{:., [], [{:somevar, [line: 1, column: 1], nil}, :foo]}, [], []}},
         {~s'''
          :elixir_tokenizer.tokenize(String.to_charlist(code), 1, [])
          ''',
          {{:., [], [:elixir_tokenizer, :tokenize]}, [],
           [
             {{:., [], [{:__aliases__, [line: 1, column: 28], [:String]}, :to_charlist]}, [],
-             [{:code, [line: 1, column: 47], Elixir}]},
+             [{:code, [line: 1, column: 47], nil}]},
             1,
             []
           ]}},
         {~s'''
          somevar.foo(arg, arg2)
          ''',
-         {{:., [], [{:somevar, [line: 1, column: 1], Elixir}, :foo]}, [],
-          [{:arg, [line: 1, column: 13], Elixir}, {:arg2, [line: 1, column: 18], Elixir}]}},
+         {{:., [], [{:somevar, [line: 1, column: 1], nil}, :foo]}, [],
+          [{:arg, [line: 1, column: 13], nil}, {:arg2, [line: 1, column: 18], nil}]}},
         {~s'''
          somevar.foo arg, arg2
          ''',
-         {{:., [], [{:somevar, [line: 1, column: 1], Elixir}, :foo]}, [],
-          [{:arg, [line: 1, column: 13], Elixir}, {:arg2, [line: 1, column: 18], Elixir}]}},
+         {{:., [], [{:somevar, [line: 1, column: 1], nil}, :foo]}, [],
+          [{:arg, [line: 1, column: 13], nil}, {:arg2, [line: 1, column: 18], nil}]}},
         {~S'''
          defp unquote(:"#{name}_text")(), do: unquote(contents)
          ''',
@@ -1327,8 +1434,8 @@ defmodule SpitfireTest do
                             closing: [line: 1, column: 22],
                             line: 1,
                             column: 16
-                          ], [{:name, [line: 1, column: 18], Elixir}]},
-                         {:binary, [line: 1, column: 16], Elixir}
+                          ], [{:name, [line: 1, column: 18], nil}]},
+                         {:binary, [line: 1, column: 16], nil}
                        ]},
                       "_text"
                     ]},
@@ -1344,7 +1451,7 @@ defmodule SpitfireTest do
             [
               do:
                 {:unquote, [closing: [line: 1, column: 54], line: 1, column: 38],
-                 [{:contents, [line: 1, column: 46], Elixir}]}
+                 [{:contents, [line: 1, column: 46], nil}]}
             ]
           ]}}
       ]
@@ -1372,7 +1479,7 @@ defmodule SpitfireTest do
          {:fn, [line: 1, column: 1],
           [
             {:->, [depth: 1, line: 1, column: 8],
-             [[{:one, [line: 1, column: 4], Elixir}], {:one, [line: 2, column: 3], Elixir}]}
+             [[{:one, [line: 1, column: 4], nil}], {:one, [line: 2, column: 3], nil}]}
           ]}},
         {~s'''
          fn
@@ -1383,7 +1490,7 @@ defmodule SpitfireTest do
          {:fn, [line: 1, column: 1],
           [
             {:->, [depth: 1, line: 2, column: 6],
-             [[{:one, [line: 2, column: 2], Elixir}], {:one, [line: 3, column: 3], Elixir}]}
+             [[{:one, [line: 2, column: 2], nil}], {:one, [line: 3, column: 3], nil}]}
           ]}},
         {~s'''
          fn(one) ->
@@ -1393,14 +1500,14 @@ defmodule SpitfireTest do
          {:fn, [line: 1, column: 1],
           [
             {:->, [depth: 1, line: 1, column: 9],
-             [[{:one, [line: 1, column: 4], Elixir}], {:one, [line: 2, column: 3], Elixir}]}
+             [[{:one, [line: 1, column: 4], nil}], {:one, [line: 2, column: 3], nil}]}
           ]}},
         {~S'foo(fn a -> a end)',
          {:foo, [closing: [line: 1, column: 18], line: 1, column: 1],
           [
             {:fn, [closing: [line: 1, column: 15], line: 1, column: 5],
              [
-               {:->, [line: 1, column: 10], [[{:a, [line: 1, column: 8], Elixir}], {:a, [line: 1, column: 13], Elixir}]}
+               {:->, [line: 1, column: 10], [[{:a, [line: 1, column: 8], nil}], {:a, [line: 1, column: 13], nil}]}
              ]}
           ]}}
       ]
@@ -1414,7 +1521,7 @@ defmodule SpitfireTest do
       codes = [
         {~s'''
          foo = :bar
-         ''', {:=, [line: 1, column: 5], [{:foo, [line: 1, column: 1], Elixir}, :bar]}}
+         ''', {:=, [line: 1, column: 5], [{:foo, [line: 1, column: 1], nil}, :bar]}}
       ]
 
       for {code, expected} <- codes do
@@ -1450,7 +1557,7 @@ defmodule SpitfireTest do
             [
               do: [
                 {:->, [depth: 1, line: 2, column: 18],
-                 [[{:==, [line: 2, column: 11], [{:prefix, [line: 2, column: 4], Elixir}, nil]}], :foo]},
+                 [[{:==, [line: 2, column: 11], [{:prefix, [line: 2, column: 4], nil}, nil]}], :foo]},
                 {:->, [depth: 1, line: 4, column: 9], [[true], :bar]}
               ]
             ]
@@ -1474,26 +1581,26 @@ defmodule SpitfireTest do
       assert Spitfire.parse!(code) ==
                {:def, [line: 1, column: 1],
                 [
-                  {:parse, [line: 1, column: 5], [{:code, [line: 1, column: 11], Elixir}]},
+                  {:parse, [line: 1, column: 5], [{:code, [line: 1, column: 11], nil}]},
                   [
                     do:
                       {:__block__, [],
                        [
                          {:=, [line: 2, column: 10],
                           [
-                            {:parser, [line: 2, column: 3], Elixir},
+                            {:parser, [line: 2, column: 3], nil},
                             {:|>, [line: 2, column: 42],
                              [
                                {:|>, [line: 2, column: 26],
                                 [
                                   {:|>, [line: 2, column: 17],
-                                   [{:code, [line: 2, column: 12], Elixir}, {:new, [line: 2, column: 20], []}]},
+                                   [{:code, [line: 2, column: 12], nil}, {:new, [line: 2, column: 20], []}]},
                                   {:next_token, [line: 2, column: 29], []}
                                 ]},
                                {:next_token, [line: 2, column: 45], []}
                              ]}
                           ]},
-                         {:parse_program, [line: 4, column: 3], [{:parser, [line: 4, column: 17], Elixir}]}
+                         {:parse_program, [line: 4, column: 3], [{:parser, [line: 4, column: 17], nil}]}
                        ]}
                   ]
                 ]}
@@ -1511,8 +1618,8 @@ defmodule SpitfireTest do
               [
                 {:when, [line: 1, column: 5],
                  [
-                   {:foo, [line: 1, column: 1], Elixir},
-                   {:is_binary, [line: 1, column: 10], [{:foo, [line: 1, column: 20], Elixir}]}
+                   {:foo, [line: 1, column: 1], nil},
+                   {:is_binary, [line: 1, column: 10], [{:foo, [line: 1, column: 20], nil}]}
                  ]}
               ],
               :ok
@@ -1531,8 +1638,8 @@ defmodule SpitfireTest do
               [
                 {:when, [line: 1, column: 5],
                  [
-                   {:foo, [line: 1, column: 1], Elixir},
-                   {:is_binary, [line: 1, column: 10], [{:foo, [line: 1, column: 20], Elixir}]}
+                   {:foo, [line: 1, column: 1], nil},
+                   {:is_binary, [line: 1, column: 10], [{:foo, [line: 1, column: 20], nil}]}
                  ]}
               ],
               :ok
@@ -1542,8 +1649,8 @@ defmodule SpitfireTest do
               [
                 {:when, [line: 4, column: 5],
                  [
-                   {:bar, [line: 4, column: 1], Elixir},
-                   {:is_number, [line: 4, column: 10], [{:bar, [line: 4, column: 20], Elixir}]}
+                   {:bar, [line: 4, column: 1], nil},
+                   {:is_number, [line: 4, column: 10], [{:bar, [line: 4, column: 20], nil}]}
                  ]}
               ],
               :ok
@@ -1558,8 +1665,8 @@ defmodule SpitfireTest do
           [
             {:when, [line: 1, column: 14],
              [
-               {:foo, [line: 1, column: 5], [{:bar, [line: 1, column: 9], Elixir}]},
-               {:is_binary, [line: 1, column: 19], [{:bar, [line: 1, column: 29], Elixir}]}
+               {:foo, [line: 1, column: 5], [{:bar, [line: 1, column: 9], nil}]},
+               {:is_binary, [line: 1, column: 19], [{:bar, [line: 1, column: 29], nil}]}
              ]},
             [do: :ok]
           ]}},
@@ -1575,8 +1682,8 @@ defmodule SpitfireTest do
                [
                  {:when, [line: 1, column: 8],
                   [
-                    {:foo, [line: 1, column: 4], Elixir},
-                    {:is_binary, [line: 1, column: 13], [{:foo, [line: 1, column: 23], Elixir}]}
+                    {:foo, [line: 1, column: 4], nil},
+                    {:is_binary, [line: 1, column: 13], [{:foo, [line: 1, column: 23], nil}]}
                   ]}
                ],
                :ok
@@ -1594,13 +1701,13 @@ defmodule SpitfireTest do
                [
                  {:when, [line: 1, column: 19],
                   [
-                    {:foo, [line: 1, column: 4], Elixir},
-                    {:bar, [line: 1, column: 9], Elixir},
-                    {:_baz, [line: 1, column: 14], Elixir},
+                    {:foo, [line: 1, column: 4], nil},
+                    {:bar, [line: 1, column: 9], nil},
+                    {:_baz, [line: 1, column: 14], nil},
                     {:and, [line: 1, column: 39],
                      [
-                       {:is_binary, [line: 1, column: 24], [{:foo, [line: 1, column: 34], Elixir}]},
-                       {:in, [line: 1, column: 47], [{:bar, [line: 1, column: 43], Elixir}, [:alice, :bob]]}
+                       {:is_binary, [line: 1, column: 24], [{:foo, [line: 1, column: 34], nil}]},
+                       {:in, [line: 1, column: 47], [{:bar, [line: 1, column: 43], nil}, [:alice, :bob]]}
                      ]}
                   ]}
                ],
@@ -1618,7 +1725,7 @@ defmodule SpitfireTest do
       codes = [
         {~s'''
          &foo/1
-         ''', {:&, [line: 1, column: 1], [{:/, [line: 1, column: 5], [{:foo, [line: 1, column: 2], Elixir}, 1]}]}},
+         ''', {:&, [line: 1, column: 1], [{:/, [line: 1, column: 5], [{:foo, [line: 1, column: 2], nil}, 1]}]}},
         {~s'''
          &Foo.foo/1
          ''',
@@ -1633,7 +1740,7 @@ defmodule SpitfireTest do
          {:&, [line: 1, column: 1],
           [
             {{:., [], [{:__aliases__, [line: 1, column: 2], [:Foo]}, :bar]}, [],
-             [{:one, [line: 1, column: 10], Elixir}, {:&, [line: 1, column: 15], [1]}]}
+             [{:one, [line: 1, column: 10], nil}, {:&, [line: 1, column: 15], [1]}]}
           ]}}
       ]
 
@@ -1646,19 +1753,19 @@ defmodule SpitfireTest do
       codes = [
         {~s'''
          foo.()
-         ''', {{:., [], [{:foo, [], Elixir}]}, [], []}},
+         ''', {{:., [], [{:foo, [], nil}]}, [], []}},
         {~s'''
          foo.(one, two)
-         ''', {{:., [], [{:foo, [], Elixir}]}, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+         ''', {{:., [], [{:foo, [], nil}]}, [], [{:one, [], nil}, {:two, [], nil}]}},
         {~s'''
          foo.(
            one,
            two
          )
-         ''', {{:., [], [{:foo, [], Elixir}]}, [], [{:one, [], Elixir}, {:two, [], Elixir}]}},
+         ''', {{:., [], [{:foo, [], nil}]}, [], [{:one, [], nil}, {:two, [], nil}]}},
         {~s'''
          infix.(next_token(parser), left)
-         ''', {{:., [], [{:infix, [], Elixir}]}, [], [{:next_token, [], [{:parser, [], Elixir}]}, {:left, [], Elixir}]}}
+         ''', {{:., [], [{:infix, [], nil}]}, [], [{:next_token, [], [{:parser, [], nil}]}, {:left, [], nil}]}}
       ]
 
       for {code, expected} <- codes do
@@ -1749,17 +1856,17 @@ defmodule SpitfireTest do
       assert Spitfire.parse!(code) ==
                {:if, [],
                 [
-                  {:==, [], [{:prefix, [], Elixir}, nil]},
+                  {:==, [], [{:prefix, [], nil}, nil]},
                   [
                     do:
                       {:__block__, [],
                        [
                          {:=, [],
                           [
-                            {{:row, [], Elixir}, {:col, [], Elixir}},
+                            {{:row, [], nil}, {:col, [], nil}},
                             {:token_loc, [],
                              [
-                               {{:., [], [{:parser, [], Elixir}, :current_token]}, [], []}
+                               {{:., [], [{:parser, [], nil}, :current_token]}, [], []}
                              ]}
                           ]},
                          {{:., [], [{:__aliases__, [], [:IO]}, :puts]}, [],
@@ -1773,86 +1880,86 @@ defmodule SpitfireTest do
                                    [
                                      {:"::", [],
                                       [
-                                        {{:., [], [Kernel, :to_string]}, [], [{:row, [], Elixir}]},
-                                        {:binary, [], Elixir}
+                                        {{:., [], [Kernel, :to_string]}, [], [{:row, [], nil}]},
+                                        {:binary, [], nil}
                                       ]},
                                      ":",
                                      {:"::", [],
                                       [
-                                        {{:., [], [Kernel, :to_string]}, [], [{:col, [], Elixir}]},
-                                        {:binary, [], Elixir}
+                                        {{:., [], [Kernel, :to_string]}, [], [{:col, [], nil}]},
+                                        {:binary, [], nil}
                                       ]},
                                      ": unknown prefix: ",
                                      {:"::", [],
                                       [
                                         {{:., [], [Kernel, :to_string]}, [],
-                                         [{:current_token_type, [], [{:parser, [], Elixir}]}]},
-                                        {:binary, [], Elixir}
+                                         [{:current_token_type, [], [{:parser, [], nil}]}]},
+                                        {:binary, [], nil}
                                       ]}
                                    ]},
                                   {{:., [], [{:__aliases__, [], [:IO, :ANSI]}, :reset]}, [], []}
                                 ]}
                              ]}
                           ]},
-                         {:error, {:next_token, [], [{:parser, [], Elixir}]}}
+                         {:error, {:next_token, [], [{:parser, [], nil}]}}
                        ]},
                     else:
                       {:__block__, [],
                        [
                          {:=, [],
                           [
-                            {{:left, [], Elixir}, {:parser, [], Elixir}},
-                            {{:., [], [{:prefix, [], Elixir}]}, [], [{:parser, [], Elixir}]}
+                            {{:left, [], nil}, {:parser, [], nil}},
+                            {{:., [], [{:prefix, [], nil}]}, [], [{:parser, [], nil}]}
                           ]},
                          {:=, [],
                           [
-                            {:calc_prec, [], Elixir},
+                            {:calc_prec, [], nil},
                             {:fn, [],
                              [
                                {:->, [depth: 2],
                                 [
-                                  [{:parser, [], Elixir}],
+                                  [{:parser, [], nil}],
                                   {:__block__, [],
                                    [
                                      {:=, [],
                                       [
-                                        {{:_associativity, [], Elixir}, {:power, [], Elixir}},
-                                        {:peek_precedence, [], [{:parser, [], Elixir}]}
+                                        {{:_associativity, [], nil}, {:power, [], nil}},
+                                        {:peek_precedence, [], [{:parser, [], nil}]}
                                       ]},
                                      {:=, [],
                                       [
-                                        {:precedence, [], Elixir},
+                                        {:precedence, [], nil},
                                         {:case, [],
                                          [
-                                           {:associativity, [], Elixir},
+                                           {:associativity, [], nil},
                                            [
                                              do: [
-                                               {:->, [depth: 3], [[:left], {:precedence, [], Elixir}]},
+                                               {:->, [depth: 3], [[:left], {:precedence, [], nil}]},
                                                {:->, [depth: 3], [[:unassoc], 0]},
                                                {:->, [depth: 3],
                                                 [
                                                   [:right],
-                                                  {:-, [], [{:precedence, [], Elixir}, 1]}
+                                                  {:-, [], [{:precedence, [], nil}, 1]}
                                                 ]}
                                              ]
                                            ]
                                          ]}
                                       ]},
-                                     {:<, [], [{:precedence, [], Elixir}, {:power, [], Elixir}]}
+                                     {:<, [], [{:precedence, [], nil}, {:power, [], nil}]}
                                    ]}
                                 ]}
                              ]}
                           ]},
-                         {:=, [], [{:terminals, [], Elixir}, [:eol, :eof, :"}", :")", :"]"]]},
+                         {:=, [], [{:terminals, [], nil}, [:eol, :eof, :"}", :")", :"]"]]},
                          {:=, [],
                           [
-                            {:terminals, [], Elixir},
+                            {:terminals, [], nil},
                             {:if, [],
                              [
-                               {:is_top, [], Elixir},
+                               {:is_top, [], nil},
                                [
-                                 do: {:terminals, [], Elixir},
-                                 else: [{:|, [], [:",", {:terminals, [], Elixir}]}]
+                                 do: {:terminals, [], nil},
+                                 else: [{:|, [], [:",", {:terminals, [], nil}]}]
                                ]
                              ]}
                           ]},
@@ -1866,13 +1973,13 @@ defmodule SpitfireTest do
                                    [
                                      {:in, [],
                                       [
-                                        {:peek_token, [], [{:parser, [], Elixir}]},
-                                        {:terminals, [], Elixir}
+                                        {:peek_token, [], [{:parser, [], nil}]},
+                                        {:terminals, [], nil}
                                       ]}
                                    ]},
-                                  {{:., [], [{:calc_prec, [], Elixir}]}, [], [{:parser, [], Elixir}]}
+                                  {{:., [], [{:calc_prec, [], nil}]}, [], [{:parser, [], nil}]}
                                 ]},
-                               {{:left, [], Elixir}, {:parser, [], Elixir}}
+                               {{:left, [], nil}, {:parser, [], nil}}
                              ]},
                             [
                               do:
@@ -1880,10 +1987,10 @@ defmodule SpitfireTest do
                                  [
                                    {:=, [],
                                     [
-                                      {:infix, [], Elixir},
+                                      {:infix, [], nil},
                                       {:case, [],
                                        [
-                                         {:peek_token_type, [], [{:parser, [], Elixir}]},
+                                         {:peek_token_type, [], [{:parser, [], nil}]},
                                          [
                                            do: [
                                              {:->, [depth: 3],
@@ -1891,7 +1998,7 @@ defmodule SpitfireTest do
                                                 [:match_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1899,7 +2006,7 @@ defmodule SpitfireTest do
                                                 [:when_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1907,7 +2014,7 @@ defmodule SpitfireTest do
                                                 [:pipe_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1915,7 +2022,7 @@ defmodule SpitfireTest do
                                                 [:dual_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1923,7 +2030,7 @@ defmodule SpitfireTest do
                                                 [:mult_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1931,7 +2038,7 @@ defmodule SpitfireTest do
                                                 [:concat_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1939,7 +2046,7 @@ defmodule SpitfireTest do
                                                 [:assoc_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_assoc_op, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_assoc_op, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1947,7 +2054,7 @@ defmodule SpitfireTest do
                                                 [:arrow_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1955,7 +2062,7 @@ defmodule SpitfireTest do
                                                 [:ternary_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1963,7 +2070,7 @@ defmodule SpitfireTest do
                                                 [:or_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1971,7 +2078,7 @@ defmodule SpitfireTest do
                                                 [:and_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1979,7 +2086,7 @@ defmodule SpitfireTest do
                                                 [:comp_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1987,7 +2094,7 @@ defmodule SpitfireTest do
                                                 [:rel_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -1995,7 +2102,7 @@ defmodule SpitfireTest do
                                                 [:in_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -2003,7 +2110,7 @@ defmodule SpitfireTest do
                                                 [:xor_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -2011,7 +2118,7 @@ defmodule SpitfireTest do
                                                 [:in_match_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_infix_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -2019,7 +2126,7 @@ defmodule SpitfireTest do
                                                 [:range_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_range_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_range_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -2027,7 +2134,7 @@ defmodule SpitfireTest do
                                                 [:stab_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_stab_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_stab_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -2035,7 +2142,7 @@ defmodule SpitfireTest do
                                                 [:do],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_do_block, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_do_block, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -2043,7 +2150,7 @@ defmodule SpitfireTest do
                                                 [:dot_call_op],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_dot_call_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_dot_call_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
@@ -2051,58 +2158,58 @@ defmodule SpitfireTest do
                                                 [:.],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_dot_expression, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_dot_expression, [], nil}, 2]}
                                                  ]}
                                               ]},
                                              {:->, [depth: 3],
                                               [
-                                                [{:when, [], [:",", {:is_top, [], Elixir}]}],
+                                                [{:when, [], [:",", {:is_top, [], nil}]}],
                                                 {:&, [],
                                                  [
-                                                   {:/, [], [{:parse_comma, [], Elixir}, 2]}
+                                                   {:/, [], [{:parse_comma, [], nil}, 2]}
                                                  ]}
                                               ]},
-                                             {:->, [depth: 3], [[{:_, [], Elixir}], nil]}
+                                             {:->, [depth: 3], [[{:_, [], nil}], nil]}
                                            ]
                                          ]
                                        ]}
                                     ]},
                                    {:=, [],
                                     [
-                                      {:do_block, [], Elixir},
+                                      {:do_block, [], nil},
                                       {:&, [],
                                        [
-                                         {:/, [], [{:parse_do_block, [], Elixir}, 2]}
+                                         {:/, [], [{:parse_do_block, [], nil}, 2]}
                                        ]}
                                     ]},
                                    {:case, [],
                                     [
-                                      {:infix, [], Elixir},
+                                      {:infix, [], nil},
                                       [
                                         do: [
-                                          {:->, [depth: 3], [[nil], {{:left, [], Elixir}, {:parser, [], Elixir}}]},
+                                          {:->, [depth: 3], [[nil], {{:left, [], nil}, {:parser, [], nil}}]},
                                           {:->, [depth: 3],
                                            [
                                              [
                                                {:when, [],
                                                 [
-                                                  {:^, [], [{:do_block, [], Elixir}]},
+                                                  {:^, [], [{:do_block, [], nil}]},
                                                   {:!=, [],
                                                    [
-                                                     {{:., [], [{:parser, [], Elixir}, :nestings]}, [], []},
+                                                     {{:., [], [{:parser, [], nil}, :nestings]}, [], []},
                                                      []
                                                    ]}
                                                 ]}
                                              ],
-                                             {{:left, [], Elixir}, {:next_token, [], [{:parser, [], Elixir}]}}
+                                             {{:left, [], nil}, {:next_token, [], [{:parser, [], nil}]}}
                                            ]},
                                           {:->, [depth: 3],
                                            [
-                                             [{:_, [], Elixir}],
-                                             {{:., [], [{:infix, [], Elixir}]}, [],
+                                             [{:_, [], nil}],
+                                             {{:., [], [{:infix, [], nil}]}, [],
                                               [
-                                                {:next_token, [], [{:parser, [], Elixir}]},
-                                                {:left, [], Elixir}
+                                                {:next_token, [], [{:parser, [], nil}]},
+                                                {:left, [], nil}
                                               ]}
                                            ]}
                                         ]
@@ -2133,12 +2240,12 @@ defmodule SpitfireTest do
       assert Spitfire.parse!(code) ==
                {:def, [],
                 [
-                  {:bar, [], [{:foo, [], Elixir}]},
+                  {:bar, [], [{:foo, [], nil}]},
                   [
                     do:
                       {:case, [],
                        [
-                         {:foo, [], Elixir},
+                         {:foo, [], nil},
                          [
                            do: [
                              {:->, [depth: 2], [[:foo], :ok]},
@@ -2147,13 +2254,13 @@ defmodule SpitfireTest do
                                 [:bar],
                                 {{:., [], [{:__aliases__, [], [:Enum]}, :map]}, [],
                                  [
-                                   {:some_list, [], Elixir},
+                                   {:some_list, [], nil},
                                    {:fn, [],
                                     [
                                       {:->, [depth: 3],
                                        [
-                                         [{:item, [], Elixir}],
-                                         {{:., [], [{:item, [], Elixir}, :name]}, [], []}
+                                         [{:item, [], nil}],
+                                         {{:., [], [{:item, [], nil}, :name]}, [], []}
                                        ]}
                                     ]}
                                  ]}
@@ -2180,7 +2287,7 @@ defmodule SpitfireTest do
       assert Spitfire.parse!(code) ==
                {:case, [],
                 [
-                  {:foo, [], Elixir},
+                  {:foo, [], nil},
                   [
                     do: [
                       {:->, [depth: 1], [[:foo], :ok]},
@@ -2189,13 +2296,13 @@ defmodule SpitfireTest do
                          [:bar],
                          {{:., [], [{:__aliases__, [], [:Enum]}, :map]}, [],
                           [
-                            {:some_list, [], Elixir},
+                            {:some_list, [], nil},
                             {:fn, [],
                              [
                                {:->, [depth: 2],
                                 [
-                                  [{:item, [], Elixir}],
-                                  {{:., [], [{:item, [], Elixir}, :name]}, [], []}
+                                  [{:item, [], nil}],
+                                  {{:., [], [{:item, [], nil}, :name]}, [], []}
                                 ]}
                              ]}
                           ]}
@@ -2279,18 +2386,18 @@ defmodule SpitfireTest do
       assert Spitfire.parse!(code) ==
                {:defp, [],
                 [
-                  {:parse_stab_expression, [], [{:parser, [], Elixir}, {:lhs, [], Elixir}]},
+                  {:parse_stab_expression, [], [{:parser, [], nil}, {:lhs, [], nil}]},
                   [
                     do:
                       {:case, [],
                        [
-                         {:current_token, [], [{:parser, [], Elixir}]},
+                         {:current_token, [], [{:parser, [], nil}]},
                          [
                            do: [
                              {:->, [depth: 2],
                               [
                                 [:<-],
-                                {:parse_infix_expression, [], [{:parser, [], Elixir}, {:lhs, [], Elixir}]}
+                                {:parse_infix_expression, [], [{:parser, [], nil}, {:lhs, [], nil}]}
                               ]},
                              {:->, [depth: 2],
                               [
@@ -2299,23 +2406,23 @@ defmodule SpitfireTest do
                                  [
                                    {:=, [],
                                     [
-                                      {:token, [], Elixir},
-                                      {:current_token, [], [{:parser, [], Elixir}]}
+                                      {:token, [], nil},
+                                      {:current_token, [], [{:parser, [], nil}]}
                                     ]},
                                    {:=, [],
                                     [
-                                      {:current_sd, [], Elixir},
-                                      {{:., [], [{:parser, [], Elixir}, :stab_depth]}, [], []}
+                                      {:current_sd, [], nil},
+                                      {{:., [], [{:parser, [], nil}, :stab_depth]}, [], []}
                                     ]},
                                    {:=, [],
                                     [
-                                      {:parser, [], Elixir},
-                                      {:eat_at, [], [{:parser, [], Elixir}, :eol, 1]}
+                                      {:parser, [], nil},
+                                      {:eat_at, [], [{:parser, [], nil}, :eol, 1]}
                                     ]},
-                                   {:=, [], [{:exprs, [], Elixir}, []]},
+                                   {:=, [], [{:exprs, [], nil}, []]},
                                    {:=, [],
                                     [
-                                      {{:exprs, [], Elixir}, {:parser, [], Elixir}},
+                                      {{:exprs, [], nil}, {:parser, [], nil}},
                                       {:while, [],
                                        [
                                          {:<-, [],
@@ -2324,11 +2431,11 @@ defmodule SpitfireTest do
                                              [
                                                {:in, [],
                                                 [
-                                                  {:peek_token, [], [{:parser, [], Elixir}]},
+                                                  {:peek_token, [], [{:parser, [], nil}]},
                                                   [:eof, :end]
                                                 ]}
                                              ]},
-                                            {{:exprs, [], Elixir}, {:parser, [], Elixir}}
+                                            {{:exprs, [], nil}, {:parser, [], nil}}
                                           ]},
                                          [
                                            do:
@@ -2336,38 +2443,38 @@ defmodule SpitfireTest do
                                               [
                                                 {:=, [],
                                                  [
-                                                   {:parser, [], Elixir},
-                                                   {:next_token, [], [{:parser, [], Elixir}]}
+                                                   {:parser, [], nil},
+                                                   {:next_token, [], [{:parser, [], nil}]}
                                                  ]},
                                                 {:=, [],
                                                  [
-                                                   {{:ast, [], Elixir}, {:parser, [], Elixir}},
-                                                   {:parse_expression, [], [{:parser, [], Elixir}, [top: true]]}
+                                                   {{:ast, [], nil}, {:parser, [], nil}},
+                                                   {:parse_expression, [], [{:parser, [], nil}, [top: true]]}
                                                  ]},
                                                 {:=, [],
                                                  [
-                                                   {:parser, [], Elixir},
-                                                   {:eat_at, [], [{:parser, [], Elixir}, :eol, 1]}
+                                                   {:parser, [], nil},
+                                                   {:eat_at, [], [{:parser, [], nil}, :eol, 1]}
                                                  ]},
                                                 {[
-                                                   {:|, [], [{:ast, [], Elixir}, {:exprs, [], Elixir}]}
-                                                 ], {:eat_eol, [], [{:parser, [], Elixir}]}}
+                                                   {:|, [], [{:ast, [], nil}, {:exprs, [], nil}]}
+                                                 ], {:eat_eol, [], [{:parser, [], nil}]}}
                                               ]}
                                          ]
                                        ]}
                                     ]},
                                    {:=, [],
                                     [
-                                      {:rhs, [], Elixir},
+                                      {:rhs, [], nil},
                                       {:case, [],
                                        [
-                                         {:exprs, [], Elixir},
+                                         {:exprs, [], nil},
                                          [
                                            do: [
-                                             {:->, [depth: 3], [[[{:ast, [], Elixir}]], {:ast, [], Elixir}]},
+                                             {:->, [depth: 3], [[[{:ast, [], nil}]], {:ast, [], nil}]},
                                              {:->, [depth: 3],
                                               [
-                                                [{:exprs, [], Elixir}],
+                                                [{:exprs, [], nil}],
                                                 {:{}, [],
                                                  [
                                                    :__block__,
@@ -2376,7 +2483,7 @@ defmodule SpitfireTest do
                                                      [
                                                        {:__aliases__, [], [:Enum]},
                                                        :reverse
-                                                     ]}, [], [{:exprs, [], Elixir}]}
+                                                     ]}, [], [{:exprs, [], nil}]}
                                                  ]}
                                               ]}
                                            ]
@@ -2385,22 +2492,22 @@ defmodule SpitfireTest do
                                     ]},
                                    {:=, [],
                                     [
-                                      {{:rhs, [], Elixir}, {:stabs, [], Elixir}},
+                                      {{:rhs, [], nil}, {:stabs, [], nil}},
                                       {{:., [], [{:__aliases__, [], [:Macro]}, :traverse]}, [],
                                        [
-                                         {:rhs, [], Elixir},
+                                         {:rhs, [], nil},
                                          [],
                                          {:fn, [],
                                           [
                                             {:->, [depth: 3],
                                              [
                                                [
-                                                 {:node, [], Elixir},
-                                                 {:acc, [], Elixir}
+                                                 {:node, [], nil},
+                                                 {:acc, [], nil}
                                                ],
                                                {:case, [],
                                                 [
-                                                  {:node, [], Elixir},
+                                                  {:node, [], nil},
                                                   [
                                                     do: [
                                                       {:->, [depth: 4],
@@ -2409,17 +2516,16 @@ defmodule SpitfireTest do
                                                            {:{}, [],
                                                             [
                                                               :->,
-                                                              {:meta, [], Elixir},
-                                                              {:_args, [], Elixir}
+                                                              {:meta, [], nil},
+                                                              {:_args, [], nil}
                                                             ]}
                                                          ],
                                                          {:if, [],
                                                           [
                                                             {:==, [],
                                                              [
-                                                               {{:., [], [Access, :get]}, [],
-                                                                [{:meta, [], Elixir}, :depth]},
-                                                               {:current_sd, [], Elixir}
+                                                               {{:., [], [Access, :get]}, [], [{:meta, [], nil}, :depth]},
+                                                               {:current_sd, [], nil}
                                                              ]},
                                                             [
                                                               do:
@@ -2427,18 +2533,18 @@ defmodule SpitfireTest do
                                                                  [
                                                                    {:|, [],
                                                                     [
-                                                                      {:node, [], Elixir},
-                                                                      {:acc, [], Elixir}
+                                                                      {:node, [], nil},
+                                                                      {:acc, [], nil}
                                                                     ]}
                                                                  ]},
-                                                              else: {{:node, [], Elixir}, {:acc, [], Elixir}}
+                                                              else: {{:node, [], nil}, {:acc, [], nil}}
                                                             ]
                                                           ]}
                                                        ]},
                                                       {:->, [depth: 4],
                                                        [
-                                                         [{:_, [], Elixir}],
-                                                         {{:node, [], Elixir}, {:acc, [], Elixir}}
+                                                         [{:_, [], nil}],
+                                                         {{:node, [], nil}, {:acc, [], nil}}
                                                        ]}
                                                     ]
                                                   ]
@@ -2454,26 +2560,26 @@ defmodule SpitfireTest do
                                                   [
                                                     {:{}, [],
                                                      [
-                                                       {:node, [], Elixir},
-                                                       {:meta, [], Elixir},
-                                                       {:args, [], Elixir}
+                                                       {:node, [], nil},
+                                                       {:meta, [], nil},
+                                                       {:args, [], nil}
                                                      ]},
-                                                    {:acc, [], Elixir},
-                                                    {:is_list, [], [{:args, [], Elixir}]}
+                                                    {:acc, [], nil},
+                                                    {:is_list, [], [{:args, [], nil}]}
                                                   ]}
                                                ],
                                                {:__block__, [],
                                                 [
                                                   {:=, [],
                                                    [
-                                                     {:args, [], Elixir},
+                                                     {:args, [], nil},
                                                      {{:., [],
                                                        [
                                                          {:__aliases__, [], [:Enum]},
                                                          :reject
                                                        ]}, [],
                                                       [
-                                                        {:args, [], Elixir},
+                                                        {:args, [], nil},
                                                         {:&, [],
                                                          [
                                                            {:&&, [],
@@ -2490,29 +2596,29 @@ defmodule SpitfireTest do
                                                    ]},
                                                   {{:{}, [],
                                                     [
-                                                      {:node, [], Elixir},
-                                                      {:meta, [], Elixir},
-                                                      {:args, [], Elixir}
-                                                    ]}, {:acc, [], Elixir}}
+                                                      {:node, [], nil},
+                                                      {:meta, [], nil},
+                                                      {:args, [], nil}
+                                                    ]}, {:acc, [], nil}}
                                                 ]}
                                              ]},
                                             {:->, [depth: 3],
                                              [
                                                [
-                                                 {:node, [], Elixir},
-                                                 {:acc, [], Elixir}
+                                                 {:node, [], nil},
+                                                 {:acc, [], nil}
                                                ],
-                                               {{:node, [], Elixir}, {:acc, [], Elixir}}
+                                               {{:node, [], nil}, {:acc, [], nil}}
                                              ]}
                                           ]}
                                        ]}
                                     ]},
                                    {:=, [],
                                     [
-                                      {:rhs, [], Elixir},
+                                      {:rhs, [], nil},
                                       {:case, [],
                                        [
-                                         {:rhs, [], Elixir},
+                                         {:rhs, [], nil},
                                          [
                                            do: [
                                              {:->, [depth: 3],
@@ -2521,40 +2627,40 @@ defmodule SpitfireTest do
                                                   {:{}, [],
                                                    [
                                                      :__block__,
-                                                     {:_, [], Elixir},
-                                                     [{:ast, [], Elixir}]
+                                                     {:_, [], nil},
+                                                     [{:ast, [], nil}]
                                                    ]}
                                                 ],
-                                                {:ast, [], Elixir}
+                                                {:ast, [], nil}
                                               ]},
-                                             {:->, [depth: 3], [[[{:ast, [], Elixir}]], {:ast, [], Elixir}]},
-                                             {:->, [depth: 3], [[{:block, [], Elixir}], {:block, [], Elixir}]}
+                                             {:->, [depth: 3], [[[{:ast, [], nil}]], {:ast, [], nil}]},
+                                             {:->, [depth: 3], [[{:block, [], nil}], {:block, [], nil}]}
                                            ]
                                          ]
                                        ]}
                                     ]},
                                    {:=, [],
                                     [
-                                      {:ast, [], Elixir},
+                                      {:ast, [], nil},
                                       {:++, [],
                                        [
                                          [
                                            {:{}, [],
                                             [
-                                              {:token, [], Elixir},
+                                              {:token, [], nil},
                                               [
-                                                depth: {{:., [], [{:parser, [], Elixir}, :stab_depth]}, [], []}
+                                                depth: {{:., [], [{:parser, [], nil}, :stab_depth]}, [], []}
                                               ],
                                               [
-                                                {:wrap, [], [{:lhs, [], Elixir}]},
-                                                {:rhs, [], Elixir}
+                                                {:wrap, [], [{:lhs, [], nil}]},
+                                                {:rhs, [], nil}
                                               ]
                                             ]}
                                          ],
-                                         {{:., [], [{:__aliases__, [], [:Enum]}, :reverse]}, [], [{:stabs, [], Elixir}]}
+                                         {{:., [], [{:__aliases__, [], [:Enum]}, :reverse]}, [], [{:stabs, [], nil}]}
                                        ]}
                                     ]},
-                                   {{:ast, [], Elixir}, {:eat_eol, [], [{:parser, [], Elixir}]}}
+                                   {{:ast, [], nil}, {:eat_eol, [], [{:parser, [], nil}]}}
                                  ]}
                               ]}
                            ]
@@ -2586,14 +2692,14 @@ defmodule SpitfireTest do
                  [
                    {:<-, [line: 1, column: 15],
                     [
-                      {:ok, {:_, [line: 1, column: 12], Elixir}},
+                      {:ok, {:_, [line: 1, column: 12], nil}},
                       {:bar, [closing: [line: 5, column: 11], line: 1, column: 18],
                        [
                          {:fn, [closing: [line: 5, column: 8], line: 1, column: 22],
                           [
                             {:->, [newlines: 1, depth: 1, line: 1, column: 27],
                              [
-                               [{:a, [line: 1, column: 25], Elixir}],
+                               [{:a, [line: 1, column: 25], nil}],
                                {:with,
                                 [
                                   do: [line: 2, column: 23],
@@ -2602,7 +2708,7 @@ defmodule SpitfireTest do
                                   column: 10
                                 ],
                                 [
-                                  {:<-, [line: 2, column: 18], [:d, {:b, [line: 2, column: 21], Elixir}]},
+                                  {:<-, [line: 2, column: 18], [:d, {:b, [line: 2, column: 21], nil}]},
                                   [do: :f]
                                 ]}
                              ]}
@@ -2621,11 +2727,11 @@ defmodule SpitfireTest do
                 {:<<>>, [closing: [line: 1, column: 25], line: 1, column: 1],
                  [
                    46,
-                   {:char, [line: 1, column: 7], Elixir},
+                   {:char, [line: 1, column: 7], nil},
                    {:"::", [line: 1, column: 17],
                     [
-                      {:rest, [line: 1, column: 13], Elixir},
-                      {:binary, [line: 1, column: 19], Elixir}
+                      {:rest, [line: 1, column: 13], nil},
+                      {:binary, [line: 1, column: 19], nil}
                     ]}
                  ]}}
     end
@@ -2646,7 +2752,7 @@ defmodule SpitfireTest do
                          {:start_link, [closing: [line: 1, column: 48], line: 1, column: 7],
                           [
                             [
-                              {:->, [line: 1, column: 19], [[], {:term, [line: 1, column: 22], Elixir}]}
+                              {:->, [line: 1, column: 19], [[], {:term, [line: 1, column: 22], nil}]}
                             ],
                             {{:., [line: 1, column: 38],
                               [
@@ -2654,7 +2760,7 @@ defmodule SpitfireTest do
                                 :options
                               ]}, [closing: [line: 1, column: 47], line: 1, column: 39], []}
                           ]},
-                         {:on_start, [line: 1, column: 53], Elixir}
+                         {:on_start, [line: 1, column: 53], nil}
                        ]}
                     ]}
                  ]}}
@@ -2675,19 +2781,19 @@ defmodule SpitfireTest do
                           [
                             {:get, [closing: [line: 1, column: 39], line: 1, column: 7],
                              [
-                               {:agent, [line: 1, column: 11], Elixir},
+                               {:agent, [line: 1, column: 11], nil},
                                [
                                  {:->, [depth: 0, line: 1, column: 25],
                                   [
-                                    [{:state, [line: 1, column: 19], Elixir}],
-                                    {:a, [line: 1, column: 28], Elixir}
+                                    [{:state, [line: 1, column: 19], nil}],
+                                    {:a, [line: 1, column: 28], nil}
                                   ]}
                                ],
-                               {:timeout, [line: 1, column: 32], Elixir}
+                               {:timeout, [line: 1, column: 32], nil}
                              ]},
-                            {:a, [line: 1, column: 44], Elixir}
+                            {:a, [line: 1, column: 44], nil}
                           ]},
-                         [a: {:var, [line: 1, column: 54], Elixir}]
+                         [a: {:var, [line: 1, column: 54], nil}]
                        ]}
                     ]}
                  ]}}
@@ -2710,10 +2816,10 @@ defmodule SpitfireTest do
                        [
                          {:%, [line: 1, column: 9],
                           [
-                            {:mod, [line: 1, column: 10], Elixir},
+                            {:mod, [line: 1, column: 10], nil},
                             {:%{}, [closing: [line: 1, column: 14], line: 1, column: 13], []}
                           ]},
-                         {:bar, [line: 1, column: 18], Elixir}
+                         {:bar, [line: 1, column: 18], nil}
                        ]}
                     ]},
                    [do: :ok]
@@ -2745,7 +2851,7 @@ defmodule SpitfireTest do
                           [
                             {:in, [line: 4, column: 5],
                              [
-                               {:e, [line: 4, column: 3], Elixir},
+                               {:e, [line: 4, column: 3], nil},
                                {:__aliases__, [last: [line: 4, column: 8], line: 4, column: 8], [:E]}
                              ]}
                           ],
@@ -2755,15 +2861,15 @@ defmodule SpitfireTest do
                      else: [
                        {:->, [depth: 1, line: 7, column: 16],
                         [
-                          [ok: {:value, [line: 7, column: 9], Elixir}],
+                          [ok: {:value, [line: 7, column: 9], nil}],
                           {:value,
                            [
                              end_of_expression: [newlines: 1, line: 7, column: 24],
                              line: 7,
                              column: 19
-                           ], Elixir}
+                           ], nil}
                         ]},
-                       {:->, [depth: 1, line: 8, column: 10], [[:error], {:default, [line: 8, column: 13], Elixir}]}
+                       {:->, [depth: 1, line: 8, column: 10], [[:error], {:default, [line: 8, column: 13], nil}]}
                      ]
                    ]
                  ]}}
@@ -2776,7 +2882,7 @@ defmodule SpitfireTest do
       """
 
       assert Spitfire.parse(code) ==
-               {:ok, {:=, [line: 2, column: 11], [{:some_code, [line: 2, column: 1], Elixir}, :foo]}}
+               {:ok, {:=, [line: 2, column: 11], [{:some_code, [line: 2, column: 1], nil}, :foo]}}
     end
 
     test "default args" do
@@ -2791,7 +2897,7 @@ defmodule SpitfireTest do
                 {:def, [do: [line: 1, column: 24], end: [line: 3, column: 1], line: 1, column: 1],
                  [
                    {:foo, [closing: [line: 1, column: 22], line: 1, column: 5],
-                    [{:\\, [line: 1, column: 13], [{:arg, [line: 1, column: 9], Elixir}, :value]}]},
+                    [{:\\, [line: 1, column: 13], [{:arg, [line: 1, column: 9], nil}, :value]}]},
                    [do: :ok]
                  ]}}
     end
@@ -2833,7 +2939,7 @@ defmodule SpitfireTest do
                closing: [line: 4, column: 6],
                line: 4,
                column: 1
-             ], [{:four, [line: 4, column: 2], Elixir}]},
+             ], [{:four, [line: 4, column: 2], nil}]},
             {:try, [do: [line: 5, column: 5], end: [line: 10, column: 1], line: 5, column: 1],
              [
                [
@@ -2842,7 +2948,7 @@ defmodule SpitfireTest do
                   [
                     {:->, [newlines: 1, depth: 1, line: 8, column: 5],
                      [
-                       [{:_, [line: 8, column: 3], Elixir}],
+                       [{:_, [line: 8, column: 3], nil}],
                        {:__literal__, [line: 9, column: 5], :error}
                      ]}
                   ]}
@@ -2870,7 +2976,7 @@ defmodule SpitfireTest do
          """, {:__literal__, [delimiter: "'''", indentation: 0, line: 1, column: 1], ~c"foo\n"}},
         {~S'{one, two}',
          {:__literal__, [closing: [line: 1, column: 10], line: 1, column: 1],
-          {{:one, [line: 1, column: 2], Elixir}, {:two, [line: 1, column: 7], Elixir}}}}
+          {{:one, [line: 1, column: 2], nil}, {:two, [line: 1, column: 7], nil}}}}
       ]
 
       for {code, expected} <- codes do
@@ -2896,8 +3002,8 @@ defmodule SpitfireTest do
                      from_interpolation: true,
                      line: 1,
                      column: 9
-                   ], [{:world, [line: 1, column: 11], Elixir}]},
-                  {:binary, [line: 1, column: 9], Elixir}
+                   ], [{:world, [line: 1, column: 11], nil}]},
+                  {:binary, [line: 1, column: 9], nil}
                 ]}
              ]},
             ~c"bar"
@@ -2937,8 +3043,8 @@ defmodule SpitfireTest do
                         closing: [line: 1, column: 12],
                         line: 1,
                         column: 5
-                      ], [{:alice, [line: 1, column: 7], Elixir}]},
-                     {:binary, [line: 1, column: 5], Elixir}
+                      ], [{:alice, [line: 1, column: 7], nil}]},
+                     {:binary, [line: 1, column: 5], nil}
                    ]},
                   "bar"
                 ]}
@@ -2960,7 +3066,7 @@ defmodule SpitfireTest do
                         line: 1,
                         column: 5
                       ], [{:__block__, [], []}]},
-                     {:binary, [line: 1, column: 5], Elixir}
+                     {:binary, [line: 1, column: 5], nil}
                    ]},
                   "bar"
                 ]}
@@ -2983,8 +3089,8 @@ defmodule SpitfireTest do
                         closing: [line: 2, column: 11],
                         line: 2,
                         column: 4
-                      ], [{:alice, [line: 2, column: 6], Elixir}]},
-                     {:binary, [line: 2, column: 4], Elixir}
+                      ], [{:alice, [line: 2, column: 6], nil}]},
+                     {:binary, [line: 2, column: 4], nil}
                    ]},
                   "bar\n"
                 ]}
@@ -3005,8 +3111,8 @@ defmodule SpitfireTest do
                          closing: [line: 1, column: 7],
                          line: 1,
                          column: 2
-                       ], [{:foo, [line: 1, column: 4], Elixir}]},
-                      {:binary, [line: 1, column: 2], Elixir}
+                       ], [{:foo, [line: 1, column: 4], nil}]},
+                      {:binary, [line: 1, column: 2], nil}
                     ]}
                  ]}}
     end
@@ -3037,7 +3143,7 @@ defmodule SpitfireTest do
                       closing: [line: 4, column: 3],
                       line: 2,
                       column: 8
-                    ], [{:bar, [line: 3, column: 5], Elixir}]},
+                    ], [{:bar, [line: 3, column: 5], nil}]},
                    {{:., [line: 5, column: 7],
                      [
                        {:__aliases__, [{:last, [line: 5, column: 3]}, line: 5, column: 3], [:Some]},
@@ -3057,7 +3163,7 @@ defmodule SpitfireTest do
           [
             {:->, [newlines: 1, depth: 1, line: 1, column: 8],
              [
-               [{:foo, [line: 1, column: 4], Elixir}],
+               [{:foo, [line: 1, column: 4], nil}],
                {:__block__, [],
                 [
                   {:send,
@@ -3065,7 +3171,7 @@ defmodule SpitfireTest do
                      end_of_expression: [newlines: 2, line: 2, column: 16],
                      line: 2,
                      column: 3
-                   ], [{:foo, [line: 2, column: 8], Elixir}, :hi]},
+                   ], [{:foo, [line: 2, column: 8], nil}, :hi]},
                   :ok
                 ]}
              ]}
@@ -3083,17 +3189,16 @@ defmodule SpitfireTest do
         {~S'{one, two, three}',
          {:{}, [closing: [line: 1, column: 17], line: 1, column: 1],
           [
-            {:one, [line: 1, column: 2], Elixir},
-            {:two, [line: 1, column: 7], Elixir},
-            {:three, [line: 1, column: 12], Elixir}
+            {:one, [line: 1, column: 2], nil},
+            {:two, [line: 1, column: 7], nil},
+            {:three, [line: 1, column: 12], nil}
           ]}},
         {~S'%{}', {:%{}, [closing: [line: 1, column: 3], line: 1, column: 2], []}},
         {~S'%{"one" => two, three: 4}',
          {:%{}, [closing: [line: 1, column: 25], line: 1, column: 2],
-          [{"one", {:two, [line: 1, column: 12], Elixir}}, {:three, 4}]}},
+          [{"one", {:two, [line: 1, column: 12], nil}}, {:three, 4}]}},
         {~S'foo()', {:foo, [closing: [line: 1, column: 5], line: 1, column: 1], []}},
-        {~S'foo(bar)',
-         {:foo, [closing: [line: 1, column: 8], line: 1, column: 1], [{:bar, [line: 1, column: 5], Elixir}]}}
+        {~S'foo(bar)', {:foo, [closing: [line: 1, column: 8], line: 1, column: 1], [{:bar, [line: 1, column: 5], nil}]}}
       ]
 
       for {code, expected} <- codes do
@@ -3103,7 +3208,7 @@ defmodule SpitfireTest do
 
     test "parses special keywords" do
       codes = [
-        {"__MODULE__", {:__MODULE__, [line: 1, column: 1], Elixir}}
+        {"__MODULE__", {:__MODULE__, [line: 1, column: 1], nil}}
       ]
 
       for {code, expected} <- codes do
@@ -3170,7 +3275,7 @@ defmodule SpitfireTest do
                                        [do: [line: 7, column: 20], end: [line: 9, column: 5], line: 7, column: 5],
                                        [
                                          {:new, [closing: [line: 7, column: 18], line: 7, column: 9],
-                                          [{:attrs, [line: 7, column: 13], Elixir}]},
+                                          [{:attrs, [line: 7, column: 13], nil}]},
                                          [
                                            do: {
                                              :struct,
@@ -3180,11 +3285,11 @@ defmodule SpitfireTest do
                                                  :%,
                                                  [line: 8, column: 14],
                                                  [
-                                                   {:__MODULE__, [line: 8, column: 15], Elixir},
+                                                   {:__MODULE__, [line: 8, column: 15], nil},
                                                    {:%{}, [closing: [line: 8, column: 26], line: 8, column: 25], []}
                                                  ]
                                                },
-                                               {:attrs, [line: 8, column: 29], Elixir}
+                                               {:attrs, [line: 8, column: 29], nil}
                                              ]
                                            }
                                          ]
@@ -3231,9 +3336,9 @@ defmodule SpitfireTest do
                                  :run,
                                  [closing: [line: 13, column: 24], line: 13, column: 7],
                                  [
-                                   {:foo, [line: 13, column: 11], Elixir},
-                                   {:bar, [line: 13, column: 16], Elixir},
-                                   {:baz, [line: 13, column: 21], Elixir}
+                                   {:foo, [line: 13, column: 11], nil},
+                                   {:bar, [line: 13, column: 16], nil},
+                                   {:baz, [line: 13, column: 21], nil}
                                  ]
                                },
                                [do: :something]
@@ -3438,7 +3543,7 @@ defmodule SpitfireTest do
                       {:+, [line: 1, column: 7],
                        [1, {:__error__, [line: 1, column: 7], ["malformed right-hand side of + operator"]}]}
                     ]},
-                   {:bar, [{:closing, [line: 3, column: 8]}, line: 3, column: 1], [{:two, [line: 3, column: 5], Elixir}]}
+                   {:bar, [{:closing, [line: 3, column: 8]}, line: 3, column: 1], [{:two, [line: 3, column: 5], nil}]}
                  ]
                },
                [{[line: 1, column: 7], "malformed right-hand side of + operator"}]
@@ -3459,8 +3564,7 @@ defmodule SpitfireTest do
                   {:+, [line: 1, column: 7],
                    [
                      1,
-                     {:bar, [{:closing, [line: 3, column: 8]}, line: 3, column: 1],
-                      [{:two, [line: 3, column: 5], Elixir}]}
+                     {:bar, [{:closing, [line: 3, column: 8]}, line: 3, column: 1], [{:two, [line: 3, column: 5], nil}]}
                    ]}
                 ]},
                [{[line: 1, column: 4], "missing closing parentheses for function invocation"}]
@@ -3482,13 +3586,13 @@ defmodule SpitfireTest do
                  :=,
                  [line: 1, column: 10],
                  [
-                   {:new_list, [line: 1, column: 1], Elixir},
+                   {:new_list, [line: 1, column: 1], nil},
                    {
                      {:., [line: 2, column: 7],
                       [{:__aliases__, [{:last, [line: 2, column: 3]}, {:line, 2}, {:column, 3}], [:Enum]}, :map]},
                      [{:closing, [line: 5, column: 19]}, {:line, 2}, {:column, 8}],
                      [
-                       {:some_list, [line: 2, column: 12], Elixir},
+                       {:some_list, [line: 2, column: 12], nil},
                        {
                          :fn,
                          [closing: [line: 5, column: 19], line: 2, column: 23],
@@ -3497,11 +3601,11 @@ defmodule SpitfireTest do
                              :->,
                              [newlines: 3, depth: 1, line: 2, column: 31],
                              [
-                               [{:item, [line: 2, column: 26], Elixir}],
+                               [{:item, [line: 2, column: 26], nil}],
                                {
                                  :send,
                                  [closing: [line: 5, column: 19], line: 5, column: 1],
-                                 [{:pid, [line: 5, column: 6], Elixir}, {:new_list, [line: 5, column: 11], Elixir}]
+                                 [{:pid, [line: 5, column: 6], nil}, {:new_list, [line: 5, column: 11], nil}]
                                }
                              ]
                            }
@@ -3564,7 +3668,7 @@ defmodule SpitfireTest do
                                column: 3
                              ],
                              [
-                               {:bat, [line: 4, column: 7], Elixir},
+                               {:bat, [line: 4, column: 7], nil},
                                [
                                  do: {
                                    :__block__,
@@ -3573,7 +3677,7 @@ defmodule SpitfireTest do
                                      {
                                        :=,
                                        [end_of_expression: [newlines: 1, line: 5, column: 14], line: 5, column: 9],
-                                       [{:var, [line: 5, column: 5], Elixir}, 123]
+                                       [{:var, [line: 5, column: 5], nil}, 123]
                                      },
                                      {:{}, [line: 6, column: 5], []}
                                    ]
@@ -3584,7 +3688,7 @@ defmodule SpitfireTest do
                            {
                              :def,
                              [do: [line: 9, column: 22], end: [line: 11, column: 3], line: 9, column: 3],
-                             [{:local_function, [line: 9, column: 7], Elixir}, [do: {:__block__, [], []}]]
+                             [{:local_function, [line: 9, column: 7], nil}, [do: {:__block__, [], []}]]
                            }
                          ]
                        }
@@ -3641,7 +3745,7 @@ defmodule SpitfireTest do
                                column: 3
                              ],
                              [
-                               {:bat, [line: 4, column: 7], Elixir},
+                               {:bat, [line: 4, column: 7], nil},
                                [
                                  do: {
                                    :__block__,
@@ -3650,9 +3754,9 @@ defmodule SpitfireTest do
                                      {
                                        :=,
                                        [end_of_expression: [newlines: 1, line: 5, column: 14], line: 5, column: 9],
-                                       [{:var, [line: 5, column: 5], Elixir}, 123]
+                                       [{:var, [line: 5, column: 5], nil}, 123]
                                      },
-                                     {:{}, [closing: nil, line: 6, column: 5], [{:var, [line: 6, column: 6], Elixir}]}
+                                     {:{}, [closing: nil, line: 6, column: 5], [{:var, [line: 6, column: 6], nil}]}
                                    ]
                                  }
                                ]
@@ -3661,7 +3765,7 @@ defmodule SpitfireTest do
                            {
                              :def,
                              [do: [line: 9, column: 22], end: [line: 11, column: 3], line: 9, column: 3],
-                             [{:local_function, [line: 9, column: 7], Elixir}, [do: {:__block__, [], []}]]
+                             [{:local_function, [line: 9, column: 7], nil}, [do: {:__block__, [], []}]]
                            }
                          ]
                        }
@@ -3717,7 +3821,7 @@ defmodule SpitfireTest do
                              column: 3
                            ],
                            [
-                             {:bat, [line: 4, column: 7], Elixir},
+                             {:bat, [line: 4, column: 7], nil},
                              [
                                do: {
                                  :__block__,
@@ -3726,9 +3830,9 @@ defmodule SpitfireTest do
                                    {
                                      :=,
                                      [end_of_expression: [newlines: 1, line: 5, column: 14], line: 5, column: 9],
-                                     [{:var, [line: 5, column: 5], Elixir}, 123]
+                                     [{:var, [line: 5, column: 5], nil}, 123]
                                    },
-                                   [{:var, [line: 6, column: 6], Elixir}]
+                                   [{:var, [line: 6, column: 6], nil}]
                                  ]
                                }
                              ]
@@ -3737,7 +3841,7 @@ defmodule SpitfireTest do
                          {
                            :def,
                            [do: [line: 9, column: 22], end: [line: 11, column: 3], line: 9, column: 3],
-                           [{:local_function, [line: 9, column: 7], Elixir}, [do: {:__block__, [], []}]]
+                           [{:local_function, [line: 9, column: 7], nil}, [do: {:__block__, [], []}]]
                          }
                        ]
                      }

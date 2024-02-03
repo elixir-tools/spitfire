@@ -1,12 +1,10 @@
 result,file,errors
-failure,/home/mitchell/src/elixir/lib/elixir/lib/code/formatter.ex,"[{[line: 2265, column: 8], ""unknown token: eol""}, {[line: 2266, column: 9], ""missing closing parentheses""}, {[line: 2266, column: 20], ""syntax error""}, {[line: 2269, column: 7], ""unknown token: )""}]"
 failure,/home/mitchell/src/elixir/lib/elixir/lib/code/fragment.ex,"[{[line: 471, column: 26], ""missing closing parentheses for function invocation""}, {[line: 471, column: 80], ""unknown token: do""}, {[line: 494, column: 17], ""missing closing parentheses for function invocation""}, {[line: 1096, column: 1], ""unknown token: end""}]"
 failure,/home/mitchell/src/elixir/lib/elixir/lib/kernel.ex,"[{[line: 1442, column: 4], ""unknown token: op_identifier""}, {[line: 1442, column: 10], ""syntax error""}, {[line: 1443, column: 4], ""unknown token: op_identifier""}, {[line: 1443, column: 10], ""syntax error""}, {[line: 1444, column: 3], ""unknown token: op_identifier""}, {[line: 1444, column: 14], ""unknown token: do""}, {[line: 1445, column: 12], ""unknown token: .""}, {[line: 1460, column: 4], ""unknown token: op_identifier""}, {[line: 1460, column: 10], ""syntax error""}, {[line: 1461, column: 4], ""unknown token: op_identifier""}, {[line: 1461, column: 10], ""syntax error""}, {[line: 1462, column: 4], ""unknown token: op_identifier""}, {[line: 1462, column: 10], ""syntax error""}, {[line: 1463, column: 4], ""unknown token: op_identifier""}, {[line: 1463, column: 10], ""syntax error""}, {[line: 1464, column: 3], ""unknown token: op_identifier""}, {[line: 4113, column: 13], ""unknown token: range_op""}, {[line: 4113, column: 15], ""missing closing parentheses""}, {[line: 6667, column: 1], ""unknown token: end""}]"
 failure,/home/mitchell/src/elixir/lib/elixir/lib/kernel/parallel_compiler.ex,"[{[line: 558, column: 31], ""missing closing parentheses for function invocation""}, {[line: 558, column: 15], ""missing closing parentheses for function invocation""}, {[line: 558, column: 82], ""unknown token: )""}]"
 failure,/home/mitchell/src/elixir/lib/elixir/lib/macro.ex,"[{[line: 1400, column: 26], ""missing closing parentheses for function invocation""}, {[line: 1400, column: 14], ""missing closing parentheses for function invocation""}, {[line: 1400, column: 69], ""unknown token: )""}]"
 failure,/home/mitchell/src/elixir/lib/elixir/lib/registry.ex,"[{[line: 176, column: 4], ""unknown token: op_identifier""}, {[line: 176, column: 14], ""syntax error""}, {[line: 177, column: 4], ""unknown token: op_identifier""}, {[line: 177, column: 14], ""syntax error""}, {[line: 1508, column: 4], ""unknown token: op_identifier""}, {[line: 1508, column: 14], ""syntax error""}, {[line: 1509, column: 4], ""unknown token: op_identifier""}, {[line: 1509, column: 14], ""syntax error""}]"
-failure,/home/mitchell/src/elixir/lib/iex/lib/iex/introspection.ex,"[{[line: 303, column: 24], ""missing closing parentheses""}, {[line: 304, column: 18], ""syntax error""}, {[line: 307, column: 21], ""unknown token: do""}, {[line: 333, column: 3], ""unknown token: end""}, {[line: 706, column: 35], ""missing closing parentheses for function invocation""}, {[line: 706, column: 27], ""missing closing parentheses for function invocation""}, {[line: 706, column: 92], ""unknown token: )""}, {[line: 741, column: 22], ""missing closing parentheses for function invocation""}, {[line: 740, column: 25], ""missing closing parentheses for function invocation""}, {[line: 745, column: 13], ""unknown token: )""}, {[line: 888, column: 1], ""unknown token: end""}]"
-failure,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/new.ex,"[{[line: 248, column: 8], ""unknown token: eol""}, {[line: 249, column: 9], ""missing closing parentheses""}, {[line: 249, column: 16], ""syntax error""}, {[line: 259, column: 7], ""unknown token: )""}]"
+failure,/home/mitchell/src/elixir/lib/iex/lib/iex/introspection.ex,"[{[line: 305, column: 16], ""unknown token: block_identifier""}, {[line: 305, column: 20], ""missing closing parentheses""}, {[line: 307, column: 21], ""unknown token: do""}, {[line: 333, column: 3], ""unknown token: end""}, {[line: 706, column: 35], ""missing closing parentheses for function invocation""}, {[line: 706, column: 27], ""missing closing parentheses for function invocation""}, {[line: 706, column: 92], ""unknown token: )""}, {[line: 741, column: 22], ""missing closing parentheses for function invocation""}, {[line: 740, column: 25], ""missing closing parentheses for function invocation""}, {[line: 745, column: 13], ""unknown token: )""}, {[line: 888, column: 1], ""unknown token: end""}]"
 success,/home/mitchell/src/elixir/lib/eex/lib/eex.ex,
 success,/home/mitchell/src/elixir/lib/eex/lib/eex/compiler.ex,
 success,/home/mitchell/src/elixir/lib/eex/lib/eex/engine.ex,
@@ -28,6 +26,7 @@ success,/home/mitchell/src/elixir/lib/elixir/lib/calendar/naive_datetime.ex,
 success,/home/mitchell/src/elixir/lib/elixir/lib/calendar/time.ex,
 success,/home/mitchell/src/elixir/lib/elixir/lib/calendar/time_zone_database.ex,
 success,/home/mitchell/src/elixir/lib/elixir/lib/code.ex,
+success,/home/mitchell/src/elixir/lib/elixir/lib/code/formatter.ex,
 success,/home/mitchell/src/elixir/lib/elixir/lib/code/identifier.ex,
 success,/home/mitchell/src/elixir/lib/elixir/lib/code/normalizer.ex,
 success,/home/mitchell/src/elixir/lib/elixir/lib/code/typespec.ex,
@@ -246,6 +245,7 @@ success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/local.ex,
 success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/local.hex.ex,
 success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/local.public_keys.ex,
 success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/local.rebar.ex,
+success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/new.ex,
 success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/profile.cprof.ex,
 success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/profile.eprof.ex,
 success,/home/mitchell/src/elixir/lib/mix/lib/mix/tasks/profile.fprof.ex,

@@ -282,17 +282,45 @@ defmodule Spitfire do
   end
 
   defp parse_grouped_expression(parser) do
-    parser = next_token(parser)
-
+    parser = parser |> next_token() |> eat_eol()
     {expression, parser} = parse_expression(parser, top: true)
+    exprs = [expression]
 
-    if peek_token(parser) == :")" do
-      {expression, next_token(parser)}
-    else
-      meta = current_meta(parser)
-      parser = put_error(parser, {meta, "missing closing parentheses"})
+    cond do
+      peek_token(parser) == :")" ->
+        {expression, next_token(parser)}
 
-      {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
+      peek_token(parser) == :eol ->
+        # second conditon checks of the next next token is a closing paren or another expression
+        {exprs, parser} =
+          while peek_token(parser) == :eol and parser |> next_token() |> peek_token() != :")" <- {exprs, parser} do
+            parser = parser |> next_token() |> eat_eol()
+            {expression, parser} = parse_expression(parser, top: true)
+            {[expression | exprs], parser}
+          end
+
+        # handles if the closing paren is on a new line or the same line
+        parser =
+          if peek_token(parser) == :eol do
+            next_token(parser)
+          else
+            parser
+          end
+
+        if peek_token(parser) == :")" do
+          {{:__block__, [], Enum.reverse(exprs)}, next_token(parser)}
+        else
+          meta = current_meta(parser)
+          parser = put_error(parser, {meta, "missing closing parentheses"})
+
+          {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
+        end
+
+      true ->
+        meta = current_meta(parser)
+        parser = put_error(parser, {meta, "missing closing parentheses"})
+
+        {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
     end
   end
 
@@ -703,7 +731,7 @@ defmodule Spitfire do
 
     ast =
       case lhs do
-        {token, meta, Elixir} ->
+        {token, meta, nil} ->
           {token, [do: do_meta, end: end_meta] ++ meta, [exprs]}
 
         {token, meta, args} when is_list(args) ->
@@ -726,7 +754,7 @@ defmodule Spitfire do
         {{rhs, next_meta, args}, parser} = parse_expression(parser, precedence: precedence)
 
         args =
-          if args == Elixir do
+          if args == nil do
             []
           else
             args
@@ -826,7 +854,7 @@ defmodule Spitfire do
               end
 
             {:"::", meta,
-             [{{:., meta, [Kernel, :to_string]}, meta ++ [from_interpolation: true], [ast]}, {:binary, [], Elixir}]}
+             [{{:., meta, [Kernel, :to_string]}, meta ++ [from_interpolation: true], [ast]}, {:binary, [], nil}]}
         end
       end
 
@@ -896,7 +924,7 @@ defmodule Spitfire do
              [
                {{:., meta, [Kernel, :to_string]},
                 [from_interpolation: true, closing: [line: cline, column: ccol]] ++ meta, [ast]},
-               {:binary, meta, Elixir}
+               {:binary, meta, nil}
              ]}
         end
       end
@@ -948,7 +976,7 @@ defmodule Spitfire do
              [
                {{:., meta, [Kernel, :to_string]},
                 [from_interpolation: true, closing: [line: cline, column: ccol]] ++ meta, [ast]},
-               {:binary, meta, Elixir}
+               {:binary, meta, nil}
              ]}
         end
       end
@@ -1005,7 +1033,7 @@ defmodule Spitfire do
              [
                {{:., meta, [Kernel, :to_string]},
                 [from_interpolation: true, closing: [line: cline, column: ccol]] ++ meta, [ast]},
-               {:binary, meta, Elixir}
+               {:binary, meta, nil}
              ]}
         end
       end
@@ -1055,7 +1083,7 @@ defmodule Spitfire do
              [
                {{:., meta, [Kernel, :to_string]},
                 [from_interpolation: true, closing: [line: cline, column: ccol]] ++ meta, [ast]},
-               {:binary, meta, Elixir}
+               {:binary, meta, nil}
              ]}
         end
       end
@@ -1102,7 +1130,7 @@ defmodule Spitfire do
               end
 
             {:"::", meta,
-             [{{:., meta, [Kernel, :to_string]}, [from_interpolation: true] ++ meta, [ast]}, {:binary, meta, Elixir}]}
+             [{{:., meta, [Kernel, :to_string]}, [from_interpolation: true] ++ meta, [ast]}, {:binary, meta, nil}]}
         end
       end
 
@@ -1475,7 +1503,7 @@ defmodule Spitfire do
 
     meta = current_meta(parser)
     {key, parser} = parse_expression(parser |> next_token() |> eat_eol())
-    ast = {{:., meta, [Access, :get]}, meta ++ [from_brackets: true], [{token, ident_meta, Elixir}, key]}
+    ast = {{:., meta, [Access, :get]}, meta ++ [from_brackets: true], [{token, ident_meta, nil}, key]}
     {ast, parser |> next_token() |> eat_eol()}
   end
 
@@ -1563,7 +1591,7 @@ defmodule Spitfire do
     if parser.nestings == [] do
       parse_do_block(parser, {token, meta, []})
     else
-      {{token, meta, Elixir}, parser}
+      {{token, meta, nil}, parser}
     end
   end
 
@@ -1602,7 +1630,7 @@ defmodule Spitfire do
 
   defp parse_lone_identifier(%{current_token: {_type, _, token}} = parser) do
     meta = current_meta(parser)
-    {{token, meta, Elixir}, parser}
+    {{token, meta, nil}, parser}
   end
 
   defp parse_lone_module_attr(%{current_token: {:at_op, _, token}} = parser) do
