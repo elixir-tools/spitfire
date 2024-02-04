@@ -2734,6 +2734,16 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
     end
 
+    test "from ecto repo" do
+      code = ~S'''
+      @switches [
+        repo: [:string, :keep],
+      ]
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "big with" do
       code = ~S'''
       with {:ok, _} <- bar(fn a ->
@@ -3815,7 +3825,7 @@ defmodule SpitfireTest do
                                        [end_of_expression: [newlines: 1, line: 5, column: 14], line: 5, column: 9],
                                        [{:var, [line: 5, column: 5], nil}, 123]
                                      },
-                                     {:{}, [closing: nil, line: 6, column: 5], [{:var, [line: 6, column: 6], nil}]}
+                                     {:{}, [closing: [], line: 6, column: 5], [{:var, [line: 6, column: 6], nil}]}
                                    ]
                                  }
                                ]

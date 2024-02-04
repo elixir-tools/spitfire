@@ -385,11 +385,18 @@ defmodule Spitfire do
 
     {items, parser} =
       while peek_token(parser) == :"," <- {items, parser} do
-        parser = parser |> next_token() |> next_token()
+        parser = next_token(parser)
 
-        {item, parser} = parse_expression(parser, opts)
+        case peek_token(parser) do
+          :"]" ->
+            {items, parser}
 
-        {[{item, parser} | items], parser}
+          _ ->
+            parser = next_token(parser)
+            {item, parser} = parse_expression(parser, opts)
+
+            {[{item, parser} | items], parser}
+        end
       end
 
     {Enum.reverse(items), parser}
@@ -1963,7 +1970,7 @@ defmodule Spitfire do
 
   def current_meta(%{current_token: {token, _}})
       when token in [:fake_closing_brace, :fake_closing_bracket, :fake_closing_brackets] do
-    nil
+    []
   end
 
   def current_meta(%{current_token: {_token, {line, col, _}, _}}) do
