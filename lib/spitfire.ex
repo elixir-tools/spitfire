@@ -7,34 +7,37 @@ defmodule Spitfire do
   @lowest {:left, 2}
   @doo {:left, 4}
   @stab_op {:right, 6}
-  @comma {:left, 8}
-  @whenn {:right, 8}
-  @kw_identifier {:left, 10}
-  @in_match_op {:left, 12}
-  @type_op {:right, 16}
-  @pipe_op {:right, 18}
-  @assoc_op {:right, 20}
-  @capture_op {:left, 22}
-  @match_op {:right, 24}
-  @or_op {:left, 26}
-  @and_op {:left, 28}
-  @comp_op {:left, 30}
-  @rel_op {:left, 32}
-  @arrow_op {:left, 34}
-  @in_op {:left, 36}
-  @xor_op {:left, 38}
-  @ternary_op {:right, 40}
-  @concat_op {:right, 42}
-  @range_op {:right, 44}
-  @dual_op {:left, 46}
-  @mult_op {:left, 48}
-  @power_op {:left, 50}
-  @left_paren {:left, 52}
-  @left_bracket {:left, 54}
-  @unary_op {:left, 56}
-  @dot_call_op {:left, 58}
-  @dot_op {:left, 60}
-  @at_op {:left, 62}
+  # list comma are commas inside tuples, maps, and lists, and function parameter/argument lists
+  @list_comma {:left, 8}
+  @whenn {:left, 10}
+  # comma are commas inside a right stab argument list
+  @comma {:left, 12}
+  @kw_identifier {:left, 14}
+  @in_match_op {:left, 16}
+  @type_op {:right, 18}
+  @pipe_op {:right, 20}
+  @assoc_op {:right, 22}
+  @capture_op {:left, 24}
+  @match_op {:right, 26}
+  @or_op {:left, 28}
+  @and_op {:left, 30}
+  @comp_op {:left, 32}
+  @rel_op {:left, 34}
+  @arrow_op {:left, 36}
+  @in_op {:left, 38}
+  @xor_op {:left, 40}
+  @ternary_op {:right, 42}
+  @concat_op {:right, 44}
+  @range_op {:right, 46}
+  @dual_op {:left, 48}
+  @mult_op {:left, 50}
+  @power_op {:left, 52}
+  @left_paren {:left, 54}
+  @left_bracket {:left, 56}
+  @unary_op {:left, 58}
+  @dot_call_op {:left, 60}
+  @dot_op {:left, 62}
+  @at_op {:left, 64}
 
   @precedences %{
     :"," => @comma,
@@ -366,7 +369,7 @@ defmodule Spitfire do
   end
 
   defp parse_comma_list(parser, opts \\ []) do
-    opts = Keyword.put(opts, :precedence, @comma)
+    opts = Keyword.put_new(opts, :precedence, @list_comma)
     {expr, parser} = parse_expression(parser, opts)
     # we zip together the expression and parser state so that we can potentially 
     # backtrack later
@@ -575,7 +578,7 @@ defmodule Spitfire do
 
   defp parse_comma(parser, lhs) do
     parser = parser |> next_token() |> eat_eol()
-    {exprs, parser} = parse_comma_list(parser)
+    {exprs, parser} = parse_comma_list(parser, precedence: @comma)
     {exprs, _} = Enum.unzip(exprs)
 
     {{:comma, [], [lhs | exprs]}, eat_eol(parser)}

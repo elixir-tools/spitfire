@@ -1190,6 +1190,24 @@ defmodule SpitfireTest do
                  ]}}
     end
 
+    test "when syntax inside normal expression" do
+      code = ~S'''
+      match?(x when is_nil(x), x)
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:ok,
+                {:match?, [closing: [line: 1, column: 27], line: 1, column: 1],
+                 [
+                   {:when, [line: 1, column: 10],
+                    [
+                      {:x, [line: 1, column: 8], nil},
+                      {:is_nil, [closing: [line: 1, column: 23], line: 1, column: 15], [{:x, [line: 1, column: 22], nil}]}
+                    ]},
+                   {:x, [line: 1, column: 26], nil}
+                 ]}}
+    end
+
     test "case expr" do
       codes = [
         {~s'''
