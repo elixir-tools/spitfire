@@ -2708,6 +2708,11 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
     end
 
+    test "ambiguous op" do
+      code = "@all_info -1"
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "big with" do
       code = ~S'''
       with {:ok, _} <- bar(fn a ->

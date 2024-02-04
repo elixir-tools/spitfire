@@ -157,6 +157,7 @@ defmodule Spitfire do
         :do_identifier -> &parse_identifier/1
         :paren_identifier -> &parse_identifier/1
         :bracket_identifier -> &parse_identifier/1
+        :op_identifier -> &parse_identifier/1
         :alias -> &parse_alias/1
         :"<<" -> &parse_bitstring/1
         :kw_identifier when is_list or is_map -> &parse_kw_identifier/1
@@ -1554,11 +1555,20 @@ defmodule Spitfire do
     :when_op
   ]
 
-  defp parse_identifier(%{current_token: {:identifier, _, token}} = parser) do
+  defp parse_identifier(%{current_token: {identifier, _, token}} = parser)
+       when identifier in [:identifier, :op_identifier] do
     meta = current_meta(parser)
 
+    meta =
+      if identifier == :op_identifier do
+        [{:ambiguous_op, nil} | meta]
+      else
+        meta
+      end
+
     if token in [:__MODULE__, :__ENV__, :__DIR__, :__CALLER__] or
-         peek_token(parser) in ([:";", :eol, :eof, :end, :",", :")", :do, :., :"}", :"]", :">>"] ++ @operators) do
+         (identifier == :identifier and
+            peek_token(parser) in ([:";", :eol, :eof, :end, :",", :")", :do, :., :"}", :"]", :">>"] ++ @operators)) do
       parse_lone_identifier(parser)
     else
       parser = next_token(parser)
