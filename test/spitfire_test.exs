@@ -2693,6 +2693,21 @@ defmodule SpitfireTest do
   # to bootstrap the original structure. As more metadata is added, we want to move them to the describe below so that all the
   # meta is properly tested
   describe "with original ==" do
+    test "multi line for clause" do
+      code = ~S'''
+      for {^function, arity} <- exports,
+          (if docs do
+             find_doc_with_content(docs, function, arity)
+           else
+             get_spec(module, function, arity) != []
+           end) do
+        h_mod_fun_arity(module, function, arity)
+      end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "big with" do
       code = ~S'''
       with {:ok, _} <- bar(fn a ->
@@ -3870,4 +3885,6 @@ defmodule SpitfireTest do
              }
     end
   end
+
+  defp s2q(code), do: Code.string_to_quoted(code, columns: true, token_metadata: true)
 end

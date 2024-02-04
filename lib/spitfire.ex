@@ -286,11 +286,14 @@ defmodule Spitfire do
 
   defp parse_grouped_expression(parser) do
     parser = parser |> next_token() |> eat_eol()
+    old_nestings = parser.nestings
+    parser = put_in(parser.nestings, [])
     {expression, parser} = parse_expression(parser, top: true)
     exprs = [expression]
 
     cond do
       peek_token(parser) == :")" ->
+        parser = put_in(parser.nestings, old_nestings)
         {expression, next_token(parser)}
 
       peek_token(parser) == :eol ->
@@ -311,10 +314,12 @@ defmodule Spitfire do
           end
 
         if peek_token(parser) == :")" do
+          parser = put_in(parser.nestings, old_nestings)
           {{:__block__, [], Enum.reverse(exprs)}, next_token(parser)}
         else
           meta = current_meta(parser)
           parser = put_error(parser, {meta, "missing closing parentheses"})
+          parser = put_in(parser.nestings, old_nestings)
 
           {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
         end
@@ -322,6 +327,7 @@ defmodule Spitfire do
       true ->
         meta = current_meta(parser)
         parser = put_error(parser, {meta, "missing closing parentheses"})
+        parser = put_in(parser.nestings, old_nestings)
 
         {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
     end
