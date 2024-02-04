@@ -19,20 +19,23 @@ defmodule Main do
     files = Path.wildcard(Path.join(root, "lib/**/*.ex"))
     ignore = Enum.flat_map(@ignore, &Path.wildcard(Path.join(root, &1)))
     for file <- files, file not in ignore, {:ok, content} <- [File.read(file)] do
-      {file, content}
+      lines = String.split(content, "\n") |> Enum.count()
+      {file, content, lines}
     end
   end
 
   def run(files) do
-    Task.async_stream(files, fn {file, content} ->
+    Task.async_stream(files, fn {file, content, _} ->
       try do
-        case Spitfire.parse(content) do
-          {:ok, _ast} -> [ok: file]
-          {:error, _ast, errors} -> [error: file, errors: errors]
-        end
+        :timer.tc(fn ->
+          case Spitfire.parse(content) do
+            {:ok, _ast} -> [ok: file]
+            {:error, _ast, errors} -> [error: file, errors: errors]
+          end
+        end, :millisecond)
       rescue
         e ->
-          [error: file, exception: e]
+          {nil, [error: file, exception: e]}
       end
     end, on_timeout: :kill_task, zip_input_on_exit: true)
     |> Stream.map(fn
@@ -40,25 +43,25 @@ defmodule Main do
       {:exit, {file, :timeout}} -> {:timeout, file}
     end)
     |> Enum.group_by(fn 
-        [{:ok, _file}] -> :ok
-        [{:error, _file} | _] -> :error
+        {_, [{:ok, _file}]} -> :ok
+        {_, [{:error, _file} | _]} -> :error
         {:timeout, _f} -> :timeout
       end, fn 
-        [{:ok, file}] -> file
-        [error: file, errors: errors] -> {file, errors}
-        [error: file, exception: e] -> {file, e}
+        {time, [{:ok, file}]} -> {file, time}
+        {time, [error: file, errors: errors]} -> {file, errors, time}
+        {time, [error: file, exception: e]} -> {file, e, time}
         {:timeout, {file, _content}} -> file
       end)
   end
 
   def to_csv(data) do
-    headers = ~w(result file errors)
+    headers = ~w(result file time errors)
     rows = 
       for {result_type, results} <- data, row <- results do
         case {result_type, row} do
-          {:ok, file} -> ["success", file, ""]
-          {:error, {file, errors}} -> ["failure", file, inspect(errors)]
-          {:timeout, file} -> ["timeout", file, ""]
+          {:ok, {file, time}} -> ["success", file, time, ""]
+          {:error, {file, errors, time}} -> ["failure", file, time, inspect(errors)]
+          {:timeout, file} -> ["timeout", file, "", ""]
         end
       end
 
@@ -67,6 +70,7 @@ defmodule Main do
 end
 
 files = Main.collect_files(System.argv())
+lines = Enum.map(files, fn {_, _, lines} -> lines end) |> Enum.sum()
 
 {time, data} = :timer.tc(fn -> Main.run(files) end, :millisecond)
 
@@ -78,5 +82,5 @@ data =
   end)
 
 IO.puts("Results written to results.csv")
-IO.puts("Parsed concurrently in #{time}ms")
+IO.puts("Parsed #{lines} concurrently in #{time}ms")
 IO.puts("Currently parsing: #{data.ok / (Map.get(data, :error, 0) + Map.get(data, :timeout, 0) + data.ok) * 100}%")
