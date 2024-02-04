@@ -2713,6 +2713,11 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
     end
 
+    test "range op" do
+      code = ".."
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "big with" do
       code = ~S'''
       with {:ok, _} <- bar(fn a ->

@@ -182,6 +182,7 @@ defmodule Spitfire do
         :dual_op -> &parse_prefix_expression/1
         :capture_int -> &parse_prefix_expression/1
         :stab_op -> &parse_stab_expression/1
+        :range_op -> &parse_range_expression/1
         :"[" -> &parse_list_literal/1
         :"(" -> &parse_grouped_expression/1
         :"{" -> &parse_tuple_literal/1
@@ -640,6 +641,12 @@ defmodule Spitfire do
     ast = {{:., meta, [Access, :get]}, meta ++ [from_brackets: true], [lhs, rhs]}
 
     {ast, eat_eol(next_token(parser))}
+  end
+
+  defp parse_range_expression(parser) do
+    token = current_token(parser)
+    meta = current_meta(parser)
+    {{token, meta, []}, parser}
   end
 
   defp parse_range_expression(parser, lhs) do
