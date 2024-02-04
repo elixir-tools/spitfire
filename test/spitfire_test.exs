@@ -2718,6 +2718,22 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
     end
 
+    test "from nx repo" do
+      code = ~S'''
+      def a,
+        do: [
+          b: :c,
+          d:
+            {"f",
+             quote do
+               x
+             end, "g"}
+        ]
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "big with" do
       code = ~S'''
       with {:ok, _} <- bar(fn a ->

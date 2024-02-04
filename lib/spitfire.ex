@@ -1247,9 +1247,12 @@ defmodule Spitfire do
     meta = current_meta(parser)
 
     parser = parser |> next_token() |> eat_eol()
+    old_nestings = parser.nestings
+    parser = put_in(parser.nestings, [])
 
     if current_token(parser) == :"}" do
       closing = current_meta(parser)
+      parser = put_in(parser.nestings, old_nestings)
       {{:%{}, [{:closing, closing} | meta], []}, parser}
     else
       {pairs, parser} = parse_comma_list(parser, is_map: true)
@@ -1267,6 +1270,7 @@ defmodule Spitfire do
         end
 
       closing = current_meta(parser)
+      parser = put_in(parser.nestings, old_nestings)
       {{:%{}, [{:closing, closing} | meta], pairs}, parser}
     end
   end
@@ -1313,9 +1317,13 @@ defmodule Spitfire do
     brace_meta = current_meta(parser)
     parser = parser |> next_token() |> eat_eol()
 
+    old_nestings = parser.nestings
+    parser = put_in(parser.nestings, [])
+
     if current_token(parser) == :"}" do
       closing = current_meta(parser)
       ast = {:%, meta, [type, {:%{}, [{:closing, closing} | brace_meta], []}]}
+      parser = put_in(parser.nestings, old_nestings)
       {ast, parser}
     else
       {pairs, parser} = parse_comma_list(parser, is_map: true)
@@ -1334,6 +1342,7 @@ defmodule Spitfire do
 
       closing = current_meta(parser)
       ast = {:%, meta, [type, {:%{}, [{:closing, closing} | brace_meta], pairs}]}
+      parser = put_in(parser.nestings, old_nestings)
       {ast, parser}
     end
   end
@@ -1342,10 +1351,13 @@ defmodule Spitfire do
     meta = current_meta(parser)
     orig_parser = parser
     parser = parser |> next_token() |> eat_eol()
+    old_nestings = parser.nestings
+    parser = put_in(parser.nestings, [])
 
     cond do
       current_token(parser) == :"}" ->
         closing = current_meta(parser)
+        parser = put_in(parser.nestings, old_nestings)
         {{:{}, [{:closing, closing} | meta], []}, parser}
 
       current_token(parser) in [:end, :"]", :")", :">>"] ->
@@ -1361,6 +1373,7 @@ defmodule Spitfire do
           |> put_in([:peek_token], parser.current_token)
           |> update_in([:tokens], &[parser.peek_token | &1])
 
+        parser = put_in(parser.nestings, old_nestings)
         {{:{}, meta, []}, parser}
 
       true ->
@@ -1403,9 +1416,11 @@ defmodule Spitfire do
 
         if length(pairs) == 2 do
           tuple = encode_literal(parser, pairs |> List.wrap() |> List.to_tuple(), orig_meta)
+          parser = put_in(parser.nestings, old_nestings)
           {tuple, parser}
         else
           closing = current_meta(parser)
+          parser = put_in(parser.nestings, old_nestings)
           {{:{}, [{:closing, closing} | meta], List.wrap(pairs)}, parser}
         end
     end
@@ -1415,9 +1430,12 @@ defmodule Spitfire do
     meta = current_meta(parser)
     orig_parser = parser
     parser = parser |> next_token() |> eat_eol()
+    old_nestings = parser.nestings
+    parser = put_in(parser.nestings, [])
 
     cond do
       current_token(parser) == :"]" ->
+        parser = put_in(parser.nestings, old_nestings)
         {encode_literal(parser, [], orig_meta), parser}
 
       current_token(parser) in [:end, :"}", :")", :">>"] ->
@@ -1433,6 +1451,7 @@ defmodule Spitfire do
           |> put_in([:peek_token], parser.current_token)
           |> update_in([:tokens], &[parser.peek_token | &1])
 
+        parser = put_in(parser.nestings, old_nestings)
         {encode_literal(parser, [], orig_meta), parser}
 
       true ->
@@ -1443,6 +1462,7 @@ defmodule Spitfire do
         case peek_token(parser) do
           :"]" ->
             pairs = pairs |> Enum.unzip() |> elem(0)
+            parser = put_in(parser.nestings, old_nestings)
             {encode_literal(parser, pairs, orig_meta), parser |> next_token() |> eat_eol()}
 
           _ ->
@@ -1469,6 +1489,7 @@ defmodule Spitfire do
 
             {pairs, _} = pairs |> Enum.reverse() |> Enum.unzip()
 
+            parser = put_in(parser.nestings, old_nestings)
             {encode_literal(parser, List.wrap(pairs), orig_meta), parser}
         end
     end
