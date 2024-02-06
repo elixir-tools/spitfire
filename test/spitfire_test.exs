@@ -510,6 +510,9 @@ defmodule SpitfireTest do
         else
           {rest, line, column, buffer}
         end
+        ''',
+        ~S'''
+        %{acc | key => value, foo => bar, ding: dong, bing: bong}
         '''
       ]
 

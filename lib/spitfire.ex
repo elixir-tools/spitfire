@@ -242,6 +242,7 @@ defmodule Spitfire do
             case peek_token_type(parser) do
               :match_op -> &parse_infix_expression/2
               :when_op -> &parse_infix_expression/2
+              :pipe_op when is_map -> &parse_pipe_op/2
               :pipe_op -> &parse_infix_expression/2
               :type_op -> &parse_infix_expression/2
               :dual_op -> &parse_infix_expression/2
@@ -657,6 +658,28 @@ defmodule Spitfire do
         _ ->
           {token, newlines ++ meta, [lhs, rhs]}
       end
+
+    {ast, eat_eol(parser)}
+  end
+
+  defp parse_pipe_op(parser, lhs) do
+    token = current_token(parser)
+    meta = current_meta(parser)
+
+    newlines =
+      case current_newlines(parser) || peek_newlines(parser, :eol) do
+        nil -> []
+        nl -> [newlines: nl]
+      end
+
+    parser = next_token(parser)
+
+    parser = eat_eol(parser)
+
+    {pairs, parser} = parse_comma_list(parser, is_map: true)
+    {pairs, _} = Enum.unzip(pairs)
+
+    ast = {token, newlines ++ meta, [lhs, pairs]}
 
     {ast, eat_eol(parser)}
   end
