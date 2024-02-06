@@ -1354,6 +1354,16 @@ defmodule SpitfireTest do
       code = ~S'<<?., char, rest::binary>>'
 
       assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      <<
+        ?.,
+        char,
+        rest::binary
+      >>
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "anonymous function typespecs" do

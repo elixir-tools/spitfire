@@ -1244,11 +1244,12 @@ defmodule Spitfire do
   defp parse_bitstring(%{current_token: {:"<<", _}} = parser) do
     meta = current_meta(parser)
     orig_parser = parser
+    newlines = get_newlines(parser)
     parser = parser |> next_token() |> eat_eol()
 
     cond do
       current_token(parser) == :">>" ->
-        {{:<<>>, [{:closing, current_meta(parser)} | meta], []}, parser}
+        {{:<<>>, newlines ++ [{:closing, current_meta(parser)} | meta], []}, parser}
 
       current_token(parser) in [:end, :"}", :")", :"]"] ->
         # if the current token is the wrong kind of ending delimiter, we revert to the previous parser
@@ -1274,7 +1275,7 @@ defmodule Spitfire do
           :">>" ->
             pairs = pairs |> Enum.unzip() |> elem(0)
             parser = next_token(parser)
-            {{:<<>>, [{:closing, current_meta(parser)} | meta], pairs}, eat_eol(parser)}
+            {{:<<>>, newlines ++ [{:closing, current_meta(parser)} | meta], pairs}, eat_eol(parser)}
 
           _ ->
             [{potential_error, parser}, {item, parser_for_errors} | rest] = all_pairs = Enum.reverse(pairs)
@@ -1300,7 +1301,7 @@ defmodule Spitfire do
 
             {pairs, _} = pairs |> Enum.reverse() |> Enum.unzip()
 
-            {{:<<>>, [{:closing, current_meta(parser)} | meta], List.wrap(pairs)}, parser}
+            {{:<<>>, newlines ++ [{:closing, current_meta(parser)} | meta], List.wrap(pairs)}, parser}
         end
     end
   end
