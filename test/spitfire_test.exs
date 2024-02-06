@@ -66,6 +66,22 @@ defmodule SpitfireTest do
       '''
 
       assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      @type diagnostic(severity) :: %{
+        required(:source) => Path.t() | nil,
+        required(:file) => Path.t() | nil,
+        required(:severity) => severity,
+        required(:message) => String.t(),
+        required(:position) => position(),
+        required(:stacktrace) => Exception.stacktrace(),
+        required(:span) => {line :: pos_integer(), column :: pos_integer()} | nil,
+        optional(:details) => term(),
+        optional(any()) => any()
+      }
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses unary operators" do
