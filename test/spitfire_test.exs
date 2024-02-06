@@ -1033,6 +1033,13 @@ defmodule SpitfireTest do
         fn foo, bar, _baz when is_binary(foo) and bar in [:alice, :bob] ->
           :ok
         end
+        ''',
+        ~S'''
+        defp reduce(a, b)
+             when a == 1
+             when b == 2 do
+          foo()
+        end
         '''
       ]
 

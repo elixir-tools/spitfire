@@ -9,7 +9,7 @@ defmodule Spitfire do
   @stab_op {:right, 6}
   # list comma are commas inside tuples, maps, and lists, and function parameter/argument lists
   @list_comma {:left, 8}
-  @whenn {:left, 10}
+  @whenn {:right, 10}
   # comma are commas inside a right stab argument list
   @comma {:left, 12}
   @kw_identifier {:left, 14}
