@@ -1041,6 +1041,14 @@ defmodule SpitfireTest do
              when b == 2 do
           foo()
         end
+        ''',
+        ~S'''
+        with {hour, ""} when hour < 24 <- Integer.parse(hour),
+             {min, ""} when min < 60 <- Integer.parse(min) do
+          {(hour * 60 + min) * 60 * sign, rest}
+        else
+          _ -> :error
+        end
         '''
       ]
 

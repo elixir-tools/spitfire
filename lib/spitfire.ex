@@ -9,35 +9,35 @@ defmodule Spitfire do
   @stab_op {:right, 6}
   # list comma are commas inside tuples, maps, and lists, and function parameter/argument lists
   @list_comma {:left, 8}
-  @whenn {:right, 10}
+  @in_match_op {:left, 10}
+  @whenn {:right, 12}
   # comma are commas inside a right stab argument list
-  @comma {:left, 12}
-  @kw_identifier {:left, 14}
-  @in_match_op {:left, 16}
-  @type_op {:right, 18}
-  @pipe_op {:right, 20}
-  @assoc_op {:right, 22}
-  @capture_op {:left, 24}
-  @match_op {:right, 26}
-  @or_op {:left, 28}
-  @and_op {:left, 30}
-  @comp_op {:left, 32}
-  @rel_op {:left, 34}
-  @arrow_op {:left, 36}
-  @in_op {:left, 38}
-  @xor_op {:left, 40}
-  @ternary_op {:right, 42}
-  @concat_op {:right, 44}
-  @range_op {:right, 46}
-  @dual_op {:left, 48}
-  @mult_op {:left, 50}
-  @power_op {:left, 52}
-  @left_paren {:left, 54}
-  @left_bracket {:left, 56}
-  @unary_op {:left, 58}
-  @dot_call_op {:left, 60}
-  @dot_op {:left, 62}
-  @at_op {:left, 64}
+  @comma {:left, 14}
+  @kw_identifier {:left, 16}
+  @type_op {:right, 16}
+  @pipe_op {:right, 18}
+  @assoc_op {:right, 20}
+  @capture_op {:left, 22}
+  @match_op {:right, 24}
+  @or_op {:left, 26}
+  @and_op {:left, 28}
+  @comp_op {:left, 30}
+  @rel_op {:left, 32}
+  @arrow_op {:left, 34}
+  @in_op {:left, 36}
+  @xor_op {:left, 38}
+  @ternary_op {:right, 40}
+  @concat_op {:right, 42}
+  @range_op {:right, 44}
+  @dual_op {:left, 46}
+  @mult_op {:left, 48}
+  @power_op {:left, 50}
+  @left_paren {:left, 52}
+  @left_bracket {:left, 54}
+  @unary_op {:left, 56}
+  @dot_call_op {:left, 58}
+  @dot_op {:left, 60}
+  @at_op {:left, 62}
 
   @precedences %{
     :"," => @comma,
