@@ -1766,10 +1766,12 @@ defmodule Spitfire do
     # this might be wrong, but its how Code.string_to_quoted works
     {_, meta, _} = lhs
 
+    newlines = get_newlines(parser)
+
     if peek_token(parser) == :")" do
       parser = next_token(parser)
       closing = current_meta(parser)
-      {{lhs, [{:closing, closing} | meta], []}, parser}
+      {{lhs, newlines ++ [{:closing, closing} | meta], []}, parser}
     else
       {pairs, parser} =
         parser
@@ -1792,7 +1794,7 @@ defmodule Spitfire do
 
       closing = current_meta(parser)
 
-      {{lhs, [{:closing, closing} | meta], List.wrap(pairs)}, parser}
+      {{lhs, newlines ++ [{:closing, closing} | meta], List.wrap(pairs)}, parser}
     end
   end
 

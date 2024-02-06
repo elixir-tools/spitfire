@@ -887,6 +887,22 @@ defmodule SpitfireTest do
         ''',
         ~S'''
         defp unquote(:"#{name}_text")(), do: unquote(contents)
+        ''',
+        ~S'''
+        unquote(name)(
+          rest,
+          <<
+            acc::binary,
+            unquote(name)(c1)::16,
+            unquote(name)(c2)::16,
+            unquote(name)(c3)::16,
+            unquote(name)(c4)::16,
+            unquote(name)(c5)::16,
+            unquote(name)(c6)::16,
+            unquote(name)(c7)::16,
+            unquote(name)(c8)::16
+          >>
+        )
         '''
       ]
 
