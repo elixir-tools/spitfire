@@ -1170,13 +1170,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      left = Spitfire.parse(code)
-      right = s2q(code)
-
-      File.write!("left.ex", inspect(left, pretty: true, printable_limit: :infinity, limit: :infinity))
-      File.write!("right.ex", inspect(right, pretty: true, printable_limit: :infinity, limit: :infinity))
-
-      assert left == right
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "function def with case expression with anon function inside" do
