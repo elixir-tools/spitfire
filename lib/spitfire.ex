@@ -182,7 +182,7 @@ defmodule Spitfire do
         :unary_op -> &parse_prefix_expression/1
         :capture_op -> &parse_prefix_expression/1
         :dual_op -> &parse_prefix_expression/1
-        :capture_int -> &parse_prefix_expression/1
+        :capture_int -> &parse_capture_int/1
         :stab_op -> &parse_stab_expression/1
         :range_op -> &parse_range_expression/1
         :"[" -> &parse_list_literal/1
@@ -428,6 +428,17 @@ defmodule Spitfire do
     {ast, eat_eol(parser)}
   end
 
+  defp parse_capture_int(parser) do
+    token = current_token(parser)
+    meta = current_meta(parser)
+    parser = next_token(parser)
+    {rhs, parser} = parse_int(parser)
+
+    ast = {token, meta, [rhs]}
+
+    {ast, eat_eol(parser)}
+  end
+
   # """
   # A stab expression without a lhs is only possible as the argument to an anonymous function and in the typespect of an anon function
 
@@ -641,7 +652,7 @@ defmodule Spitfire do
               lhs -> [lhs]
             end
 
-          {token, meta, lhs ++ [rhs]}
+          {token, newlines ++ meta, lhs ++ [rhs]}
 
         _ ->
           {token, newlines ++ meta, [lhs, rhs]}

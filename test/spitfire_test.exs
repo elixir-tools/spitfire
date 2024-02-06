@@ -1026,7 +1026,8 @@ defmodule SpitfireTest do
         ''',
         ~s'''
         &Foo.bar(one, &1)
-        '''
+        ''',
+        "Enum.all?(chars, &(&1 in @all_spaces))"
       ]
 
       for code <- codes do
@@ -1445,7 +1446,12 @@ defmodule SpitfireTest do
 
       for code <- codes do
         assert Spitfire.parse(code, literal_encoder: encoder) ==
-                 Code.string_to_quoted(code, literal_encoder: encoder, columns: true, token_metadata: true, emit_warnings: false)
+                 Code.string_to_quoted(code,
+                   literal_encoder: encoder,
+                   columns: true,
+                   token_metadata: true,
+                   emit_warnings: false
+                 )
       end
     end
 
