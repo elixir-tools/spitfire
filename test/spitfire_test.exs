@@ -501,6 +501,15 @@ defmodule SpitfireTest do
           baz:
             beaux()
         }
+        ''',
+        ~S'''
+        if state.trim do
+          buffer = trim_left(buffer, 0)
+          {rest, line, column} = trim_right(rest, line, column, 0, state)
+          {rest, line, column, buffer}
+        else
+          {rest, line, column, buffer}
+        end
         '''
       ]
 

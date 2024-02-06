@@ -800,7 +800,7 @@ defmodule Spitfire do
     meta = current_meta(parser)
 
     case peek_token_type(parser) do
-      type when type in [:identifier, :paren_identifier] ->
+      type when type in [:identifier, :paren_identifier, :do_identifier] ->
         parser = next_token(parser)
 
         {{rhs, next_meta, args}, parser} = parse_expression(parser, precedence: precedence)
@@ -813,7 +813,7 @@ defmodule Spitfire do
           end
 
         extra =
-          if type == :identifier and args == [] do
+          if type in [:identifier, :do_identifier] and args == [] do
             [no_parens: true]
           else
             []
