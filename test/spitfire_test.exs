@@ -4,9 +4,6 @@ defmodule SpitfireTest do
   doctest Spitfire
 
   describe "valid code" do
-    import Kernel, except: [==: 2]
-    import Spitfire.TestHelpers
-
     test "parses valid elixir" do
       code = """
       defmodule Foo do
@@ -20,85 +17,31 @@ defmodule SpitfireTest do
       end
       """
 
-      assert Spitfire.parse!(code) ==
-               {:defmodule, [line: 1, column: 1],
-                [
-                  {:__aliases__, [line: 1, column: 11], [:Foo]},
-                  [
-                    do:
-                      {:__block__, [],
-                       [
-                         {:use, [line: 2, column: 3],
-                          [
-                            {:__aliases__, [line: 2, column: 7], [:AnotherMod, :Nested]},
-                            [some: :option]
-                          ]},
-                         {:def, [line: 5, column: 3],
-                          [
-                            {:run, [line: 5, column: 7], [{:arg, [line: 5, column: 11], nil}]},
-                            [do: {:__block__, [], [{:bar, [line: 6, column: 5], []}, :ok]}]
-                          ]}
-                       ]}
-                  ]
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "access syntax" do
       code = "foo[:bar]"
-
-      assert Spitfire.parse!(code) ==
-               {{:., [line: 1, column: 4], [Access, :get]}, [line: 1, column: 4, from_brackets: true],
-                [{:foo, [line: 1, column: 1], nil}, :bar]}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = "foo[:bar][:baz]"
-
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {{:., [from_brackets: true, closing: [line: 1, column: 15], line: 1, column: 10], [Access, :get]},
-                 [from_brackets: true, closing: [line: 1, column: 15], line: 1, column: 10],
-                 [
-                   {{:., [closing: [line: 1, column: 9], line: 1, column: 4], [Access, :get]},
-                    [closing: [line: 1, column: 9], line: 1, column: 4], [{:foo, [line: 1, column: 1], nil}, :bar]},
-                   :baz
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'(meta[:end_of_expression] || meta)[:line]'
-
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {{:., [from_brackets: true, closing: [line: 1, column: 41], line: 1, column: 35], [Access, :get]},
-                 [from_brackets: true, closing: [line: 1, column: 41], line: 1, column: 35],
-                 [
-                   {:||, [line: 1, column: 27],
-                    [
-                      {{:., [closing: [line: 1, column: 25], line: 1, column: 6], [Access, :get]},
-                       [closing: [line: 1, column: 25], line: 1, column: 6],
-                       [{:meta, [line: 1, column: 2], nil}, :end_of_expression]},
-                      {:meta, [line: 1, column: 30], nil}
-                    ]},
-                   :line
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = "%{bar: :foo}[:bar]"
-
-      assert Spitfire.parse!(code) ==
-               {{:., [line: 1, column: 14], [Access, :get]}, [line: 1, column: 14, from_brackets: true],
-                [{:%{}, [line: 1, column: 1], [bar: :foo]}, :bar]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "token metadata" do
-      import Kernel
-      import Spitfire.TestHelpers, only: []
-
       code = ~S'''
       foo do
         1 + 1
       end
       '''
 
-      assert Spitfire.parse!(code, token_metadata: true) ==
-               {:foo, [do: [line: 1, column: 5], end: [line: 3, column: 1], line: 1, column: 1],
-                [[do: {:+, [line: 2, column: 5], [1, 1]}]]}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
       foo do
@@ -108,15 +51,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse!(code, token_metadata: true) ==
-               {:foo, [do: [line: 1, column: 5], end: [line: 5, column: 1], line: 1, column: 1],
-                [
-                  [
-                    do:
-                      {:bar, [do: [line: 2, column: 7], end: [line: 4, column: 3], line: 2, column: 3],
-                       [[do: {:+, [line: 3, column: 7], [1, 1]}]]}
-                  ]
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "type syntax" do
@@ -124,43 +59,13 @@ defmodule SpitfireTest do
       @type foo :: String.t()
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:@, [line: 1, column: 1],
-                [
-                  {:type, [line: 1, column: 2],
-                   [
-                     {:"::", [line: 1, column: 11],
-                      [
-                        {:foo, [line: 1, column: 7], nil},
-                        {{:., [], [{:__aliases__, [line: 1, column: 14], [:String]}, :t]}, [], []}
-                      ]}
-                   ]}
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
       @spec foo(one :: String.t(), number) :: :ok | :error
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:@, [line: 1, column: 1],
-                [
-                  {:spec, [line: 1, column: 2],
-                   [
-                     {:"::", [line: 1, column: 38],
-                      [
-                        {:foo, [line: 1, column: 7],
-                         [
-                           {:"::", [line: 1, column: 15],
-                            [
-                              {:one, [line: 1, column: 11], nil},
-                              {{:., [], [{:__aliases__, [line: 1, column: 18], [:String]}, :t]}, [], []}
-                            ]},
-                           {:number, [line: 1, column: 30], nil}
-                         ]},
-                        {:|, [line: 1, column: 45], [:ok, :error]}
-                      ]}
-                   ]}
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses unary operators" do
@@ -168,7 +73,7 @@ defmodule SpitfireTest do
       ^foo
       '''
 
-      assert Spitfire.parse!(code) == {:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses numbers" do
@@ -176,13 +81,13 @@ defmodule SpitfireTest do
       111_111
       """
 
-      assert Spitfire.parse!(code) == 111_111
+      assert Spitfire.parse(code) == s2q(code)
 
       code = """
       1.4
       """
 
-      assert Spitfire.parse(code) == {:ok, 1.4}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses strings" do
@@ -190,7 +95,7 @@ defmodule SpitfireTest do
       "foobar" 
       '''
 
-      assert Spitfire.parse!(code) == "foobar"
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
       """
@@ -198,9 +103,7 @@ defmodule SpitfireTest do
       """
       '''
 
-      assert Spitfire.parse!(code) == """
-             foobar
-             """
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses charlists" do
@@ -208,7 +111,7 @@ defmodule SpitfireTest do
       'foobar' 
       '''
 
-      assert Spitfire.parse(code) == {:ok, ~c"foobar"}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S"""
       '''
@@ -216,24 +119,13 @@ defmodule SpitfireTest do
       '''
       """
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                ~c"""
-                foobar
-                """}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
       'foo#{alice}bar' 
       '''
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {{:., [], [List, :to_charlist]}, [],
-                 [
-                   ~c"foo",
-                   {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [{:alice, [], nil}]}, {:binary, [], nil}]},
-                   ~c"bar"
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S"""
       '''
@@ -241,14 +133,7 @@ defmodule SpitfireTest do
       '''
       """
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {{:., [], [List, :to_charlist]}, [],
-                 [
-                   "foo",
-                   {:"::", [], [{{:., [], [Kernel, :to_string]}, [], [{:alice, [], nil}]}, {:binary, [], nil}]},
-                   "bar\n"
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses atoms" do
@@ -256,53 +141,25 @@ defmodule SpitfireTest do
       :foobar
       '''
 
-      assert Spitfire.parse!(code) == :foobar
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~s'''
       :","
       '''
 
-      assert Spitfire.parse!(code) == :","
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
       :"foo#{}"
       '''
 
-      assert Spitfire.parse!(code) ==
-               {{:., [line: 1, column: 1], [:erlang, :binary_to_atom]}, [line: 1, column: 1],
-                [
-                  {:<<>>, [line: 1, column: 1],
-                   [
-                     "foo",
-                     {:"::", [line: 1, column: 1],
-                      [
-                        {{:., [line: 1, column: 1], [Kernel, :to_string]}, [line: 1, column: 1, from_interpolation: true],
-                         [{:__block__, [], []}]},
-                        {:binary, [], nil}
-                      ]}
-                   ]},
-                  :utf8
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
       :"foo#{bar}"
       '''
 
-      assert Spitfire.parse!(code) ==
-               {{:., [line: 1, column: 1], [:erlang, :binary_to_atom]}, [line: 1, column: 1],
-                [
-                  {:<<>>, [line: 1, column: 1],
-                   [
-                     "foo",
-                     {:"::", [line: 1, column: 1],
-                      [
-                        {{:., [line: 1, column: 1], [Kernel, :to_string]}, [line: 1, column: 1, from_interpolation: true],
-                         [{:bar, [line: 1, column: 8], nil}]},
-                        {:binary, [], nil}
-                      ]}
-                   ]},
-                  :utf8
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses left stab" do
@@ -310,10 +167,10 @@ defmodule SpitfireTest do
       apple <- apples
       """
 
-      assert Spitfire.parse!(code) ==
-               {:<-, [line: 1, column: 7], [{:apple, [line: 1, column: 1], nil}, {:apples, [line: 1, column: 10], nil}]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
+    # these tests do not test against Code.string_to_quoted because these code fragments parse as errors
     test "parses right stab" do
       code = """
       -> bar
@@ -332,8 +189,7 @@ defmodule SpitfireTest do
       """
 
       assert Spitfire.parse!(code) == [
-               {:->, [depth: 0, line: 1, column: 5],
-                [[{:foo, [line: 1, column: 1], nil}], {:bar, [line: 1, column: 8], nil}]}
+               {:->, [line: 1, column: 5], [[{:foo, [line: 1, column: 1], nil}], {:bar, [line: 1, column: 8], nil}]}
              ]
 
       code = """
@@ -341,7 +197,7 @@ defmodule SpitfireTest do
       """
 
       assert Spitfire.parse!(code) == [
-               {:->, [depth: 0, line: 1, column: 15],
+               {:->, [line: 1, column: 15],
                 [
                   [
                     {:foo, [line: 1, column: 1], nil},
@@ -362,7 +218,7 @@ defmodule SpitfireTest do
       # parse a comma list. if we hit the operator, it means that we are not actually in an
       # existing comma list, like a list or a map
       assert Spitfire.parse!(code) == [
-               {:->, [depth: 0, line: 1, column: 19],
+               {:->, [newlines: 1, line: 1, column: 19],
                 [
                   [
                     {:alice, [line: 1, column: 1], nil},
@@ -384,9 +240,13 @@ defmodule SpitfireTest do
       """
 
       assert Spitfire.parse!(code) == [
-               {:->, [depth: 0, line: 1, column: 5],
-                [[{:foo, [line: 1, column: 1], nil}], {:__block__, [], [:ok, {:baz, [line: 3, column: 3], nil}]}]},
-               {:->, [depth: 0, line: 5, column: 19],
+               {:->, [newlines: 1, line: 1, column: 5],
+                [
+                  [{:foo, [line: 1, column: 1], nil}],
+                  {:__block__, [],
+                   [:ok, {:baz, [end_of_expression: [newlines: 2, line: 3, column: 6], line: 3, column: 3], nil}]}
+                ]},
+               {:->, [newlines: 1, line: 5, column: 19],
                 [
                   [
                     {:alice, [line: 5, column: 1], nil},
@@ -403,7 +263,7 @@ defmodule SpitfireTest do
       '''
 
       assert Spitfire.parse!(code) == [
-               {:->, [depth: 0, line: 1, column: 6],
+               {:->, [newlines: 1, line: 1, column: 6],
                 [[{:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}], :ok]}
              ]
 
@@ -413,90 +273,59 @@ defmodule SpitfireTest do
       '''
 
       assert Spitfire.parse!(code) == [
-               {:->, [depth: 0, line: 1, column: 6],
+               {:->, [newlines: 1, line: 1, column: 6],
                 [[{:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}], :ok]}
              ]
     end
 
     test "parses grouped expressions" do
       codes = [
-        {~s'''
-         1 + 2 + 3
-         ''', {:+, [line: 1, column: 7], [{:+, [line: 1, column: 3], [1, 2]}, 3]}},
-        {~s'''
-         (1 + 2) + 3
-         ''', {:+, [line: 1, column: 9], [{:+, [line: 1, column: 4], [1, 2]}, 3]}},
-        {~s'''
-         ((1 + 2) + 3)
-         ''', {:+, [line: 1, column: 10], [{:+, [line: 1, column: 5], [1, 2]}, 3]}},
-        {~s'''
-         1 + (2 + 3)
-         ''', {:+, [line: 1, column: 3], [1, {:+, [line: 1, column: 8], [2, 3]}]}}
+        ~s'''
+        1 + 2 + 3
+        ''',
+        ~s'''
+        (1 + 2) + 3
+        ''',
+        ~s'''
+        ((1 + 2) + 3)
+        ''',
+        ~s'''
+        1 + (2 + 3)
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses for comprehension" do
       codes = [
-        {~s'''
-         for i <- 0..100 do
-           i + i
-         end
-         ''',
-         {:for, [line: 1, column: 1],
-          [
-            {:<-, [line: 1, column: 7], [{:i, [line: 1, column: 5], nil}, {:.., [line: 1, column: 11], [0, 100]}]},
-            [do: {:+, [line: 2, column: 5], [{:i, [line: 2, column: 3], nil}, {:i, [line: 2, column: 7], nil}]}]
-          ]}}
+        ~s'''
+        for i <- 0..100 do
+          i + i
+        end
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses with expression" do
       codes = [
-        {~s'''
-         with {:ok, school} <- State.get_school(id),
-              {:ok, teachers} <- School.list_teachers(school),
-              {:ok, teacher} <- Teacher.coolest(teachers) do
-           Email.send(teacher, "You are the coolest teacher")
-         end
-         ''',
-         {:with, [line: 1, column: 1],
-          [
-            {:<-, [line: 1, column: 20],
-             [
-               {:ok, {:school, [line: 1, column: 12], nil}},
-               {{:., [], [{:__aliases__, [line: 1, column: 23], [:State]}, :get_school]}, [],
-                [{:id, [line: 1, column: 40], nil}]}
-             ]},
-            {:<-, [line: 2, column: 22],
-             [
-               {:ok, {:teachers, [line: 2, column: 12], nil}},
-               {{:., [], [{:__aliases__, [line: 2, column: 25], [:School]}, :list_teachers]}, [],
-                [{:school, [line: 2, column: 46], nil}]}
-             ]},
-            {:<-, [line: 3, column: 21],
-             [
-               {:ok, {:teacher, [line: 3, column: 12], nil}},
-               {{:., [], [{:__aliases__, [line: 3, column: 24], [:Teacher]}, :coolest]}, [],
-                [{:teachers, [line: 3, column: 40], nil}]}
-             ]},
-            [
-              do:
-                {{:., [], [{:__aliases__, [line: 4, column: 3], [:Email]}, :send]}, [],
-                 [{:teacher, [line: 4, column: 14], nil}, "You are the coolest teacher"]}
-            ]
-          ]}}
+        ~s'''
+        with {:ok, school} <- State.get_school(id),
+             {:ok, teachers} <- School.list_teachers(school),
+             {:ok, teacher} <- Teacher.coolest(teachers) do
+          Email.send(teacher, "You are the coolest teacher")
+        end
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
@@ -507,76 +336,55 @@ defmodule SpitfireTest do
       bob
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:__block__, [],
-                [
-                  {:foobar, [line: 1, column: 1], nil},
-                  {:alice, [line: 2, column: 1], nil},
-                  {:bob, [line: 3, column: 1], nil}
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses lists" do
       codes = [
-        {~s'''
-         []
-         ''', {:ok, []}},
-        {~s'''
-         [arg]
-         ''', {:ok, [{:arg, [line: 1, column: 2], nil}]}},
-        {~s'''
-         [one, :two, "three"]
-         ''', {:ok, [{:one, [line: 1, column: 2], nil}, :two, "three"]}},
-        {~s'''
-          [
-            one,
-            :two,
-            "three"
-          ]
-         ''', {:ok, [{:one, [line: 2, column: 4], nil}, :two, "three"]}}
+        ~s'''
+        []
+        ''',
+        ~s'''
+        [arg]
+        ''',
+        ~s'''
+        [one, :two, "three"]
+        ''',
+        ~s'''
+         [
+           one,
+           :two,
+           "three"
+         ]
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses bracket-less keyword lists" do
       codes = [
-        {~s'''
-         foo(one, two, alice: alice, bob: bob)
-         ''',
-         {:foo, [line: 1, column: 1],
-          [
-            {:one, [line: 1, column: 5], nil},
-            {:two, [line: 1, column: 10], nil},
-            [alice: {:alice, [line: 1, column: 22], nil}, bob: {:bob, [line: 1, column: 34], nil}]
-          ]}},
-        {~s'''
-         foo alice: alice do
-           :ok
-         end
-         ''', {:foo, [line: 1, column: 1], [[alice: {:alice, [line: 1, column: 12], nil}], [do: :ok]]}},
-        {~s'''
-         [:one, two: :three]
-         ''', [:one, {:two, :three}]},
-        {~s'''
-         @moduledoc deprecated:
-            "Use the new child specifications outlined in the Supervisor module instead"
-         ''',
-         {:@, [line: 1, column: 1],
-          [
-            {:moduledoc, [line: 1, column: 2],
-             [
-               [
-                 deprecated: "Use the new child specifications outlined in the Supervisor module instead"
-               ]
-             ]}
-          ]}}
+        ~s'''
+        foo(one, two, alice: alice, bob: bob)
+        ''',
+        ~s'''
+        foo alice: alice do
+          :ok
+        end
+        ''',
+        ~s'''
+        [:one, two: :three]
+        ''',
+        ~s'''
+        @moduledoc deprecated:
+           "Use the new child specifications outlined in the Supervisor module instead"
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == {:ok, expected}
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
@@ -587,492 +395,336 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:case, [line: 1, column: 1],
-                [
-                  {:foo, [line: 1, column: 6], nil},
-                  [
-                    do: [
-                      {:->, [depth: 1, line: 2, column: 41],
-                       [
-                         [
-                           {:when, [line: 2, column: 18],
-                            [
-                              :kw_identifier,
-                              {:or, [line: 2, column: 31],
-                               [{:is_list, [line: 2, column: 23], nil}, {:is_map, [line: 2, column: 34], nil}]}
-                            ]}
-                         ],
-                         {:&, [line: 2, column: 44],
-                          [{:/, [line: 2, column: 64], [{:parse_kw_identifier, [line: 2, column: 45], nil}, 1]}]}
-                       ]}
-                    ]
-                  ]
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses pattern matching in list" do
       codes = [
-        {~s'''
-         [one | rest] = my_list
-         ''',
-         {:=, [line: 1, column: 14],
-          [
-            [{:|, [line: 1, column: 6], [{:one, [line: 1, column: 2], nil}, {:rest, [line: 1, column: 8], nil}]}],
-            {:my_list, [line: 1, column: 16], nil}
-          ]}},
-        {~s'''
-         [one, two | rest] = my_list
-         ''',
-         {:=, [line: 1, column: 19],
-          [
-            [
-              {:one, [line: 1, column: 2], nil},
-              {:|, [line: 1, column: 11], [{:two, [line: 1, column: 7], nil}, {:rest, [line: 1, column: 13], nil}]}
-            ],
-            {:my_list, [line: 1, column: 21], nil}
-          ]}}
+        ~s'''
+        [one | rest] = my_list
+        ''',
+        ~s'''
+        [one, two | rest] = my_list
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses tuples" do
       codes = [
-        {~s'''
-         {}
-         ''', {:{}, [line: 1, column: 1], []}},
-        {~s'''
-         {one, :two}
-         ''', {{:one, [line: 1, column: 2], nil}, :two}},
-        {~s'''
-         {
-           one,
-           :two,
-           "three"
-         }
-         ''', {:{}, [line: 1, column: 1], [{:one, [line: 2, column: 3], nil}, :two, "three"]}},
-        {~s'''
-         {one, :two, "three"}
-         ''', {:{}, [line: 1, column: 1], [{:one, [line: 1, column: 2], nil}, :two, "three"]}},
-        {~s'''
-         {
-           one,
-           :two,
-           "three"
-         }
-         ''', {:{}, [line: 1, column: 1], [{:one, [line: 2, column: 3], nil}, :two, "three"]}}
+        ~s'''
+        {}
+        ''',
+        ~s'''
+        {one, :two}
+        ''',
+        ~s'''
+        {
+          one,
+          :two,
+          "three"
+        }
+        ''',
+        ~s'''
+        {one, :two, "three"}
+        ''',
+        ~s'''
+        {
+          one,
+          :two,
+          "three"
+        }
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses aliases" do
       codes = [
-        {~s'''
-         Remote
-         ''', {:__aliases__, [line: 1, column: 1], [:Remote]}},
-        {~s'''
-         Remote.Foo
-         ''', {:__aliases__, [line: 1, column: 1], [:Remote, :Foo]}},
-        {~s'''
-         Remote.Foo.Bar
-         ''', {:__aliases__, [line: 1, column: 1], [:Remote, :Foo, :Bar]}}
+        ~s'''
+        Remote
+        ''',
+        ~s'''
+        Remote.Foo
+        ''',
+        ~s'''
+        Remote.Foo.Bar
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses maps" do
       codes = [
-        {~s'''
-         %{}
-         ''', {:%{}, [line: 1, column: 1], []}},
-        {~s'''
-         %{
-           foo: "bar",
-           alice: "bob"
-          }
-         ''', {:%{}, [line: 1, column: 1], [{:foo, "bar"}, {:alice, "bob"}]}},
-        {~s'''
-         %{
-           "foo" =>
-             "bar",
-           "alice" => "bob"
-          }
-         ''', {:%{}, [line: 1, column: 1], [{"foo", "bar"}, {"alice", "bob"}]}},
-        {~s'''
-         %{"foo" => "bar", 1 => 2, :three => :four, [] => [1], %{} => nil, bing => bong, foo: :bar}
-         ''',
-         {:%{}, [line: 1, column: 1],
-          [
-            {"foo", "bar"},
-            {1, 2},
-            {:three, :four},
-            {[], [1]},
-            {{:%{}, [line: 1, column: 55], []}, nil},
-            {{:bing, [line: 1, column: 67], nil}, {:bong, [line: 1, column: 75], nil}},
-            {:foo, :bar}
-          ]}},
-        {~s'''
-         %{
-           "foo" => "bar",
-           1 => 2,
-           :three => :four,
-           [] => [1],
-           %{} => nil,
-           bing => bong,
-           foo: :bar
+        ~s'''
+        %{}
+        ''',
+        ~s'''
+        %{
+          foo: "bar",
+          alice: "bob"
          }
-         ''',
-         {:%{}, [line: 1, column: 1],
-          [
-            {"foo", "bar"},
-            {1, 2},
-            {:three, :four},
-            {[], [1]},
-            {{:%{}, [line: 6, column: 3], []}, nil},
-            {{:bing, [line: 7, column: 3], nil}, {:bong, [line: 7, column: 11], nil}},
-            {:foo, :bar}
-          ]}},
-        {~s'''
-         %{
-           foo: :bar,
-           baz:
-             beaux()
+        ''',
+        ~s'''
+        %{
+          "foo" =>
+            "bar",
+          "alice" => "bob"
          }
-         ''',
-         {:%{}, [line: 1, column: 1],
-          [
-            {:foo, :bar},
-            {:baz, {:beaux, [], []}}
-          ]}}
+        ''',
+        ~s'''
+        %{"foo" => "bar", 1 => 2, :three => :four, [] => [1], %{} => nil, bing => bong, foo: :bar}
+        ''',
+        ~s'''
+        %{
+          "foo" => "bar",
+          1 => 2,
+          :three => :four,
+          [] => [1],
+          %{} => nil,
+          bing => bong,
+          foo: :bar
+        }
+        ''',
+        ~s'''
+        %{
+          foo: :bar,
+          baz:
+            beaux()
+        }
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses structs" do
       codes = [
-        {~s'''
-         %Foo.Bar{}
-         ''',
-         {:%, [line: 1, column: 1],
-          [
-            {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Foo, :Bar]},
-            {:%{}, [closing: [line: 1, column: 6], line: 1, column: 5], []}
-          ]}},
-        {~s'%Foo.Bar{name: "alice", height: 73}',
-         {:%, [line: 1, column: 1],
-          [
-            {:__aliases__, [last: [line: 1, column: 6], line: 1, column: 2], [:Foo, :Bar]},
-            {:%{}, [closing: [line: 1, column: 35], line: 1, column: 9], [name: "alice", height: 73]}
-          ]}},
-        {
-          ~s'%Foo.Bar{name: name, properties: %Properties{key: key, value: get_value()}}',
-          {:%, [line: 1, column: 1],
-           [
-             {:__aliases__, [last: [line: 1, column: 6], line: 1, column: 2], [:Foo, :Bar]},
-             {:%{}, [closing: [line: 1, column: 75], line: 1, column: 9],
-              [
-                name: {:name, [line: 1, column: 16], nil},
-                properties:
-                  {:%, [line: 1, column: 34],
-                   [
-                     {:__aliases__, [last: [line: 1, column: 35], line: 1, column: 35], [:Properties]},
-                     {:%{}, [closing: [line: 1, column: 74], line: 1, column: 45],
-                      [
-                        key: {:key, [line: 1, column: 51], nil},
-                        value: {:get_value, [closing: [line: 1, column: 73], line: 1, column: 63], []}
-                      ]}
-                   ]}
-              ]}
-           ]}
-        },
-        {~S'%__MODULE__{foo: bar}',
-         {:%, [line: 1, column: 1],
-          [
-            {:__MODULE__, [line: 1, column: 2], nil},
-            {:%{}, [closing: [line: 1, column: 21], line: 1, column: 12], [foo: {:bar, [line: 1, column: 18], nil}]}
-          ]}},
-        {~S'%module{foo: bar}',
-         {:%, [line: 1, column: 1],
-          [
-            {:module, [line: 1, column: 2], nil},
-            {:%{}, [closing: [line: 1, column: 17], line: 1, column: 8], [foo: {:bar, [line: 1, column: 14], nil}]}
-          ]}},
-        {~S'%@foo{foo: bar}',
-         {:%, [line: 1, column: 1],
-          [
-            {:@, [line: 1, column: 2], [{:foo, [line: 1, column: 3], nil}]},
-            {:%{}, [closing: [line: 1, column: 15], line: 1, column: 6], [foo: {:bar, [line: 1, column: 12], nil}]}
-          ]}}
+        ~s'''
+        %Foo.Bar{}
+        ''',
+        ~s'%Foo.Bar{name: "alice", height: 73}',
+        ~S'''
+        %Foo.Bar{
+          name: "alice",
+          height: 73
+        }
+        ''',
+        ~s'%Foo.Bar{name: name, properties: %Properties{key: key, value: get_value()}}',
+        ~S'%__MODULE__{foo: bar}',
+        ~S'%module{foo: bar}',
+        ~S'%@foo{foo: bar}'
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == {:ok, expected}
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses operators" do
       codes = [
-        {~s'''
-         1 + 2
-         ''', {:+, [line: 1, column: 3], [1, 2]}},
-        {~s'''
-         1 ** 2
-         ''', {:**, [line: 1, column: 3], [1, 2]}},
-        {~s'''
-         1 - 2
-         ''', {:-, [line: 1, column: 3], [1, 2]}},
-        {~s'''
-         1 - -2
-         ''', {:-, [line: 1, column: 3], [1, {:-, [line: 1, column: 5], [2]}]}},
-        {~s'''
-         1 * 2
-         ''', {:*, [line: 1, column: 3], [1, 2]}},
-        {~s'''
-         1 / 2
-         ''', {:/, [line: 1, column: 3], [1, 2]}},
-        {~s'''
-         1 || foo()
-         ''', {:||, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
-        {~s'''
-         1 ||| foo()
-         ''', {:|||, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
-        {~s'''
-         1 or foo()
-         ''', {:or, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
-        {~s'''
-         1 == foo()
-         ''', {:==, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
-        {~s'''
-         1 != foo()
-         ''', {:!=, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
-        {~s'''
-         1 =~ foo()
-         ''', {:=~, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
-        {~s'''
-         1 === foo()
-         ''', {:===, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
-        {~s'''
-         1 !== foo()
-         ''', {:!==, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
-        {~s'''
-         1 < foo()
-         ''', {:<, [line: 1, column: 3], [1, {:foo, [line: 1, column: 5], []}]}},
-        {~s'''
-         1 > foo()
-         ''', {:>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 5], []}]}},
-        {~s'''
-         1 <= foo()
-         ''', {:<=, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
-        {~s'''
-         1 >= foo()
-         ''', {:>=, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
-        {~s'''
-         1 |> foo()
-         ''', {:|>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
-        {~s'''
-         1 <|> foo()
-         ''', {:"<|>", [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
-        {~s'''
-         1 <<< foo()
-         ''', {:<<<, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
-        {~s'''
-         1 >>> foo()
-         ''', {:>>>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
-        {~s'''
-         1 <<~ foo()
-         ''', {:<<~, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
-        {~s'''
-         1 ~>> foo()
-         ''', {:~>>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
-        {~s'''
-         1 <~ foo()
-         ''', {:<~, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
-        {~s'''
-         1 ~> foo()
-         ''', {:~>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
-        {~s'''
-         1 <~> foo()
-         ''', {:<~>, [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
-        {~s'''
-         1 in foo()
-         ''', {:in, [line: 1, column: 3], [1, {:foo, [line: 1, column: 6], []}]}},
-        {~s'''
-         foo not in bar
-         ''',
-         {:not, [line: 1, column: 5],
-          [
-            {:in, [], [{:foo, [line: 1, column: 1], nil}, {:bar, [line: 1, column: 12], nil}]}
-          ]}},
-        {~s'''
-         1 ^^^ foo()
-         ''', {:"^^^", [line: 1, column: 3], [1, {:foo, [line: 1, column: 7], []}]}},
-        {~s'''
-         1 + 2 * 3 - 2
-         ''',
-         {:-, [line: 1, column: 11],
-          [
-            {:+, [line: 1, column: 3], [1, {:*, [line: 1, column: 7], [2, 3]}]},
-            2
-          ]}},
-        {~s'''
-         one..two
-         ''', {:.., [line: 1, column: 4], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 6], nil}]}},
-        {~s'''
-         one..two//2
-         ''', {:"..//", [line: 1, column: 4], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 6], nil}, 2]}},
-        {~s'''
-         one <> two
-         ''', {:<>, [line: 1, column: 5], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 8], nil}]}},
-        {~s'''
-         one ++ two
-         ''', {:++, [line: 1, column: 5], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 8], nil}]}},
-        {~s'''
-         one -- two
-         ''', {:--, [line: 1, column: 5], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 8], nil}]}},
-        {~s'''
-         one +++ two
-         ''', {:+++, [line: 1, column: 5], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 9], nil}]}},
-        {~s'''
-         one --- two
-         ''', {:---, [line: 1, column: 5], [{:one, [line: 1, column: 1], nil}, {:two, [line: 1, column: 9], nil}]}},
-        {~s'''
-         one ++ two ++ three
-         ''',
-         {:++, [line: 1, column: 5],
-          [
-            {:one, [line: 1, column: 1], nil},
-            {:++, [line: 1, column: 12], [{:two, [line: 1, column: 8], nil}, {:three, [line: 1, column: 15], nil}]}
-          ]}},
-        {~s'''
-         @foo
-         ''', {:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}},
-        {~s'''
-         !foo
-         ''', {:!, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}},
-        {~s'''
-         not foo
-         ''', {:not, [line: 1, column: 1], [{:foo, [line: 1, column: 5], nil}]}},
-        {~s'''
-         ^foo
-         ''', {:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}},
-        {~s'''
-         ~~~foo
-         ''', {:"~~~", [line: 1, column: 1], [{:foo, [line: 1, column: 4], nil}]}}
+        ~s'''
+        1 + 2
+        ''',
+        ~s'''
+        1 ** 2
+        ''',
+        ~s'''
+        1 - 2
+        ''',
+        ~s'''
+        1 - -2
+        ''',
+        ~s'''
+        1 * 2
+        ''',
+        ~s'''
+        1 / 2
+        ''',
+        ~s'''
+        1 || foo()
+        ''',
+        ~s'''
+        1 ||| foo()
+        ''',
+        ~s'''
+        1 or foo()
+        ''',
+        ~s'''
+        1 == foo()
+        ''',
+        ~s'''
+        1 != foo()
+        ''',
+        ~s'''
+        1 =~ foo()
+        ''',
+        ~s'''
+        1 === foo()
+        ''',
+        ~s'''
+        1 !== foo()
+        ''',
+        ~s'''
+        1 < foo()
+        ''',
+        ~s'''
+        1 > foo()
+        ''',
+        ~s'''
+        1 <= foo()
+        ''',
+        ~s'''
+        1 >= foo()
+        ''',
+        ~s'''
+        1 |> foo()
+        ''',
+        ~s'''
+        1 <|> foo()
+        ''',
+        ~s'''
+        1 <<< foo()
+        ''',
+        ~s'''
+        1 >>> foo()
+        ''',
+        ~s'''
+        1 <<~ foo()
+        ''',
+        ~s'''
+        1 ~>> foo()
+        ''',
+        ~s'''
+        1 <~ foo()
+        ''',
+        ~s'''
+        1 ~> foo()
+        ''',
+        ~s'''
+        1 <~> foo()
+        ''',
+        ~s'''
+        1 in foo()
+        ''',
+        ~s'''
+        foo not in bar
+        ''',
+        ~s'''
+        1 ^^^ foo()
+        ''',
+        ~s'''
+        1 + 2 * 3 - 2
+        ''',
+        ~s'''
+        one..two
+        ''',
+        ~s'''
+        one..two//2
+        ''',
+        ~s'''
+        one <> two
+        ''',
+        ~s'''
+        one ++ two
+        ''',
+        ~s'''
+        one -- two
+        ''',
+        ~s'''
+        one +++ two
+        ''',
+        ~s'''
+        one --- two
+        ''',
+        ~s'''
+        one ++ two ++ three
+        ''',
+        ~s'''
+        @foo
+        ''',
+        ~s'''
+        !foo
+        ''',
+        ~s'''
+        not foo
+        ''',
+        ~s'''
+        ^foo
+        ''',
+        ~s'''
+        ~~~foo
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == {:ok, expected}
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses setting module attr" do
       codes = [
-        {~s'''
-         @foo bar()
-         ''', {:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], [{:bar, [line: 1, column: 6], []}]}]}},
-        {~s'''
-         @foo %{
-           foo: :bar
-         }
-         ''', {:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], [{:%{}, [line: 1, column: 6], [foo: :bar]}]}]}}
+        ~s'''
+        @foo bar()
+        ''',
+        ~s'''
+        @foo %{
+          foo: :bar
+        }
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parse do block" do
       codes = [
-        {~s'''
-         foo do
-         end
-         ''', {:foo, [line: 1, column: 1], [[do: {:__block__, [], []}]]}},
-        {~s'''
-         foo do
-          "howdy"
-          :partner
-         end
-         ''',
-         {:foo, [line: 1, column: 1],
-          [
-            [
-              do:
-                {:__block__, [],
-                 [
-                   "howdy",
-                   :partner
-                 ]}
-            ]
-          ]}},
-        {~s'''
-         foo arg do
-          "howdy"
-          :partner
-         end
-         ''',
-         {:foo, [line: 1, column: 1],
-          [
-            {:arg, [line: 1, column: 5], nil},
-            [
-              do:
-                {:__block__, [],
-                 [
-                   "howdy",
-                   :partner
-                 ]}
-            ]
-          ]}},
-        {~s'''
-         if arg do
-          "howdy"
-          else
-          :partner
-         end
-         ''', {:if, [line: 1, column: 1], [{:arg, [line: 1, column: 4], nil}, [do: "howdy", else: :partner]]}},
-        {~S'''
-         {%{},
-            quote do
-              Enum.into(unquote(metadata), unquote(escape_metadata(maybe_application)))
-            end}
-         ''',
-         {{:%{}, [closing: [line: 1, column: 4], line: 1, column: 3], []},
-          {:quote, [do: [line: 2, column: 16], end: [line: 4, column: 10], line: 2, column: 10],
-           [
-             [
-               do:
-                 {{:., [line: 3, column: 16],
-                   [
-                     {:__aliases__, [last: [line: 3, column: 12], line: 3, column: 12], [:Enum]},
-                     :into
-                   ]}, [closing: [line: 3, column: 84], line: 3, column: 17],
-                  [
-                    {:unquote, [closing: [line: 3, column: 38], line: 3, column: 22],
-                     [{:metadata, [line: 3, column: 30], nil}]},
-                    {:unquote, [closing: [line: 3, column: 83], line: 3, column: 41],
-                     [
-                       {:escape_metadata, [closing: [line: 3, column: 82], line: 3, column: 49],
-                        [{:maybe_application, [line: 3, column: 65], nil}]}
-                     ]}
-                  ]}
-             ]
-           ]}}}
+        ~s'''
+        foo do
+        end
+        ''',
+        ~s'''
+        foo do
+         "howdy"
+         :partner
+        end
+        ''',
+        ~s'''
+        foo arg do
+         "howdy"
+         :partner
+        end
+        ''',
+        ~s'''
+        if arg do
+         "howdy"
+         else
+         :partner
+        end
+        ''',
+        ~S'''
+        {%{},
+           quote do
+             Enum.into(unquote(metadata), unquote(escape_metadata(maybe_application)))
+           end}
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == {:ok, expected}
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
@@ -1085,54 +737,7 @@ defmodule SpitfireTest do
       )
       '''
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {:__block__, [closing: [line: 5, column: 1], line: 1, column: 1],
-                 [
-                   {:=, [end_of_expression: [newlines: 1, line: 2, column: 24], line: 2, column: 12],
-                    [
-                      {:min_line, [line: 2, column: 3], nil},
-                      {:line, [closing: [line: 2, column: 23], line: 2, column: 14],
-                       [{:meta, [line: 2, column: 19], nil}]}
-                    ]},
-                   {:=, [end_of_expression: [newlines: 1, line: 3, column: 32], line: 3, column: 12],
-                    [
-                      {:max_line, [line: 3, column: 3], nil},
-                      {:closing_line, [closing: [line: 3, column: 31], line: 3, column: 14],
-                       [{:meta, [line: 3, column: 27], nil}]}
-                    ]},
-                   {{:., [line: 4, column: 7],
-                     [
-                       {:__aliases__, [last: [line: 4, column: 3], line: 4, column: 3], [:Enum]},
-                       :any?
-                     ]}, [closing: [line: 4, column: 82], line: 4, column: 8],
-                    [
-                      {:comments, [line: 4, column: 13], nil},
-                      {:fn, [closing: [line: 4, column: 79], line: 4, column: 23],
-                       [
-                         {:->, [line: 4, column: 40],
-                          [
-                            [
-                              {:%{}, [closing: [line: 4, column: 38], line: 4, column: 27],
-                               [line: {:line, [line: 4, column: 34], nil}]}
-                            ],
-                            {:and, [line: 4, column: 59],
-                             [
-                               {:>, [line: 4, column: 48],
-                                [
-                                  {:line, [line: 4, column: 43], nil},
-                                  {:min_line, [line: 4, column: 50], nil}
-                                ]},
-                               {:<, [line: 4, column: 68],
-                                [
-                                  {:line, [line: 4, column: 63], nil},
-                                  {:max_line, [line: 4, column: 70], nil}
-                                ]}
-                             ]}
-                          ]}
-                       ]}
-                    ]}
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
       (min_line = line(meta)
@@ -1140,54 +745,7 @@ defmodule SpitfireTest do
       Enum.any?(comments, fn %{line: line} -> line > min_line and line < max_line end))
       '''
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {:__block__, [closing: [line: 3, column: 83], line: 1, column: 1],
-                 [
-                   {:=, [end_of_expression: [newlines: 1, line: 1, column: 23], line: 1, column: 11],
-                    [
-                      {:min_line, [line: 1, column: 2], nil},
-                      {:line, [closing: [line: 1, column: 22], line: 1, column: 13],
-                       [{:meta, [line: 1, column: 18], nil}]}
-                    ]},
-                   {:=, [end_of_expression: [newlines: 1, line: 2, column: 32], line: 2, column: 12],
-                    [
-                      {:max_line, [line: 2, column: 3], nil},
-                      {:closing_line, [closing: [line: 2, column: 31], line: 2, column: 14],
-                       [{:meta, [line: 2, column: 27], nil}]}
-                    ]},
-                   {{:., [line: 3, column: 7],
-                     [
-                       {:__aliases__, [last: [line: 3, column: 3], line: 3, column: 3], [:Enum]},
-                       :any?
-                     ]}, [closing: [line: 3, column: 82], line: 3, column: 8],
-                    [
-                      {:comments, [line: 3, column: 13], nil},
-                      {:fn, [closing: [line: 3, column: 79], line: 3, column: 23],
-                       [
-                         {:->, [line: 3, column: 40],
-                          [
-                            [
-                              {:%{}, [closing: [line: 3, column: 38], line: 3, column: 27],
-                               [line: {:line, [line: 3, column: 34], nil}]}
-                            ],
-                            {:and, [line: 3, column: 59],
-                             [
-                               {:>, [line: 3, column: 48],
-                                [
-                                  {:line, [line: 3, column: 43], nil},
-                                  {:min_line, [line: 3, column: 50], nil}
-                                ]},
-                               {:<, [line: 3, column: 68],
-                                [
-                                  {:line, [line: 3, column: 63], nil},
-                                  {:max_line, [line: 3, column: 70], nil}
-                                ]}
-                             ]}
-                          ]}
-                       ]}
-                    ]}
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "when syntax inside normal expression" do
@@ -1195,395 +753,212 @@ defmodule SpitfireTest do
       match?(x when is_nil(x), x)
       '''
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {:match?, [closing: [line: 1, column: 27], line: 1, column: 1],
-                 [
-                   {:when, [line: 1, column: 10],
-                    [
-                      {:x, [line: 1, column: 8], nil},
-                      {:is_nil, [closing: [line: 1, column: 23], line: 1, column: 15], [{:x, [line: 1, column: 22], nil}]}
-                    ]},
-                   {:x, [line: 1, column: 26], nil}
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "case expr" do
       codes = [
-        {~s'''
-         case foo do
+        ~s'''
+        case foo do
           bar ->
             bar
 
-         end
-         ''',
-         {:ok,
-          {:case, [line: 1, column: 1],
-           [
-             {:foo, [line: 1, column: 6], nil},
-             [
-               do: [
-                 {:->, [depth: 1, line: 2, column: 6],
-                  [[{:bar, [line: 2, column: 2], nil}], {:bar, [line: 3, column: 4], nil}]}
-               ]
-             ]
-           ]}}},
-        {~s'''
-         case :foo do
-           :foo ->
-             case get(:foo) do
-               :FOO ->
-                 :bar
-               _ ->
-                 :error
-               end
+        end
+        ''',
+        ~s'''
+        case :foo do
+          :foo ->
+            case get(:foo) do
+              :FOO ->
+                :bar
+              _ ->
+                :error
+            end
 
-           _ ->
-             :error
-         end
-         ''',
-         {:ok,
-          {:case, [line: 1, column: 1],
-           [
-             :foo,
-             [
-               do: [
-                 {:->, [depth: 1, line: 2, column: 8],
-                  [
-                    [:foo],
-                    {:case, [line: 3, column: 5],
-                     [
-                       {:get, [line: 3, column: 10], [:foo]},
-                       [
-                         do: [
-                           {:->, [depth: 2, line: 4, column: 12], [[:FOO], :bar]},
-                           {:->, [depth: 2, line: 6, column: 9], [[{:_, [line: 6, column: 7], nil}], :error]}
-                         ]
-                       ]
-                     ]}
-                  ]},
-                 {:->, [depth: 1, line: 10, column: 5], [[{:_, [line: 10, column: 3], nil}], :error]}
-               ]
-             ]
-           ]}}},
-        {~s'''
-         case infix do
-           nil ->
-             {left, parser}
-                                                   
-           ^do_block when parser.nestings != [] ->
-             {left, next_token(parser)}
-                                                   
-           _ ->
-             infix.(next_token(parser), left)
-         end
-         ''',
-         {:ok,
-          {:case, [line: 1, column: 1],
-           [
-             {:infix, [line: 1, column: 6], nil},
-             [
-               do: [
-                 {:->, [depth: 1, line: 2, column: 7],
-                  [[nil], {{:left, [line: 3, column: 6], nil}, {:parser, [line: 3, column: 12], nil}}]},
-                 {:->, [depth: 1, line: 5, column: 40],
-                  [
-                    [
-                      {:when, [line: 5, column: 13],
-                       [
-                         {:^, [line: 5, column: 3], [{:do_block, [line: 5, column: 4], nil}]},
-                         {:!=, [line: 5, column: 34],
-                          [
-                            {{:., [], [{:parser, [line: 5, column: 18], nil}, :nestings]}, [], []},
-                            []
-                          ]}
-                       ]}
-                    ],
-                    {{:left, [line: 6, column: 6], nil},
-                     {:next_token, [line: 6, column: 12], [{:parser, [line: 6, column: 23], nil}]}}
-                  ]},
-                 {:->, [depth: 1, line: 8, column: 5],
-                  [
-                    [{:_, [line: 8, column: 3], nil}],
-                    {{:., [], [{:infix, [line: 9, column: 5], nil}]}, [],
-                     [
-                       {:next_token, [line: 9, column: 12], [{:parser, [line: 9, column: 23], nil}]},
-                       {:left, [line: 9, column: 32], nil}
-                     ]}
-                  ]}
-               ]
-             ]
-           ]}}}
+          _ ->
+            :error
+        end
+        ''',
+        ~s'''
+        case infix do
+          nil ->
+            {left, parser}
+                                                  
+          ^do_block when parser.nestings != [] ->
+            {left, next_token(parser)}
+                                                  
+          _ ->
+            infix.(next_token(parser), left)
+        end
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parse ambiguous function calls" do
       codes = [
-        {~s'''
-         a b c, d
-         ''',
-         {:a, [line: 1, column: 1],
-          [
-            {:b, [line: 1, column: 3],
-             [
-               {:c, [line: 1, column: 5], nil},
-               {:d, [line: 1, column: 8], nil}
-             ]}
-          ]}},
-        {~s'''
-         a b c, d do
-         end
-         ''',
-         {:a, [line: 1, column: 1],
-          [
-            {:b, [line: 1, column: 3],
-             [
-               {:c, [line: 1, column: 5], nil},
-               {:d, [line: 1, column: 8], nil}
-             ]},
-            [do: {:__block__, [], []}]
-          ]}}
+        ~s'''
+        a b c, d
+        ''',
+        ~s'''
+        a b c, d do
+        end
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses function calls" do
       codes = [
-        {~s'''
-         foo()
-         ''', {:foo, [line: 1, column: 1], []}},
-        {~s'''
-         foo(arg, arg2)
-         ''', {:foo, [line: 1, column: 1], [{:arg, [line: 1, column: 5], nil}, {:arg2, [line: 1, column: 10], nil}]}},
-        {~s'''
-         foo(
-           arg,
-           arg2
-         )
-         ''', {:foo, [line: 1, column: 1], [{:arg, [line: 2, column: 3], nil}, {:arg2, [line: 3, column: 3], nil}]}},
-        {~s'''
-         foo arg, arg2
-         ''', {:foo, [line: 1, column: 1], [{:arg, [line: 1, column: 5], nil}, {:arg2, [line: 1, column: 10], nil}]}},
-        {~s'''
-         Remote.foo
-         ''', {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [], []}},
-        {~s'''
-         Remote.foo()
-         ''', {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [], []}},
-        {~s'''
-         Remote.foo(arg, arg2)
-         ''',
-         {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [],
-          [{:arg, [line: 1, column: 12], nil}, {:arg2, [line: 1, column: 17], nil}]}},
-        {~s'''
-         Remote.foo(
-           arg,
-           arg2
-         )
-         ''',
-         {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [],
-          [{:arg, [line: 2, column: 3], nil}, {:arg2, [line: 3, column: 3], nil}]}},
-        {~s'''
-         Remote.foo arg, arg2
-         ''',
-         {{:., [], [{:__aliases__, [line: 1, column: 1], [:Remote]}, :foo]}, [],
-          [{:arg, [line: 1, column: 12], nil}, {:arg2, [line: 1, column: 17], nil}]}},
-        {~s'''
-         :erlang.foo
-         ''', {{:., [], [:erlang, :foo]}, [], []}},
-        {~s'''
-         :erlang.foo()
-         ''', {{:., [], [:erlang, :foo]}, [], []}},
-        {~s'''
-         :erlang.foo(arg, arg2)
-         ''', {{:., [], [:erlang, :foo]}, [], [{:arg, [line: 1, column: 13], nil}, {:arg2, [line: 1, column: 18], nil}]}},
-        {~s'''
-         :erlang.foo arg, arg2
-         ''', {{:., [], [:erlang, :foo]}, [], [{:arg, [line: 1, column: 13], nil}, {:arg2, [line: 1, column: 18], nil}]}},
-        {~s'''
-         somevar.foo
-         ''', {{:., [], [{:somevar, [line: 1, column: 1], nil}, :foo]}, [], []}},
-        {~s'''
-         somevar.foo()
-         ''', {{:., [], [{:somevar, [line: 1, column: 1], nil}, :foo]}, [], []}},
-        {~s'''
-         :elixir_tokenizer.tokenize(String.to_charlist(code), 1, [])
-         ''',
-         {{:., [], [:elixir_tokenizer, :tokenize]}, [],
-          [
-            {{:., [], [{:__aliases__, [line: 1, column: 28], [:String]}, :to_charlist]}, [],
-             [{:code, [line: 1, column: 47], nil}]},
-            1,
-            []
-          ]}},
-        {~s'''
-         somevar.foo(arg, arg2)
-         ''',
-         {{:., [], [{:somevar, [line: 1, column: 1], nil}, :foo]}, [],
-          [{:arg, [line: 1, column: 13], nil}, {:arg2, [line: 1, column: 18], nil}]}},
-        {~s'''
-         somevar.foo arg, arg2
-         ''',
-         {{:., [], [{:somevar, [line: 1, column: 1], nil}, :foo]}, [],
-          [{:arg, [line: 1, column: 13], nil}, {:arg2, [line: 1, column: 18], nil}]}},
-        {~S'''
-         defp unquote(:"#{name}_text")(), do: unquote(contents)
-         ''',
-         {:defp, [line: 1, column: 1],
-          [
-            {{:unquote, [closing: [line: 1, column: 29], line: 1, column: 6],
-              [
-                {{:., [line: 1, column: 14], [:erlang, :binary_to_atom]}, [delimiter: "\"", line: 1, column: 14],
-                 [
-                   {:<<>>, [line: 1, column: 14],
-                    [
-                      {:"::", [line: 1, column: 16],
-                       [
-                         {{:., [line: 1, column: 16], [Kernel, :to_string]},
-                          [
-                            from_interpolation: true,
-                            closing: [line: 1, column: 22],
-                            line: 1,
-                            column: 16
-                          ], [{:name, [line: 1, column: 18], nil}]},
-                         {:binary, [line: 1, column: 16], nil}
-                       ]},
-                      "_text"
-                    ]},
-                   :utf8
-                 ]}
-              ]},
-             [
-               closing: [line: 1, column: 31],
-               closing: [line: 1, column: 29],
-               line: 1,
-               column: 6
-             ], []},
-            [
-              do:
-                {:unquote, [closing: [line: 1, column: 54], line: 1, column: 38],
-                 [{:contents, [line: 1, column: 46], nil}]}
-            ]
-          ]}}
+        ~s'''
+        foo()
+        ''',
+        ~s'''
+        foo(arg, arg2)
+        ''',
+        ~s'''
+        foo(
+          arg,
+          arg2
+        )
+        ''',
+        ~s'''
+        foo arg, arg2
+        ''',
+        ~s'''
+        Remote.foo
+        ''',
+        ~s'''
+        Remote.foo()
+        ''',
+        ~s'''
+        Remote.foo(arg, arg2)
+        ''',
+        ~s'''
+        Remote.foo(
+          arg,
+          arg2
+        )
+        ''',
+        ~s'''
+        Remote.foo arg, arg2
+        ''',
+        ~s'''
+        :erlang.foo
+        ''',
+        ~s'''
+        :erlang.foo()
+        ''',
+        ~s'''
+        :erlang.foo(arg, arg2)
+        ''',
+        ~s'''
+        :erlang.foo arg, arg2
+        ''',
+        ~s'''
+        somevar.foo
+        ''',
+        ~s'''
+        somevar.foo()
+        ''',
+        ~s'''
+        :elixir_tokenizer.tokenize(String.to_charlist(code), 1, [])
+        ''',
+        ~s'''
+        somevar.foo(arg, arg2)
+        ''',
+        ~s'''
+        somevar.foo arg, arg2
+        ''',
+        ~S'''
+        defp unquote(:"#{name}_text")(), do: unquote(contents)
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == {:ok, expected}
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses anon functions" do
       codes = [
-        {~s'''
-         fn -> :ok end
-         ''', {:fn, [line: 1, column: 1], [{:->, [line: 1, column: 4], [[], :ok]}]}},
-        {~s'''
-         fn ->
-           :ok
-         end
-         ''', {:fn, [line: 1, column: 1], [{:->, [line: 1, column: 4], [[], :ok]}]}},
-        {~s'''
-         fn one ->
-           one
-         end
-         ''',
-         {:fn, [line: 1, column: 1],
-          [
-            {:->, [depth: 1, line: 1, column: 8],
-             [[{:one, [line: 1, column: 4], nil}], {:one, [line: 2, column: 3], nil}]}
-          ]}},
-        {~s'''
-         fn
-          one ->
-           one
-         end
-         ''',
-         {:fn, [line: 1, column: 1],
-          [
-            {:->, [depth: 1, line: 2, column: 6],
-             [[{:one, [line: 2, column: 2], nil}], {:one, [line: 3, column: 3], nil}]}
-          ]}},
-        {~s'''
-         fn(one) ->
-           one
-         end
-         ''',
-         {:fn, [line: 1, column: 1],
-          [
-            {:->, [depth: 1, line: 1, column: 9],
-             [[{:one, [line: 1, column: 4], nil}], {:one, [line: 2, column: 3], nil}]}
-          ]}},
-        {~S'foo(fn a -> a end)',
-         {:foo, [closing: [line: 1, column: 18], line: 1, column: 1],
-          [
-            {:fn, [closing: [line: 1, column: 15], line: 1, column: 5],
-             [
-               {:->, [line: 1, column: 10], [[{:a, [line: 1, column: 8], nil}], {:a, [line: 1, column: 13], nil}]}
-             ]}
-          ]}}
+        ~s'''
+        fn -> :ok end
+        ''',
+        ~s'''
+        fn ->
+          :ok
+        end
+        ''',
+        ~s'''
+        fn one ->
+          one
+        end
+        ''',
+        ~s'''
+        fn
+         one ->
+          one
+        end
+        ''',
+        ~s'''
+        fn(one) ->
+          one
+        end
+        ''',
+        ~S'foo(fn a -> a end)'
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == {:ok, expected}
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses match operator" do
       codes = [
-        {~s'''
-         foo = :bar
-         ''', {:=, [line: 1, column: 5], [{:foo, [line: 1, column: 1], nil}, :bar]}}
+        ~s'''
+        foo = :bar
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses nil" do
       code = "nil"
-      assert Spitfire.parse!(code) == nil
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses booleans" do
       code = "false"
-      assert Spitfire.parse!(code) == false
+      assert Spitfire.parse(code) == s2q(code)
 
       code = "true"
-      assert Spitfire.parse!(code) == true
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses cond expression" do
       codes = [
-        {~s'''
-         cond do
-            prefix == nil ->
-              :foo
-            true ->
-              :bar
-          end
-         ''',
-         {:cond, [line: 1, column: 1],
-          [
-            [
-              do: [
-                {:->, [depth: 1, line: 2, column: 18],
-                 [[{:==, [line: 2, column: 11], [{:prefix, [line: 2, column: 4], nil}, nil]}], :foo]},
-                {:->, [depth: 1, line: 4, column: 9], [[true], :bar]}
-              ]
-            ]
-          ]}}
+        ~s'''
+        cond do
+           prefix == nil ->
+             :foo
+           true ->
+             :bar
+         end
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
@@ -1596,199 +971,113 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:def, [line: 1, column: 1],
-                [
-                  {:parse, [line: 1, column: 5], [{:code, [line: 1, column: 11], nil}]},
-                  [
-                    do:
-                      {:__block__, [],
-                       [
-                         {:=, [line: 2, column: 10],
-                          [
-                            {:parser, [line: 2, column: 3], nil},
-                            {:|>, [line: 2, column: 42],
-                             [
-                               {:|>, [line: 2, column: 26],
-                                [
-                                  {:|>, [line: 2, column: 17],
-                                   [{:code, [line: 2, column: 12], nil}, {:new, [line: 2, column: 20], []}]},
-                                  {:next_token, [line: 2, column: 29], []}
-                                ]},
-                               {:next_token, [line: 2, column: 45], []}
-                             ]}
-                          ]},
-                         {:parse_program, [line: 4, column: 3], [{:parser, [line: 4, column: 17], nil}]}
-                       ]}
-                  ]
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "when operator" do
       codes = [
-        {~s'''
-         foo when is_binary(foo) ->
-           :ok
-         ''',
-         [
-           {:->, [depth: 0, line: 1, column: 25],
-            [
-              [
-                {:when, [line: 1, column: 5],
-                 [
-                   {:foo, [line: 1, column: 1], nil},
-                   {:is_binary, [line: 1, column: 10], [{:foo, [line: 1, column: 20], nil}]}
-                 ]}
-              ],
-              :ok
-            ]}
-         ]},
-        {~s'''
-         foo when is_binary(foo) ->
-           :ok
+        ~s'''
+        case x do
+          foo when is_binary(foo) ->
+            :ok
+        end
+        ''',
+        ~s'''
+        case x do
+          foo when is_binary(foo) ->
+            :ok
 
-         bar when is_number(bar) ->
-           :ok
-         ''',
-         [
-           {:->, [depth: 0, line: 1, column: 25],
-            [
-              [
-                {:when, [line: 1, column: 5],
-                 [
-                   {:foo, [line: 1, column: 1], nil},
-                   {:is_binary, [line: 1, column: 10], [{:foo, [line: 1, column: 20], nil}]}
-                 ]}
-              ],
-              :ok
-            ]},
-           {:->, [depth: 0, line: 4, column: 25],
-            [
-              [
-                {:when, [line: 4, column: 5],
-                 [
-                   {:bar, [line: 4, column: 1], nil},
-                   {:is_number, [line: 4, column: 10], [{:bar, [line: 4, column: 20], nil}]}
-                 ]}
-              ],
-              :ok
-            ]}
-         ]},
-        {~s'''
-         def foo(bar) when is_binary(bar) do
-           :ok
-         end
-         ''',
-         {:def, [line: 1, column: 1],
-          [
-            {:when, [line: 1, column: 14],
-             [
-               {:foo, [line: 1, column: 5], [{:bar, [line: 1, column: 9], nil}]},
-               {:is_binary, [line: 1, column: 19], [{:bar, [line: 1, column: 29], nil}]}
-             ]},
-            [do: :ok]
-          ]}},
-        {~s'''
-         fn foo when is_binary(foo) ->
-           :ok
-         end
-         ''',
-         {:fn, [line: 1, column: 1],
-          [
-            {:->, [depth: 1, line: 1, column: 28],
-             [
-               [
-                 {:when, [line: 1, column: 8],
-                  [
-                    {:foo, [line: 1, column: 4], nil},
-                    {:is_binary, [line: 1, column: 13], [{:foo, [line: 1, column: 23], nil}]}
-                  ]}
-               ],
-               :ok
-             ]}
-          ]}},
-        {~s'''
-         fn foo, bar, _baz when is_binary(foo) and bar in [:alice, :bob] ->
-           :ok
-         end
-         ''',
-         {:fn, [line: 1, column: 1],
-          [
-            {:->, [depth: 1, line: 1, column: 65],
-             [
-               [
-                 {:when, [line: 1, column: 19],
-                  [
-                    {:foo, [line: 1, column: 4], nil},
-                    {:bar, [line: 1, column: 9], nil},
-                    {:_baz, [line: 1, column: 14], nil},
-                    {:and, [line: 1, column: 39],
-                     [
-                       {:is_binary, [line: 1, column: 24], [{:foo, [line: 1, column: 34], nil}]},
-                       {:in, [line: 1, column: 47], [{:bar, [line: 1, column: 43], nil}, [:alice, :bob]]}
-                     ]}
-                  ]}
-               ],
-               :ok
-             ]}
-          ]}}
+          bar when is_number(bar) ->
+            :ok
+        end
+        ''',
+        ~s'''
+        def foo(bar) when is_binary(bar) do
+          :ok
+        end
+        ''',
+        ~s'''
+        fn foo when is_binary(foo) ->
+          :ok
+        end
+        ''',
+        ~s'''
+        fn foo, bar, _baz when is_binary(foo) and bar in [:alice, :bob] ->
+          :ok
+        end
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "capture operator" do
       codes = [
-        {~s'''
-         &foo/1
-         ''', {:&, [line: 1, column: 1], [{:/, [line: 1, column: 5], [{:foo, [line: 1, column: 2], nil}, 1]}]}},
-        {~s'''
-         &Foo.foo/1
-         ''',
-         {:&, [line: 1, column: 1],
-          [{:/, [line: 1, column: 9], [{{:., [], [{:__aliases__, [line: 1, column: 2], [:Foo]}, :foo]}, [], []}, 1]}]}},
-        {~s'''
-         & &1
-         ''', {:&, [line: 1, column: 1], [{:&, [line: 1, column: 3], [1]}]}},
-        {~s'''
-         &Foo.bar(one, &1)
-         ''',
-         {:&, [line: 1, column: 1],
-          [
-            {{:., [], [{:__aliases__, [line: 1, column: 2], [:Foo]}, :bar]}, [],
-             [{:one, [line: 1, column: 10], nil}, {:&, [line: 1, column: 15], [1]}]}
-          ]}}
+        ~s'''
+        &foo/1
+        ''',
+        ~s'''
+        &Foo.foo/1
+        ''',
+        ~s'''
+        & &1
+        ''',
+        ~s'''
+        &Foo.bar(one, &1)
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "anonymous function function calls" do
       codes = [
-        {~s'''
-         foo.()
-         ''', {{:., [], [{:foo, [], nil}]}, [], []}},
-        {~s'''
-         foo.(one, two)
-         ''', {{:., [], [{:foo, [], nil}]}, [], [{:one, [], nil}, {:two, [], nil}]}},
-        {~s'''
-         foo.(
-           one,
-           two
-         )
-         ''', {{:., [], [{:foo, [], nil}]}, [], [{:one, [], nil}, {:two, [], nil}]}},
-        {~s'''
-         infix.(next_token(parser), left)
-         ''', {{:., [], [{:infix, [], nil}]}, [], [{:next_token, [], [{:parser, [], nil}]}, {:left, [], nil}]}}
+        ~s'''
+        foo.()
+        ''',
+        ~s'''
+        foo.(one, two)
+        ''',
+        ~s'''
+        foo.(
+          one,
+          two
+        )
+        ''',
+        ~s'''
+        infix.(next_token(parser), left)
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse!(code) == expected
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
+    end
+
+    test "case with" do
+      code = ~S'''
+      Repo.transaction(fn ->
+        case with {:ok, api_key} <-
+                    api_key_changeset
+                    |> Ecto.Changeset.put_assoc(:secrets, [api_key_secret_changeset])
+                    |> Repo.insert(),
+                  [api_key_secret] <- api_key.secrets,
+                  {:ok, api_key} <-
+                    api_key
+                    |> ApiKey.changeset(%{current_api_key_secret_id: api_key_secret.id})
+                    |> Repo.update(),
+                  do: %{api_key | current_secret: api_key_secret} do
+          {:error, error} -> Repo.rollback(error)
+          а -> а
+        end
+      end)
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "big test" do
@@ -1871,374 +1160,13 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:if, [],
-                [
-                  {:==, [], [{:prefix, [], nil}, nil]},
-                  [
-                    do:
-                      {:__block__, [],
-                       [
-                         {:=, [],
-                          [
-                            {{:row, [], nil}, {:col, [], nil}},
-                            {:token_loc, [],
-                             [
-                               {{:., [], [{:parser, [], nil}, :current_token]}, [], []}
-                             ]}
-                          ]},
-                         {{:., [], [{:__aliases__, [], [:IO]}, :puts]}, [],
-                          [
-                            {:<>, [],
-                             [
-                               {{:., [], [{:__aliases__, [], [:IO, :ANSI]}, :red]}, [], []},
-                               {:<>, [],
-                                [
-                                  {:<<>>, [],
-                                   [
-                                     {:"::", [],
-                                      [
-                                        {{:., [], [Kernel, :to_string]}, [], [{:row, [], nil}]},
-                                        {:binary, [], nil}
-                                      ]},
-                                     ":",
-                                     {:"::", [],
-                                      [
-                                        {{:., [], [Kernel, :to_string]}, [], [{:col, [], nil}]},
-                                        {:binary, [], nil}
-                                      ]},
-                                     ": unknown prefix: ",
-                                     {:"::", [],
-                                      [
-                                        {{:., [], [Kernel, :to_string]}, [],
-                                         [{:current_token_type, [], [{:parser, [], nil}]}]},
-                                        {:binary, [], nil}
-                                      ]}
-                                   ]},
-                                  {{:., [], [{:__aliases__, [], [:IO, :ANSI]}, :reset]}, [], []}
-                                ]}
-                             ]}
-                          ]},
-                         {:error, {:next_token, [], [{:parser, [], nil}]}}
-                       ]},
-                    else:
-                      {:__block__, [],
-                       [
-                         {:=, [],
-                          [
-                            {{:left, [], nil}, {:parser, [], nil}},
-                            {{:., [], [{:prefix, [], nil}]}, [], [{:parser, [], nil}]}
-                          ]},
-                         {:=, [],
-                          [
-                            {:calc_prec, [], nil},
-                            {:fn, [],
-                             [
-                               {:->, [depth: 2],
-                                [
-                                  [{:parser, [], nil}],
-                                  {:__block__, [],
-                                   [
-                                     {:=, [],
-                                      [
-                                        {{:_associativity, [], nil}, {:power, [], nil}},
-                                        {:peek_precedence, [], [{:parser, [], nil}]}
-                                      ]},
-                                     {:=, [],
-                                      [
-                                        {:precedence, [], nil},
-                                        {:case, [],
-                                         [
-                                           {:associativity, [], nil},
-                                           [
-                                             do: [
-                                               {:->, [depth: 3], [[:left], {:precedence, [], nil}]},
-                                               {:->, [depth: 3], [[:unassoc], 0]},
-                                               {:->, [depth: 3],
-                                                [
-                                                  [:right],
-                                                  {:-, [], [{:precedence, [], nil}, 1]}
-                                                ]}
-                                             ]
-                                           ]
-                                         ]}
-                                      ]},
-                                     {:<, [], [{:precedence, [], nil}, {:power, [], nil}]}
-                                   ]}
-                                ]}
-                             ]}
-                          ]},
-                         {:=, [], [{:terminals, [], nil}, [:eol, :eof, :"}", :")", :"]"]]},
-                         {:=, [],
-                          [
-                            {:terminals, [], nil},
-                            {:if, [],
-                             [
-                               {:is_top, [], nil},
-                               [
-                                 do: {:terminals, [], nil},
-                                 else: [{:|, [], [:",", {:terminals, [], nil}]}]
-                               ]
-                             ]}
-                          ]},
-                         {:while, [],
-                          [
-                            {:<-, [],
-                             [
-                               {:&&, [],
-                                [
-                                  {:not, [],
-                                   [
-                                     {:in, [],
-                                      [
-                                        {:peek_token, [], [{:parser, [], nil}]},
-                                        {:terminals, [], nil}
-                                      ]}
-                                   ]},
-                                  {{:., [], [{:calc_prec, [], nil}]}, [], [{:parser, [], nil}]}
-                                ]},
-                               {{:left, [], nil}, {:parser, [], nil}}
-                             ]},
-                            [
-                              do:
-                                {:__block__, [],
-                                 [
-                                   {:=, [],
-                                    [
-                                      {:infix, [], nil},
-                                      {:case, [],
-                                       [
-                                         {:peek_token_type, [], [{:parser, [], nil}]},
-                                         [
-                                           do: [
-                                             {:->, [depth: 3],
-                                              [
-                                                [:match_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:when_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:pipe_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:dual_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:mult_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:concat_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:assoc_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_assoc_op, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:arrow_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:ternary_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:or_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:and_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:comp_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:rel_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:in_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:xor_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:in_match_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_infix_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:range_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_range_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:stab_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_stab_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:do],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_do_block, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:dot_call_op],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_dot_call_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [:.],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_dot_expression, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [{:when, [], [:",", {:is_top, [], nil}]}],
-                                                {:&, [],
-                                                 [
-                                                   {:/, [], [{:parse_comma, [], nil}, 2]}
-                                                 ]}
-                                              ]},
-                                             {:->, [depth: 3], [[{:_, [], nil}], nil]}
-                                           ]
-                                         ]
-                                       ]}
-                                    ]},
-                                   {:=, [],
-                                    [
-                                      {:do_block, [], nil},
-                                      {:&, [],
-                                       [
-                                         {:/, [], [{:parse_do_block, [], nil}, 2]}
-                                       ]}
-                                    ]},
-                                   {:case, [],
-                                    [
-                                      {:infix, [], nil},
-                                      [
-                                        do: [
-                                          {:->, [depth: 3], [[nil], {{:left, [], nil}, {:parser, [], nil}}]},
-                                          {:->, [depth: 3],
-                                           [
-                                             [
-                                               {:when, [],
-                                                [
-                                                  {:^, [], [{:do_block, [], nil}]},
-                                                  {:!=, [],
-                                                   [
-                                                     {{:., [], [{:parser, [], nil}, :nestings]}, [], []},
-                                                     []
-                                                   ]}
-                                                ]}
-                                             ],
-                                             {{:left, [], nil}, {:next_token, [], [{:parser, [], nil}]}}
-                                           ]},
-                                          {:->, [depth: 3],
-                                           [
-                                             [{:_, [], nil}],
-                                             {{:., [], [{:infix, [], nil}]}, [],
-                                              [
-                                                {:next_token, [], [{:parser, [], nil}]},
-                                                {:left, [], nil}
-                                              ]}
-                                           ]}
-                                        ]
-                                      ]
-                                    ]}
-                                 ]}
-                            ]
-                          ]}
-                       ]}
-                  ]
-                ]}
+      left = Spitfire.parse(code)
+      right = s2q(code)
+
+      File.write!("left.ex", inspect(left, pretty: true, printable_limit: :infinity, limit: :infinity))
+      File.write!("right.ex", inspect(right, pretty: true, printable_limit: :infinity, limit: :infinity))
+
+      assert left == right
     end
 
     test "function def with case expression with anon function inside" do
@@ -2255,39 +1183,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:def, [],
-                [
-                  {:bar, [], [{:foo, [], nil}]},
-                  [
-                    do:
-                      {:case, [],
-                       [
-                         {:foo, [], nil},
-                         [
-                           do: [
-                             {:->, [depth: 2], [[:foo], :ok]},
-                             {:->, [depth: 2],
-                              [
-                                [:bar],
-                                {{:., [], [{:__aliases__, [], [:Enum]}, :map]}, [],
-                                 [
-                                   {:some_list, [], nil},
-                                   {:fn, [],
-                                    [
-                                      {:->, [depth: 3],
-                                       [
-                                         [{:item, [], nil}],
-                                         {{:., [], [{:item, [], nil}, :name]}, [], []}
-                                       ]}
-                                    ]}
-                                 ]}
-                              ]}
-                           ]
-                         ]
-                       ]}
-                  ]
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "case expression with anon function inside" do
@@ -2302,32 +1198,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:case, [],
-                [
-                  {:foo, [], nil},
-                  [
-                    do: [
-                      {:->, [depth: 1], [[:foo], :ok]},
-                      {:->, [depth: 1],
-                       [
-                         [:bar],
-                         {{:., [], [{:__aliases__, [], [:Enum]}, :map]}, [],
-                          [
-                            {:some_list, [], nil},
-                            {:fn, [],
-                             [
-                               {:->, [depth: 2],
-                                [
-                                  [{:item, [], nil}],
-                                  {{:., [], [{:item, [], nil}, :name]}, [], []}
-                                ]}
-                             ]}
-                          ]}
-                       ]}
-                    ]
-                  ]
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "not really sure" do
@@ -2401,298 +1272,9 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:defp, [],
-                [
-                  {:parse_stab_expression, [], [{:parser, [], nil}, {:lhs, [], nil}]},
-                  [
-                    do:
-                      {:case, [],
-                       [
-                         {:current_token, [], [{:parser, [], nil}]},
-                         [
-                           do: [
-                             {:->, [depth: 2],
-                              [
-                                [:<-],
-                                {:parse_infix_expression, [], [{:parser, [], nil}, {:lhs, [], nil}]}
-                              ]},
-                             {:->, [depth: 2],
-                              [
-                                [:->],
-                                {:__block__, [],
-                                 [
-                                   {:=, [],
-                                    [
-                                      {:token, [], nil},
-                                      {:current_token, [], [{:parser, [], nil}]}
-                                    ]},
-                                   {:=, [],
-                                    [
-                                      {:current_sd, [], nil},
-                                      {{:., [], [{:parser, [], nil}, :stab_depth]}, [], []}
-                                    ]},
-                                   {:=, [],
-                                    [
-                                      {:parser, [], nil},
-                                      {:eat_at, [], [{:parser, [], nil}, :eol, 1]}
-                                    ]},
-                                   {:=, [], [{:exprs, [], nil}, []]},
-                                   {:=, [],
-                                    [
-                                      {{:exprs, [], nil}, {:parser, [], nil}},
-                                      {:while, [],
-                                       [
-                                         {:<-, [],
-                                          [
-                                            {:not, [],
-                                             [
-                                               {:in, [],
-                                                [
-                                                  {:peek_token, [], [{:parser, [], nil}]},
-                                                  [:eof, :end]
-                                                ]}
-                                             ]},
-                                            {{:exprs, [], nil}, {:parser, [], nil}}
-                                          ]},
-                                         [
-                                           do:
-                                             {:__block__, [],
-                                              [
-                                                {:=, [],
-                                                 [
-                                                   {:parser, [], nil},
-                                                   {:next_token, [], [{:parser, [], nil}]}
-                                                 ]},
-                                                {:=, [],
-                                                 [
-                                                   {{:ast, [], nil}, {:parser, [], nil}},
-                                                   {:parse_expression, [], [{:parser, [], nil}, [top: true]]}
-                                                 ]},
-                                                {:=, [],
-                                                 [
-                                                   {:parser, [], nil},
-                                                   {:eat_at, [], [{:parser, [], nil}, :eol, 1]}
-                                                 ]},
-                                                {[
-                                                   {:|, [], [{:ast, [], nil}, {:exprs, [], nil}]}
-                                                 ], {:eat_eol, [], [{:parser, [], nil}]}}
-                                              ]}
-                                         ]
-                                       ]}
-                                    ]},
-                                   {:=, [],
-                                    [
-                                      {:rhs, [], nil},
-                                      {:case, [],
-                                       [
-                                         {:exprs, [], nil},
-                                         [
-                                           do: [
-                                             {:->, [depth: 3], [[[{:ast, [], nil}]], {:ast, [], nil}]},
-                                             {:->, [depth: 3],
-                                              [
-                                                [{:exprs, [], nil}],
-                                                {:{}, [],
-                                                 [
-                                                   :__block__,
-                                                   [],
-                                                   {{:., [],
-                                                     [
-                                                       {:__aliases__, [], [:Enum]},
-                                                       :reverse
-                                                     ]}, [], [{:exprs, [], nil}]}
-                                                 ]}
-                                              ]}
-                                           ]
-                                         ]
-                                       ]}
-                                    ]},
-                                   {:=, [],
-                                    [
-                                      {{:rhs, [], nil}, {:stabs, [], nil}},
-                                      {{:., [], [{:__aliases__, [], [:Macro]}, :traverse]}, [],
-                                       [
-                                         {:rhs, [], nil},
-                                         [],
-                                         {:fn, [],
-                                          [
-                                            {:->, [depth: 3],
-                                             [
-                                               [
-                                                 {:node, [], nil},
-                                                 {:acc, [], nil}
-                                               ],
-                                               {:case, [],
-                                                [
-                                                  {:node, [], nil},
-                                                  [
-                                                    do: [
-                                                      {:->, [depth: 4],
-                                                       [
-                                                         [
-                                                           {:{}, [],
-                                                            [
-                                                              :->,
-                                                              {:meta, [], nil},
-                                                              {:_args, [], nil}
-                                                            ]}
-                                                         ],
-                                                         {:if, [],
-                                                          [
-                                                            {:==, [],
-                                                             [
-                                                               {{:., [], [Access, :get]}, [], [{:meta, [], nil}, :depth]},
-                                                               {:current_sd, [], nil}
-                                                             ]},
-                                                            [
-                                                              do:
-                                                                {:__remove_me__,
-                                                                 [
-                                                                   {:|, [],
-                                                                    [
-                                                                      {:node, [], nil},
-                                                                      {:acc, [], nil}
-                                                                    ]}
-                                                                 ]},
-                                                              else: {{:node, [], nil}, {:acc, [], nil}}
-                                                            ]
-                                                          ]}
-                                                       ]},
-                                                      {:->, [depth: 4],
-                                                       [
-                                                         [{:_, [], nil}],
-                                                         {{:node, [], nil}, {:acc, [], nil}}
-                                                       ]}
-                                                    ]
-                                                  ]
-                                                ]}
-                                             ]}
-                                          ]},
-                                         {:fn, [],
-                                          [
-                                            {:->, [depth: 3],
-                                             [
-                                               [
-                                                 {:when, [],
-                                                  [
-                                                    {:{}, [],
-                                                     [
-                                                       {:node, [], nil},
-                                                       {:meta, [], nil},
-                                                       {:args, [], nil}
-                                                     ]},
-                                                    {:acc, [], nil},
-                                                    {:is_list, [], [{:args, [], nil}]}
-                                                  ]}
-                                               ],
-                                               {:__block__, [],
-                                                [
-                                                  {:=, [],
-                                                   [
-                                                     {:args, [], nil},
-                                                     {{:., [],
-                                                       [
-                                                         {:__aliases__, [], [:Enum]},
-                                                         :reject
-                                                       ]}, [],
-                                                      [
-                                                        {:args, [], nil},
-                                                        {:&, [],
-                                                         [
-                                                           {:&&, [],
-                                                            [
-                                                              {:is_list, [], [{:&, [], [1]}]},
-                                                              {{:., [],
-                                                                [
-                                                                  {:__aliases__, [], [:Enum]},
-                                                                  :member?
-                                                                ]}, [], [{:&, [], [1]}, :__remove_me__]}
-                                                            ]}
-                                                         ]}
-                                                      ]}
-                                                   ]},
-                                                  {{:{}, [],
-                                                    [
-                                                      {:node, [], nil},
-                                                      {:meta, [], nil},
-                                                      {:args, [], nil}
-                                                    ]}, {:acc, [], nil}}
-                                                ]}
-                                             ]},
-                                            {:->, [depth: 3],
-                                             [
-                                               [
-                                                 {:node, [], nil},
-                                                 {:acc, [], nil}
-                                               ],
-                                               {{:node, [], nil}, {:acc, [], nil}}
-                                             ]}
-                                          ]}
-                                       ]}
-                                    ]},
-                                   {:=, [],
-                                    [
-                                      {:rhs, [], nil},
-                                      {:case, [],
-                                       [
-                                         {:rhs, [], nil},
-                                         [
-                                           do: [
-                                             {:->, [depth: 3],
-                                              [
-                                                [
-                                                  {:{}, [],
-                                                   [
-                                                     :__block__,
-                                                     {:_, [], nil},
-                                                     [{:ast, [], nil}]
-                                                   ]}
-                                                ],
-                                                {:ast, [], nil}
-                                              ]},
-                                             {:->, [depth: 3], [[[{:ast, [], nil}]], {:ast, [], nil}]},
-                                             {:->, [depth: 3], [[{:block, [], nil}], {:block, [], nil}]}
-                                           ]
-                                         ]
-                                       ]}
-                                    ]},
-                                   {:=, [],
-                                    [
-                                      {:ast, [], nil},
-                                      {:++, [],
-                                       [
-                                         [
-                                           {:{}, [],
-                                            [
-                                              {:token, [], nil},
-                                              [
-                                                depth: {{:., [], [{:parser, [], nil}, :stab_depth]}, [], []}
-                                              ],
-                                              [
-                                                {:wrap, [], [{:lhs, [], nil}]},
-                                                {:rhs, [], nil}
-                                              ]
-                                            ]}
-                                         ],
-                                         {{:., [], [{:__aliases__, [], [:Enum]}, :reverse]}, [], [{:stabs, [], nil}]}
-                                       ]}
-                                    ]},
-                                   {{:ast, [], nil}, {:eat_eol, [], [{:parser, [], nil}]}}
-                                 ]}
-                              ]}
-                           ]
-                         ]
-                       ]}
-                  ]
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
     end
-  end
 
-  # INFO: the above describe block uses a new implementation of `==` that deletes all the `meta` fields in the AST, to make it easy
-  # to bootstrap the original structure. As more metadata is added, we want to move them to the describe below so that all the
-  # meta is properly tested
-  describe "with original ==" do
     test "multi line for clause" do
       code = ~S'''
       for {^function, arity} <- exports,
@@ -2755,54 +1337,13 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {:with, [do: [line: 5, column: 13], end: [line: 7, column: 1], line: 1, column: 1],
-                 [
-                   {:<-, [line: 1, column: 15],
-                    [
-                      {:ok, {:_, [line: 1, column: 12], nil}},
-                      {:bar, [closing: [line: 5, column: 11], line: 1, column: 18],
-                       [
-                         {:fn, [closing: [line: 5, column: 8], line: 1, column: 22],
-                          [
-                            {:->, [newlines: 1, depth: 1, line: 1, column: 27],
-                             [
-                               [{:a, [line: 1, column: 25], nil}],
-                               {:with,
-                                [
-                                  do: [line: 2, column: 23],
-                                  end: [line: 4, column: 10],
-                                  line: 2,
-                                  column: 10
-                                ],
-                                [
-                                  {:<-, [line: 2, column: 18], [:d, {:b, [line: 2, column: 21], nil}]},
-                                  [do: :f]
-                                ]}
-                             ]}
-                          ]}
-                       ]}
-                    ]},
-                   [do: :ok]
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "bitstrings" do
       code = ~S'<<?., char, rest::binary>>'
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {:<<>>, [closing: [line: 1, column: 25], line: 1, column: 1],
-                 [
-                   46,
-                   {:char, [line: 1, column: 7], nil},
-                   {:"::", [line: 1, column: 17],
-                    [
-                      {:rest, [line: 1, column: 13], nil},
-                      {:binary, [line: 1, column: 19], nil}
-                    ]}
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "anonymous function typespecs" do
@@ -2810,62 +1351,13 @@ defmodule SpitfireTest do
       @spec start_link((-> term), GenServer.options()) :: on_start
       '''
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {:@, [line: 1, column: 1],
-                 [
-                   {:spec, [line: 1, column: 2],
-                    [
-                      {:"::", [line: 1, column: 50],
-                       [
-                         {:start_link, [closing: [line: 1, column: 48], line: 1, column: 7],
-                          [
-                            [
-                              {:->, [line: 1, column: 19], [[], {:term, [line: 1, column: 22], nil}]}
-                            ],
-                            {{:., [line: 1, column: 38],
-                              [
-                                {:__aliases__, [last: [line: 1, column: 29], line: 1, column: 29], [:GenServer]},
-                                :options
-                              ]}, [closing: [line: 1, column: 47], line: 1, column: 39], []}
-                          ]},
-                         {:on_start, [line: 1, column: 53], nil}
-                       ]}
-                    ]}
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
       @spec get(agent, (state -> a), timeout) :: a when a: var
       '''
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {:@, [line: 1, column: 1],
-                 [
-                   {:spec, [line: 1, column: 2],
-                    [
-                      {:when, [line: 1, column: 46],
-                       [
-                         {:"::", [line: 1, column: 41],
-                          [
-                            {:get, [closing: [line: 1, column: 39], line: 1, column: 7],
-                             [
-                               {:agent, [line: 1, column: 11], nil},
-                               [
-                                 {:->, [depth: 0, line: 1, column: 25],
-                                  [
-                                    [{:state, [line: 1, column: 19], nil}],
-                                    {:a, [line: 1, column: 28], nil}
-                                  ]}
-                               ],
-                               {:timeout, [line: 1, column: 32], nil}
-                             ]},
-                            {:a, [line: 1, column: 44], nil}
-                          ]},
-                         [a: {:var, [line: 1, column: 54], nil}]
-                       ]}
-                    ]}
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "rescue with def" do
@@ -2875,24 +1367,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {:def, [do: [line: 1, column: 23], end: [line: 3, column: 1], line: 1, column: 1],
-                 [
-                   {:foo, [closing: [line: 1, column: 21], line: 1, column: 5],
-                    [
-                      {:=, [line: 1, column: 16],
-                       [
-                         {:%, [line: 1, column: 9],
-                          [
-                            {:mod, [line: 1, column: 10], nil},
-                            {:%{}, [closing: [line: 1, column: 14], line: 1, column: 13], []}
-                          ]},
-                         {:bar, [line: 1, column: 18], nil}
-                       ]}
-                    ]},
-                   [do: :ok]
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "multiple block identifiers" do
@@ -2908,40 +1383,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {:try, [do: [line: 1, column: 5], end: [line: 9, column: 1], line: 1, column: 1],
-                 [
-                   [
-                     do: {:foo, [closing: [line: 2, column: 7], line: 2, column: 3], []},
-                     rescue: [
-                       {:->, [newlines: 1, depth: 1, line: 4, column: 10],
-                        [
-                          [
-                            {:in, [line: 4, column: 5],
-                             [
-                               {:e, [line: 4, column: 3], nil},
-                               {:__aliases__, [last: [line: 4, column: 8], line: 4, column: 8], [:E]}
-                             ]}
-                          ],
-                          {:bar, [closing: [line: 5, column: 9], line: 5, column: 5], []}
-                        ]}
-                     ],
-                     else: [
-                       {:->, [depth: 1, line: 7, column: 16],
-                        [
-                          [ok: {:value, [line: 7, column: 9], nil}],
-                          {:value,
-                           [
-                             end_of_expression: [newlines: 1, line: 7, column: 24],
-                             line: 7,
-                             column: 19
-                           ], nil}
-                        ]},
-                       {:->, [depth: 1, line: 8, column: 10], [[:error], {:default, [line: 8, column: 13], nil}]}
-                     ]
-                   ]
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "starts with a comment" do
@@ -2950,8 +1392,7 @@ defmodule SpitfireTest do
       some_code = :foo
       """
 
-      assert Spitfire.parse(code) ==
-               {:ok, {:=, [line: 2, column: 11], [{:some_code, [line: 2, column: 1], nil}, :foo]}}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "default args" do
@@ -2961,137 +1402,69 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {:def, [do: [line: 1, column: 24], end: [line: 3, column: 1], line: 1, column: 1],
-                 [
-                   {:foo, [closing: [line: 1, column: 22], line: 1, column: 5],
-                    [{:\\, [line: 1, column: 13], [{:arg, [line: 1, column: 9], nil}, :value]}]},
-                   [do: :ok]
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "literal encoder" do
       codes = [
-        {~S'''
-         1
-         "two"
-         :three
-         [four]
-         try do
-           :ok
-         rescue
-           _ ->
-             :error
-         end
-         ''',
-         {:__block__, [],
-          [
-            {:__literal__,
-             [
-               end_of_expression: [newlines: 1, line: 1, column: 2],
-               token: "1",
-               line: 1,
-               column: 1
-             ], 1},
-            {:__literal__,
-             [
-               end_of_expression: [newlines: 1, line: 2, column: 6],
-               delimiter: "\"",
-               line: 2,
-               column: 1
-             ], "two"},
-            {:__literal__, [end_of_expression: [newlines: 1, line: 3, column: 7], line: 3, column: 1], :three},
-            {:__literal__,
-             [
-               end_of_expression: [newlines: 1, line: 4, column: 7],
-               closing: [line: 4, column: 6],
-               line: 4,
-               column: 1
-             ], [{:four, [line: 4, column: 2], nil}]},
-            {:try, [do: [line: 5, column: 5], end: [line: 10, column: 1], line: 5, column: 1],
-             [
-               [
-                 {{:__literal__, [line: 5, column: 5], :do}, {:__literal__, [line: 6, column: 3], :ok}},
-                 {{:__literal__, [line: 7, column: 1], :rescue},
-                  [
-                    {:->, [newlines: 1, depth: 1, line: 8, column: 5],
-                     [
-                       [{:_, [line: 8, column: 3], nil}],
-                       {:__literal__, [line: 9, column: 5], :error}
-                     ]}
-                  ]}
-               ]
-             ]}
-          ]}},
-        {~S'1.752', {:__literal__, [token: "1.752", line: 1, column: 1], 1.752}},
-        {~S'0xABCD', {:__literal__, [token: "0xABCD", line: 1, column: 1], 43_981}},
-        {~S'0o01234567', {:__literal__, [token: "0o01234567", line: 1, column: 1], 342_391}},
-        {~S'0b10101010', {:__literal__, [token: "0b10101010", line: 1, column: 1], 170}},
-        {~S'?é', {:__literal__, [token: "?é", line: 1, column: 1], 233}},
-        {~S'"foo"', {:__literal__, [delimiter: "\"", line: 1, column: 1], "foo"}},
-        {~S"'foo'", {:__literal__, [delimiter: "'", line: 1, column: 1], ~c"foo"}},
-        {~S':"foo"', {:__literal__, [delimiter: "\"", line: 1, column: 1], :foo}},
-        {~S":foo", {:__literal__, [line: 1, column: 1], :foo}},
-        {~S'''
-         """
-         foo
-         """
-         ''', {:__literal__, [delimiter: "\"\"\"", indentation: 0, line: 1, column: 1], "foo\n"}},
-        {~S"""
-         '''
-         foo
-         '''
-         """, {:__literal__, [delimiter: "'''", indentation: 0, line: 1, column: 1], ~c"foo\n"}},
-        {~S'{one, two}',
-         {:__literal__, [closing: [line: 1, column: 10], line: 1, column: 1],
-          {{:one, [line: 1, column: 2], nil}, {:two, [line: 1, column: 7], nil}}}}
+        ~S'''
+        1
+        "two"
+        :three
+        [four]
+        try do
+          :ok
+        rescue
+          _ ->
+            :error
+        end
+        ''',
+        ~S'1.752',
+        ~S'0xABCD',
+        ~S'0o01234567',
+        ~S'0b10101010',
+        ~S'?é',
+        ~S'"foo"',
+        ~S"'foo'",
+        ~S':"foo"',
+        ~S":foo",
+        ~S'''
+        """
+        foo
+        """
+        ''',
+        ~S"""
+        '''
+        foo
+        '''
+        """,
+        ~S'{one, two}'
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code, literal_encoder: fn l, m -> {:ok, {:__literal__, m, l}} end) == {:ok, expected}
+      encoder = fn l, m -> {:ok, {:__literal__, m, [l]}} end
+
+      for code <- codes do
+        assert Spitfire.parse(code, literal_encoder: encoder) ==
+                 Code.string_to_quoted(code, literal_encoder: encoder, columns: true, token_metadata: true, emit_warnings: false)
       end
     end
 
     test "sigils" do
       codes = [
-        {~S'~s"foo"', {:sigil_s, [delimiter: "\"", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["foo"]}, []]}},
-        {~S'~s"foo"bar',
-         {:sigil_s, [delimiter: "\"", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["foo"]}, ~c"bar"]}},
-        {~S'~s"hello#{world}"bar',
-         {:sigil_s, [delimiter: "\"", line: 1, column: 1],
-          [
-            {:<<>>, [line: 1, column: 1],
-             [
-               "hello",
-               {:"::", [line: 1, column: 9],
-                [
-                  {{:., [line: 1, column: 9], [Kernel, :to_string]},
-                   [
-                     from_interpolation: true,
-                     line: 1,
-                     column: 9
-                   ], [{:world, [line: 1, column: 11], nil}]},
-                  {:binary, [line: 1, column: 9], nil}
-                ]}
-             ]},
-            ~c"bar"
-          ]}},
-        {~S'~S"hello#{world}"bar',
-         {:sigil_S, [delimiter: "\"", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["hello\#{world}"]}, ~c"bar"]}},
-        {~S'~S|hello#{world}|bar',
-         {:sigil_S, [delimiter: "|", line: 1, column: 1], [{:<<>>, [line: 1, column: 1], ["hello\#{world}"]}, ~c"bar"]}},
-        {~S'''
-           ~S"""
-         hello world
-           """
-         ''',
-         {:sigil_S, [delimiter: "\"\"\"", line: 1, column: 3],
-          [{:<<>>, [indentation: 2, line: 1, column: 3], ["hello world\n"]}, []]}}
+        ~S'~s"foo"',
+        ~S'~s"foo"bar',
+        ~S'~s"hello#{world}"bar',
+        ~S'~S"hello#{world}"bar',
+        ~S'~S|hello#{world}|bar',
+        ~S'''
+          ~S"""
+        hello world
+          """
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == {:ok, expected}
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
@@ -3100,45 +1473,13 @@ defmodule SpitfireTest do
       "foo#{alice}bar"
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:<<>>, [delimiter: "\"", line: 1, column: 1],
-                [
-                  "foo",
-                  {:"::", [line: 1, column: 5],
-                   [
-                     {{:., [line: 1, column: 5], [Kernel, :to_string]},
-                      [
-                        from_interpolation: true,
-                        closing: [line: 1, column: 12],
-                        line: 1,
-                        column: 5
-                      ], [{:alice, [line: 1, column: 7], nil}]},
-                     {:binary, [line: 1, column: 5], nil}
-                   ]},
-                  "bar"
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
       "foo#{}bar"
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:<<>>, [delimiter: "\"", line: 1, column: 1],
-                [
-                  "foo",
-                  {:"::", [line: 1, column: 5],
-                   [
-                     {{:., [line: 1, column: 5], [Kernel, :to_string]},
-                      [
-                        from_interpolation: true,
-                        closing: [line: 1, column: 7],
-                        line: 1,
-                        column: 5
-                      ], [{:__block__, [], []}]},
-                     {:binary, [line: 1, column: 5], nil}
-                   ]},
-                  "bar"
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
       """
@@ -3146,142 +1487,61 @@ defmodule SpitfireTest do
       """
       '''
 
-      assert Spitfire.parse!(code) ==
-               {:<<>>, [delimiter: "\"\"\"", indentation: 0, line: 1, column: 1],
-                [
-                  "foo",
-                  {:"::", [line: 2, column: 4],
-                   [
-                     {{:., [line: 2, column: 4], [Kernel, :to_string]},
-                      [
-                        from_interpolation: true,
-                        closing: [line: 2, column: 11],
-                        line: 2,
-                        column: 4
-                      ], [{:alice, [line: 2, column: 6], nil}]},
-                     {:binary, [line: 2, column: 4], nil}
-                   ]},
-                  "bar\n"
-                ]}
+      assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
       "#{foo}"
       '''
 
-      assert Spitfire.parse(code) ==
-               {:ok,
-                {:<<>>, [delimiter: "\"", line: 1, column: 1],
-                 [
-                   {:"::", [line: 1, column: 2],
-                    [
-                      {{:., [line: 1, column: 2], [Kernel, :to_string]},
-                       [
-                         from_interpolation: true,
-                         closing: [line: 1, column: 7],
-                         line: 1,
-                         column: 2
-                       ], [{:foo, [line: 1, column: 4], nil}]},
-                      {:binary, [line: 1, column: 2], nil}
-                    ]}
-                 ]}}
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "end of expression metadata" do
       codes = [
-        {~S'''
-         foo do
-           Some.thing(
-             bar
-           )
-           Some.thing_else!()
-         end
-         ''',
-         {:foo, [do: [line: 1, column: 5], end: [line: 6, column: 1], line: 1, column: 1],
-          [
-            [
-              do:
-                {:__block__, [],
-                 [
-                   {{:., [line: 2, column: 7],
-                     [
-                       {:__aliases__, [{:last, [line: 2, column: 3]}, line: 2, column: 3], [:Some]},
-                       :thing
-                     ]},
-                    [
-                      end_of_expression: [newlines: 1, line: 4, column: 4],
-                      closing: [line: 4, column: 3],
-                      line: 2,
-                      column: 8
-                    ], [{:bar, [line: 3, column: 5], nil}]},
-                   {{:., [line: 5, column: 7],
-                     [
-                       {:__aliases__, [{:last, [line: 5, column: 3]}, line: 5, column: 3], [:Some]},
-                       :thing_else!
-                     ]}, [{:closing, [line: 5, column: 20]}, line: 5, column: 8], []}
-                 ]}
-            ]
-          ]}},
-        {~S'''
-         fn foo ->
-           send foo, :hi
+        ~S'''
+        foo do
+          Some.thing(
+            bar
+          )
+          Some.thing_else!()
+        end
+        ''',
+        ~S'''
+        fn foo ->
+          send foo, :hi
 
-           :ok
-         end
-         ''',
-         {:fn, [closing: [line: 5, column: 1], line: 1, column: 1],
-          [
-            {:->, [newlines: 1, depth: 1, line: 1, column: 8],
-             [
-               [{:foo, [line: 1, column: 4], nil}],
-               {:__block__, [],
-                [
-                  {:send,
-                   [
-                     end_of_expression: [newlines: 2, line: 2, column: 16],
-                     line: 2,
-                     column: 3
-                   ], [{:foo, [line: 2, column: 8], nil}, :hi]},
-                  :ok
-                ]}
-             ]}
-          ]}}
+          :ok
+        end
+        '''
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == {:ok, expected}
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "closing metadata" do
       codes = [
-        {~S'{}', {:{}, [closing: [line: 1, column: 2], line: 1, column: 1], []}},
-        {~S'{one, two, three}',
-         {:{}, [closing: [line: 1, column: 17], line: 1, column: 1],
-          [
-            {:one, [line: 1, column: 2], nil},
-            {:two, [line: 1, column: 7], nil},
-            {:three, [line: 1, column: 12], nil}
-          ]}},
-        {~S'%{}', {:%{}, [closing: [line: 1, column: 3], line: 1, column: 2], []}},
-        {~S'%{"one" => two, three: 4}',
-         {:%{}, [closing: [line: 1, column: 25], line: 1, column: 2],
-          [{"one", {:two, [line: 1, column: 12], nil}}, {:three, 4}]}},
-        {~S'foo()', {:foo, [closing: [line: 1, column: 5], line: 1, column: 1], []}},
-        {~S'foo(bar)', {:foo, [closing: [line: 1, column: 8], line: 1, column: 1], [{:bar, [line: 1, column: 5], nil}]}}
+        ~S'{}',
+        ~S'{one, two, three}',
+        ~S'%{}',
+        ~S'%{"one" => two, three: 4}',
+        ~S'foo()',
+        ~S'foo(bar)'
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == {:ok, expected}
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
     test "parses special keywords" do
       codes = [
-        {"__MODULE__", {:__MODULE__, [line: 1, column: 1], nil}}
+        "__MODULE__"
       ]
 
-      for {code, expected} <- codes do
-        assert Spitfire.parse(code) == {:ok, expected}
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
       end
     end
 
@@ -3305,120 +1565,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) ==
-               {
-                 :ok,
-                 {
-                   :defmodule,
-                   [do: [line: 1, column: 15], end: [line: 16, column: 1], line: 1, column: 1],
-                   [
-                     {:__aliases__, [{:last, [line: 1, column: 11]}, {:line, 1}, {:column, 11}], [:Foo]},
-                     [
-                       do: {
-                         :__block__,
-                         [],
-                         [
-                           {:defstruct, [end_of_expression: [newlines: 2, line: 2, column: 30], line: 2, column: 3],
-                            [[:foo, {:bar, "yo"}]]},
-                           {
-                             :defmodule,
-                             [
-                               end_of_expression: [newlines: 2, line: 10, column: 6],
-                               do: [line: 4, column: 19],
-                               end: [line: 10, column: 3],
-                               line: 4,
-                               column: 3
-                             ],
-                             [
-                               {:__aliases__, [{:last, [line: 4, column: 13]}, {:line, 4}, {:column, 13}], [:State]},
-                               [
-                                 do: {
-                                   :__block__,
-                                   [],
-                                   [
-                                     {:defstruct,
-                                      [end_of_expression: [newlines: 2, line: 5, column: 20], line: 5, column: 5],
-                                      [[:yo]]},
-                                     {
-                                       :def,
-                                       [do: [line: 7, column: 20], end: [line: 9, column: 5], line: 7, column: 5],
-                                       [
-                                         {:new, [closing: [line: 7, column: 18], line: 7, column: 9],
-                                          [{:attrs, [line: 7, column: 13], nil}]},
-                                         [
-                                           do: {
-                                             :struct,
-                                             [closing: [line: 8, column: 34], line: 8, column: 7],
-                                             [
-                                               {
-                                                 :%,
-                                                 [line: 8, column: 14],
-                                                 [
-                                                   {:__MODULE__, [line: 8, column: 15], nil},
-                                                   {:%{}, [closing: [line: 8, column: 26], line: 8, column: 25], []}
-                                                 ]
-                                               },
-                                               {:attrs, [line: 8, column: 29], nil}
-                                             ]
-                                           }
-                                         ]
-                                       ]
-                                     }
-                                   ]
-                                 }
-                               ]
-                             ]
-                           },
-                           {
-                             :@,
-                             [end_of_expression: [newlines: 1, line: 12, column: 47], line: 12, column: 3],
-                             [
-                               {
-                                 :spec,
-                                 [line: 12, column: 4],
-                                 [
-                                   {
-                                     :"::",
-                                     [line: 12, column: 34],
-                                     [
-                                       {
-                                         :run,
-                                         [closing: [line: 12, column: 32], line: 12, column: 9],
-                                         [
-                                           {:any, [closing: [line: 12, column: 17], line: 12, column: 13], []},
-                                           {:any, [closing: [line: 12, column: 24], line: 12, column: 20], []},
-                                           {:any, [closing: [line: 12, column: 31], line: 12, column: 27], []}
-                                         ]
-                                       },
-                                       :something
-                                     ]
-                                   }
-                                 ]
-                               }
-                             ]
-                           },
-                           {
-                             :def,
-                             [do: [line: 13, column: 26], end: [line: 15, column: 3], line: 13, column: 3],
-                             [
-                               {
-                                 :run,
-                                 [closing: [line: 13, column: 24], line: 13, column: 7],
-                                 [
-                                   {:foo, [line: 13, column: 11], nil},
-                                   {:bar, [line: 13, column: 16], nil},
-                                   {:baz, [line: 13, column: 21], nil}
-                                 ]
-                               },
-                               [do: :something]
-                             ]
-                           }
-                         ]
-                       }
-                     ]
-                   ]
-                 }
-               }
+      assert Spitfire.parse(code) == s2q(code)
     end
   end
 
@@ -3464,7 +1611,7 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) ==
                {:error,
                 {:foo, [{:closing, [line: 1, column: 19]}, line: 1, column: 1],
-                 [{:%{}, [{:closing, [line: 1, column: 14]}, line: 1, column: 6], [alice: "bob"]}]},
+                 [{:%{}, [{:closing, [line: 1, column: 14]}, line: 1, column: 5], [alice: "bob"]}]},
                 [{[line: 1, column: 14], "missing closing brace for map"}]}
     end
 
@@ -3478,7 +1625,7 @@ defmodule SpitfireTest do
       code = ~S'%{foo: :bar baz: :boo}'
 
       assert Spitfire.parse(code) ==
-               {:error, {:%{}, [{:closing, [line: 1, column: 22]}, line: 1, column: 2], [foo: :bar]},
+               {:error, {:%{}, [{:closing, [line: 1, column: 22]}, line: 1, column: 1], [foo: :bar]},
                 [
                   {[line: 1, column: 13], "syntax error"},
                   {[line: 1, column: 18], "syntax error"}
@@ -3630,7 +1777,7 @@ defmodule SpitfireTest do
                :error,
                {:foo, [{:closing, [line: 3, column: 8]}, {:line, 1}, {:column, 1}],
                 [
-                  {:+, [line: 1, column: 7],
+                  {:+, [newlines: 2, line: 1, column: 7],
                    [
                      1,
                      {:bar, [{:closing, [line: 3, column: 8]}, line: 3, column: 1], [{:two, [line: 3, column: 5], nil}]}
@@ -3653,7 +1800,7 @@ defmodule SpitfireTest do
                :error,
                {
                  :=,
-                 [line: 1, column: 10],
+                 [newlines: 1, line: 1, column: 10],
                  [
                    {:new_list, [line: 1, column: 1], nil},
                    {
@@ -3668,7 +1815,7 @@ defmodule SpitfireTest do
                          [
                            {
                              :->,
-                             [newlines: 3, depth: 1, line: 2, column: 31],
+                             [newlines: 3, line: 2, column: 31],
                              [
                                [{:item, [line: 2, column: 26], nil}],
                                {
@@ -3922,5 +2069,5 @@ defmodule SpitfireTest do
     end
   end
 
-  defp s2q(code), do: Code.string_to_quoted(code, columns: true, token_metadata: true)
+  defp s2q(code), do: Code.string_to_quoted(code, columns: true, token_metadata: true, emit_warnings: false)
 end
