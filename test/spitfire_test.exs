@@ -694,7 +694,8 @@ defmodule SpitfireTest do
         @foo %{
           foo: :bar
         }
-        '''
+        ''',
+        "@unix_days :calendar.date_to_gregorian_days({1970, 1, 1})"
       ]
 
       for code <- codes do

@@ -1464,13 +1464,7 @@ defmodule Spitfire do
   defp parse_tuple_literal(%{current_token: {:"{", orig_meta}} = parser) do
     meta = current_meta(parser)
     orig_parser = parser
-    # we use a then to create lexical scoping to 
-    # hide manipulating incrementing the parser
-    newlines =
-      then(parser, fn parser ->
-        parser = next_token(parser)
-        current_newlines(parser)
-      end)
+    newlines = peek_newlines(parser)
 
     parser = parser |> next_token() |> eat_eol()
     old_nestings = parser.nestings
@@ -2163,10 +2157,6 @@ defmodule Spitfire do
   def current_newlines(_) do
     nil
   end
-
-  # def peek_newlines(%{peek_token: {_token, {_line, _col, newlines}, _}}) when is_integer(newlines) do
-  #   newlines
-  # end
 
   def peek_newlines(%{peek_token: {:eol, {_line, _col, newlines}}}) when is_integer(newlines) do
     newlines
