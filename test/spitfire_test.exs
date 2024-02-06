@@ -1582,6 +1582,12 @@ defmodule SpitfireTest do
 
           :ok
         end
+        ''',
+        ~S'''
+        Module.ParallelChecker.verify(fn ->
+          {charlist, file} = find_file!(file, relative_to)
+          :elixir_compiler.string(charlist, file, fn _, _ -> :ok end)
+        end)
         '''
       ]
 

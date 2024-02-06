@@ -462,10 +462,27 @@ defmodule Spitfire do
       while peek_token(parser) not in [:eof, :end, :")"] <- {exprs, parser} do
         parser = next_token(parser)
         {ast, parser} = parse_expression(parser, top: true)
+        eoe = peek_eoe(parser)
 
         parser = eat_at(parser, :eol, 1)
 
+        ast =
+          case ast do
+            {t, meta, a} ->
+              {t, [{:end_of_expression, eoe} | meta], a}
+
+            literal ->
+              literal
+          end
+
         {[ast | exprs], eat_eol(parser)}
+      end
+
+    # we delete the eoe metadata in the last expression for compatibility with core
+    exprs =
+      case exprs do
+        [ast | rest] -> [delete_meta(ast, :end_of_expression) | rest]
+        exprs -> exprs
       end
 
     rhs =
@@ -541,7 +558,7 @@ defmodule Spitfire do
         # we delete the eoe metadata in the last expression for compatibility with core
         exprs =
           case exprs do
-            [{t, meta, a} | rest] -> [{t, Keyword.delete(meta, :end_of_expression), a} | rest]
+            [ast | rest] -> [delete_meta(ast, :end_of_expression) | rest]
             exprs -> exprs
           end
 
@@ -878,16 +895,6 @@ defmodule Spitfire do
       end
 
     meta = [{:closing, current_meta(parser)} | meta]
-
-    # we delete the eoe metadata in the last expression for compatibility with core
-    ast =
-      case ast do
-        [ast | rest] ->
-          [delete_meta(ast, :end_of_expression) | rest]
-
-        exprs ->
-          exprs
-      end
 
     {{:fn, newlines ++ meta, ast}, parser}
   end
