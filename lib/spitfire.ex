@@ -840,6 +840,19 @@ defmodule Spitfire do
     meta = current_meta(parser)
 
     case peek_token_type(parser) do
+      :bracket_identifier ->
+        parser = next_token(parser)
+        ident_meta = current_meta(parser)
+
+        %{current_token: {:bracket_identifier, _, rhs}} = parser
+
+        rhs = {{token, meta, [lhs, rhs]}, [no_parens: true] ++ ident_meta, []}
+
+        parser = next_token(parser)
+        {ast, parser} = parse_access_expression(parser, rhs)
+
+        {ast, eat_eol(parser)}
+
       type when type in [:identifier, :paren_identifier, :do_identifier] ->
         parser = next_token(parser)
 

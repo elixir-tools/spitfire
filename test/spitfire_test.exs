@@ -32,6 +32,9 @@ defmodule SpitfireTest do
 
       code = "%{bar: :foo}[:bar]"
       assert Spitfire.parse(code) == s2q(code)
+
+      code = "state.parent_meta[:line]"
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "token metadata" do
@@ -2146,4 +2149,9 @@ defmodule SpitfireTest do
   end
 
   defp s2q(code), do: Code.string_to_quoted(code, columns: true, token_metadata: true, emit_warnings: false)
+
+  def print(ast) do
+    ast |> Macro.to_string() |> IO.puts()
+    ast
+  end
 end
