@@ -598,7 +598,6 @@ defmodule Spitfire do
         rhs =
           case rhs do
             {:__block__, _, [ast]} -> ast
-            [ast] -> ast
             block -> block
           end
 

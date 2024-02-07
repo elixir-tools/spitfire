@@ -375,6 +375,11 @@ defmodule SpitfireTest do
            :two,
            "three"
          ]
+        ''',
+        ~S'''
+        case a do
+          _ -> [d]
+        end
         '''
       ]
 
