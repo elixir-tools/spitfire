@@ -704,6 +704,11 @@ defmodule SpitfireTest do
         ''',
         ~s'''
         -1 / a(b)
+        ''',
+        ~s'''
+        def +value do
+          :erlang.+(value)
+        end
         '''
       ]
 

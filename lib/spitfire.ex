@@ -1751,13 +1751,6 @@ defmodule Spitfire do
        when identifier in [:identifier, :op_identifier] do
     meta = current_meta(parser)
 
-    meta =
-      if identifier == :op_identifier do
-        [{:ambiguous_op, nil} | meta]
-      else
-        meta
-      end
-
     if token in [:__MODULE__, :__ENV__, :__DIR__, :__CALLER__] or
          (identifier == :identifier and
             peek_token(parser) in ([:";", :eol, :eof, :end, :",", :")", :do, :., :"}", :"]", :">>"] ++ @operators)) do
@@ -1784,6 +1777,13 @@ defmodule Spitfire do
       if parser.nestings == [] && current_token(parser) == :do do
         parse_do_block(parser, {token, meta, Enum.reverse(args)})
       else
+        meta =
+          if identifier == :op_identifier and length(args) == 1 do
+            [{:ambiguous_op, nil} | meta]
+          else
+            meta
+          end
+
         {{token, meta, Enum.reverse(args)}, parser}
       end
     end
