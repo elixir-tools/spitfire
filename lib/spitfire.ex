@@ -420,7 +420,15 @@ defmodule Spitfire do
   defp parse_prefix_expression(parser) do
     token = current_token(parser)
     meta = current_meta(parser)
-    precedence = current_precedence(parser)
+
+    precedence =
+      if current_token_type(parser) == :dual_op do
+        # dual ops are treated as unary ops when being used as a prefix operator
+        @unary_op
+      else
+        current_precedence(parser)
+      end
+
     parser = next_token(parser)
     {rhs, parser} = parse_expression(parser, precedence: precedence)
 

@@ -701,6 +701,9 @@ defmodule SpitfireTest do
         ''',
         ~s'''
         ~~~foo
+        ''',
+        ~s'''
+        -1 / a(b)
         '''
       ]
 
