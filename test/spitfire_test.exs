@@ -479,6 +479,13 @@ defmodule SpitfireTest do
         ''',
         ~s'''
         Remote.Foo.Bar
+        ''',
+        "alias Mix.Phoenix.{Context, Schema}",
+        ~S'''
+        alias Mix.Phoenix.{
+          Context,
+          Schema
+        }
         '''
       ]
 
