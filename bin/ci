@@ -37,7 +37,7 @@ defmodule Main do
       if spitfire == core do
         :ok
       else
-        File.mkdir!("tmp")
+        File.mkdir_p!("tmp")
         File.write!("tmp/spitfire.ex", inspect(spitfire, pretty: true, printable_limit: :infinity, limit: :infinity))
         File.write!("tmp/core.ex", inspect(core, pretty: true, printable_limit: :infinity, limit: :infinity))
 
