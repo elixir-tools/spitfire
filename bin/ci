@@ -40,7 +40,9 @@ defmodule Main do
         File.write("tmp/spitfire.ex", inspect(spitfire, pretty: true, printable_limit: :infinity, limit: :infinity))
         File.write("tmp/core.ex", inspect(core, pretty: true, printable_limit: :infinity, limit: :infinity))
 
-        {diff, _} = System.cmd("delta", ["tmp/spitfire.ex", "tmp/core.ex"])
+        exe = System.find_executable("delta") || "diff"
+
+        {diff, _} = System.cmd(exe, ["tmp/spitfire.ex", "tmp/core.ex"])
         IO.puts file
         IO.puts diff
         raise ParseException, "Failed on file: #{file}"
