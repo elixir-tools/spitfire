@@ -300,8 +300,18 @@ defmodule Spitfire do
 
     cond do
       peek_token(parser) == :")" ->
-        parser = put_in(parser.nestings, old_nestings)
-        {expression, next_token(parser)}
+        parser = parser.nestings |> put_in(old_nestings) |> next_token()
+
+        ast =
+          case expression do
+            {:unquote_splicing, _, [_]} ->
+              {:__block__, [closing: current_meta(parser)] ++ orig_meta, [expression]}
+
+            _ ->
+              expression
+          end
+
+        {ast, parser}
 
       peek_token(parser) == :eol ->
         # second conditon checks of the next next token is a closing paren or another expression
@@ -495,8 +505,14 @@ defmodule Spitfire do
 
     rhs =
       case exprs do
-        [ast] -> ast
-        exprs -> {:__block__, [], Enum.reverse(exprs)}
+        [{:unquote_splicing, _, [_]}] ->
+          {:__block__, [], exprs}
+
+        [_] ->
+          List.first(exprs)
+
+        _ ->
+          {:__block__, [], Enum.reverse(exprs)}
       end
 
     ast =
@@ -605,8 +621,14 @@ defmodule Spitfire do
 
         rhs =
           case rhs do
-            {:__block__, _, [ast]} -> ast
-            block -> block
+            {:unquote_splicing, _, [_]} ->
+              {:__block__, [], [rhs]}
+
+            {:__block__, _, [ast]} ->
+              ast
+
+            block ->
+              block
           end
 
         lhs =
@@ -819,10 +841,15 @@ defmodule Spitfire do
     exprs =
       for {type, expr} <- Enum.reverse(exprs) do
         expr =
-          if length(expr) == 1 do
-            List.first(expr)
-          else
-            {:__block__, [], Enum.reverse(expr)}
+          case expr do
+            [{:unquote_splicing, _, [_]}] ->
+              {:__block__, [], expr}
+
+            [_] ->
+              List.first(expr)
+
+            _ ->
+              {:__block__, [], Enum.reverse(expr)}
           end
 
         {type, expr}

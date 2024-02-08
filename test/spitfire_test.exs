@@ -1659,6 +1659,32 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code) == s2q(code)
     end
+
+    test "unquote_splicing" do
+      codes = [
+        "sum(1, unquote_splicing(values), 5)",
+        "quote(do: (unquote_splicing(calls)))",
+        ~S'''
+        quote do
+          unquote_splicing(calls)
+        end
+        ''',
+        ~S'''
+        fn ->
+          unquote_splicing(calls)
+        end
+        ''',
+        ~S'''
+        fn calls ->
+          unquote_splicing(calls)
+        end
+        '''
+      ]
+
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
+      end
+    end
   end
 
   describe "code with errors" do
