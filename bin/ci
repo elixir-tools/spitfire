@@ -1,8 +1,7 @@
 #!/usr/bin/env elixir
 
 Mix.install([
-  {:spitfire, path: "."},
-  :nimble_csv
+  {:spitfire, path: "."}
 ])
 
 defmodule ParseException do
@@ -10,8 +9,6 @@ defmodule ParseException do
 end
 
 defmodule Main do
-  alias NimbleCSV.RFC4180, as: CSV
-
   @ignore [
     "/lib/**/ebin/**/*",
     "/lib/**/_build/**/*",
