@@ -22,6 +22,23 @@ The project is a handwritten Pratt parser (a type of recursive descent parser). 
 
 Pratt parsers are becoming very popular in the realm of error tolerant parsing. Projects that I have been watching and learning from include the `rustc` parser as well as the new [Prism](https://github.com/ruby/prism) parser for the Ruby project.
 
+
+## Contributing
+
+Now that phase 1 (parse all Elixir syntax) entering the final lap, contributions should be easier.
+
+The goal is to test Spitfire against popular repos and see if there are any differences in the output.
+
+This can be easily accomplished by cloning the project and running the `bin/ci` script from the Spitfire repo.
+
+```shell
+bin/ci path/to/project
+```
+
+This will attempt to parse and test equivalence for each file in `lib/` of that project and print out any differences that it finds.
+
+Then you simply make a minimal unit test for that problem, fix it, open a PR!
+
 ## Acknowledgements
 
 I'd like to thank Thorsten Ball, the author of [Writing an Interpreter in Go](https://interpreterbook.com). I read this book a couple of years ago and built out the language from the book. Thorsten teaches you how to build a Pratt parser, which is really proving helpful for the development of Spitfire.
