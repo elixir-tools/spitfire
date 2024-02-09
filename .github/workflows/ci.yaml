@@ -26,7 +26,7 @@ jobs:
           - ericmj/decimal
           - elixir-gettext/gettext
           - rrrene/credo
-          - wojtekmac/req
+          - wojtekmach/req
           - bitwalker/timex
           - mtrudel/bandit
           - witchcrafters/witchcraft
