@@ -457,6 +457,18 @@ defmodule Spitfire do
     {ast, eat_eol(parser)}
   end
 
+  defp parse_prefix_lone_identifer(parser) do
+    token = current_token(parser)
+    meta = current_meta(parser)
+
+    parser = next_token(parser)
+    {rhs, parser} = parse_lone_identifier(parser)
+
+    ast = {token, meta, [rhs]}
+
+    {ast, eat_eol(parser)}
+  end
+
   defp parse_capture_int(parser) do
     token = current_token(parser)
     meta = current_meta(parser)
@@ -1506,6 +1518,7 @@ defmodule Spitfire do
         :paren_identifier -> &parse_identifier/1
         :alias -> &parse_alias/1
         :at_op -> &parse_lone_module_attr/1
+        :unary_op -> &parse_prefix_lone_identifer/1
         _ -> nil
       end
 

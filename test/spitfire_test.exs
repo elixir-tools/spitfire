@@ -625,7 +625,8 @@ defmodule SpitfireTest do
           a: a,
           b: b,
         }
-        '''
+        ''',
+        "%^resource{}"
       ]
 
       for code <- codes do
