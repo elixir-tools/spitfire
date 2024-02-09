@@ -39,6 +39,8 @@ jobs:
         with:
           install: false
       - run: mise install erlang
+        env:
+          KERL_BUILD_DOCS: yes
       - run: mise install elixir
       - uses: actions/cache@v4
         with:
@@ -70,6 +72,8 @@ jobs:
         with:
           install: false
       - run: mise install erlang
+        env:
+          KERL_BUILD_DOCS: yes
       - run: mise install elixir
       - uses: actions/cache@v4
         with:
