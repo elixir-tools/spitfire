@@ -1101,6 +1101,7 @@ defmodule Spitfire do
                   }
                   |> next_token()
                   |> next_token()
+                  |> eat_eol()
 
                 {ast, _parser} = parse_expression(parser)
                 ast
@@ -1153,6 +1154,7 @@ defmodule Spitfire do
                   }
                   |> next_token()
                   |> next_token()
+                  |> eat_eol()
 
                 {ast, _parser} = parse_expression(parser)
                 ast
@@ -1206,6 +1208,7 @@ defmodule Spitfire do
                   }
                   |> next_token()
                   |> next_token()
+                  |> eat_eol()
 
                 {ast, _parser} = parse_expression(parser)
                 ast
@@ -1256,6 +1259,7 @@ defmodule Spitfire do
                   }
                   |> next_token()
                   |> next_token()
+                  |> eat_eol()
 
                 {ast, _parser} = parse_expression(parser)
                 ast
@@ -1302,6 +1306,7 @@ defmodule Spitfire do
                   }
                   |> next_token()
                   |> next_token()
+                  |> eat_eol()
 
                 {ast, _parser} = parse_expression(parser)
                 ast

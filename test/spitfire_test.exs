@@ -153,9 +153,27 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code) == s2q(code)
 
+      code = ~S'''
+      'foo#{
+        alice
+      }bar' 
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
       code = ~S"""
       '''
       foo#{alice}bar
+      '''
+      """
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S"""
+      '''
+      foo#{
+        alice
+      }bar
       '''
       """
 
@@ -1604,6 +1622,18 @@ defmodule SpitfireTest do
         ~S'~S"hello#{world}"bar',
         ~S'~S|hello#{world}|bar',
         ~S'''
+        ~s|hello#{
+          world
+        }|bar
+        ''',
+        ~S'''
+        ~s"""
+        hello#{
+          world
+        }
+        """bar
+        ''',
+        ~S'''
           ~S"""
         hello world
           """
@@ -1623,6 +1653,14 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
+      "foo#{
+        alice
+      }bar"
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
       "foo#{}bar"
       '''
 
@@ -1631,6 +1669,16 @@ defmodule SpitfireTest do
       code = ~S'''
       """
       foo#{alice}bar
+      """
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      """
+      foo#{
+        alice
+      }bar
       """
       '''
 
