@@ -1,0 +1,107 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: main
+
+jobs:
+  repos:
+    runs-on: ubuntu-latest
+    name: Repos
+
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: 
+          - elixir-lang/elixir
+          - elixir-ecto/ecto
+          - elixir-ecto/ecto_sql
+          - phoenixframework/phoenix
+          - phoenixframework/phoenix_live_view
+          - elixir-tools/next-ls
+          - elixir-tools/gen_lsp
+          - michalmuskala/jason
+          - beam-telemetry/telemetry
+          - elixir-plug/plug
+          - ericmj/decimal
+          - elixir-gettext/gettext
+          - rrrene/credo
+          - wojtekmac/req
+          - bitwalker/timex
+          - mtrudel/bandit
+          - witchcrafters/witchcraft
+          - witchcrafters/type_class
+          - witchcrafters/quark
+          - oestrich/aino
+          - sorentwo/oban
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
+
+      - name: Install Dependencies
+        run: nix develop --command bash -c "mix deps.get"
+      - name: Clone
+        env: 
+          GH_TOKEN: ${{ github.token }}
+        run: gh repo clone ${{ matrix.repo }} proj
+
+      - name: Test
+        run: |
+          nix develop --command bash -c "bin/ci ./proj"
+
+  test:
+    runs-on: ubuntu-latest
+    name: Tests
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
+
+      - name: Install Dependencies
+        run: nix develop --command bash -c "mix deps.get"
+
+      - name: Run Formatter
+        run: nix develop --command bash -c "mix test"
+
+  formatter:
+    runs-on: ubuntu-latest
+    name: Formatter
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
+
+      - name: Install Dependencies
+        run: nix develop --command bash -c "mix deps.get"
+
+      - name: Run Formatter
+        run: nix develop --command bash -c "mix format --check-formatted"
+
