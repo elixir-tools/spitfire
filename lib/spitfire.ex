@@ -2188,6 +2188,10 @@ defmodule Spitfire do
     [line: line, column: col]
   end
 
+  def current_meta(%{current_token: {:%{}, {line, col, _}}}) do
+    [line: line, column: col + 1]
+  end
+
   def current_meta(%{current_token: {token, _}})
       when token in [:fake_closing_brace, :fake_closing_bracket, :fake_closing_brackets] do
     []
