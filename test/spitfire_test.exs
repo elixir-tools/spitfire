@@ -28,7 +28,13 @@ defmodule SpitfireTest do
         "%{bar: :foo}[:bar]",
         "state.parent_meta[:line]",
         "@preferred_envs[task]",
-        "!!meta[:diff]"
+        "!!meta[:diff]",
+        "foo[1]",
+        ~S'''
+        foo[
+          :bar
+        ]
+        '''
       ]
 
       for code <- codes do
