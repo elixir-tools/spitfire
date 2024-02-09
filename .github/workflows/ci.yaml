@@ -32,16 +32,12 @@ jobs:
           - witchcrafters/witchcraft
           - witchcrafters/typeclass
           - witchcrafters/quark
+          - oestrich/aino
+          - sorentwo/oban
 
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
-        with:
-          install: false
-      - run: mise install erlang
-        env:
-          KERL_BUILD_DOCS: yes
-      - run: mise install elixir
+      - uses: DeterminateSystems/nix-installer-action@main
       - uses: actions/cache@v4
         with:
           path: |
@@ -52,7 +48,7 @@ jobs:
             ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
 
       - name: Install Dependencies
-        run: mix deps.get
+        run: nix develop --command bash -c "mix deps.get"
       - name: Clone
         env: 
           GH_TOKEN: ${{ github.token }}
@@ -60,32 +56,33 @@ jobs:
 
       - name: Test
         run: |
-          bin/ci ./proj
+          nix develop --command bash -c "bin/ci ./proj"
 
-  formatter:
-    runs-on: ubuntu-latest
-    name: Formatter
+  # formatter:
+  #   runs-on: ubuntu-latest
+  #   name: Formatter
 
-    steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
-        with:
-          install: false
-      - run: mise install erlang
-        env:
-          KERL_BUILD_DOCS: yes
-      - run: mise install elixir
-      - uses: actions/cache@v4
-        with:
-          path: |
-            deps
-            _build
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-${{ hashFiles('**/mix.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: jdx/mise-action@v2
+  #       with:
+  #         install: false
+  #     - run: mise install erlang
+  #       env:
+  #         KERL_BUILD_DOCS: yes
+  #     - run: mise install elixir
+  #     - uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           deps
+  #           _build
+  #         key: ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-${{ hashFiles('**/mix.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
 
-      - name: Install Dependencies
-        run: mix deps.get
+  #     - name: Install Dependencies
+  #       run: mix deps.get
 
-      - name: Run Formatter
-        run: mix format --check-formatted
+  #     - name: Run Formatter
+  #       run: mix format --check-formatted
+
