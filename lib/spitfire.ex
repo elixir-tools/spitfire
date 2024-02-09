@@ -299,13 +299,16 @@ defmodule Spitfire do
     exprs = [push_meta(expression, end_of_expression: peek_eoe(parser))]
 
     cond do
-      peek_token(parser) == :")" ->
-        parser = parser.nestings |> put_in(old_nestings) |> next_token()
+      peek_token(parser) == :")" or (peek_token(parser) == :eol and peek_token(next_token(parser)) == :")") ->
+        parser = parser.nestings |> put_in(old_nestings) |> next_token() |> eat_eol()
 
         ast =
           case expression do
             {:unquote_splicing, _, [_]} ->
               {:__block__, [closing: current_meta(parser)] ++ orig_meta, [expression]}
+
+            {op, _, [_]} when op in [:not, :!] ->
+              {:__block__, [], [expression]}
 
             _ ->
               expression

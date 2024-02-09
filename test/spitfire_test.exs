@@ -310,7 +310,14 @@ defmodule SpitfireTest do
         ''',
         ~s'''
         1 + (2 + 3)
-        '''
+        ''',
+        "(!false)",
+        ~S'''
+        (
+          !false
+        )
+        ''',
+        "(not false)"
       ]
 
       for code <- codes do
