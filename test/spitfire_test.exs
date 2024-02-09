@@ -1644,7 +1644,9 @@ defmodule SpitfireTest do
 
     test "parses special keywords" do
       codes = [
-        "__MODULE__"
+        "__MODULE__",
+        "__MODULE__.foo()",
+        "__MODULE__.Foo"
       ]
 
       for code <- codes do

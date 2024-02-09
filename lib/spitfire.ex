@@ -877,6 +877,14 @@ defmodule Spitfire do
     meta = current_meta(parser)
 
     case peek_token_type(parser) do
+      :alias ->
+        parser = next_token(parser)
+
+        {{:__aliases__, ameta, aliases}, parser} = parse_alias(parser)
+
+        last = ameta[:last]
+        {{:__aliases__, [{:last, last} | meta], [lhs | aliases]}, parser}
+
       :bracket_identifier ->
         parser = next_token(parser)
         ident_meta = current_meta(parser)
