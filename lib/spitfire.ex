@@ -14,8 +14,8 @@ defmodule Spitfire do
   # comma are commas inside a right stab argument list
   @comma {:left, 14}
   @kw_identifier {:left, 16}
-  @type_op {:right, 18}
-  @assoc_op {:right, 20}
+  @assoc_op {:right, 18}
+  @type_op {:right, 20}
   @pipe_op {:right, 22}
   @capture_op {:left, 24}
   @match_op {:right, 26}

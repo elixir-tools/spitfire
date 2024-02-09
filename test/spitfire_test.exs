@@ -58,33 +58,34 @@ defmodule SpitfireTest do
     end
 
     test "type syntax" do
-      code = ~S'''
-      @type foo :: String.t()
-      '''
+      codes = [
+        ~S'''
+        @type foo :: String.t()
+        ''',
+        ~S'''
+        @spec foo(one :: String.t(), number) :: :ok | :error
+        ''',
+        ~S'''
+        @type diagnostic(severity) :: %{
+          required(:source) => Path.t() | nil,
+          required(:file) => Path.t() | nil,
+          required(:severity) => severity,
+          required(:message) => String.t(),
+          required(:position) => position(),
+          required(:stacktrace) => Exception.stacktrace(),
+          required(:span) => {line :: pos_integer(), column :: pos_integer()} | nil,
+          optional(:details) => term(),
+          optional(any()) => any()
+        }
+        ''',
+        ~S'''
+        @typep versioned_vars :: %{optional(variable) => var_version :: non_neg_integer}
+        '''
+      ]
 
-      assert Spitfire.parse(code) == s2q(code)
-
-      code = ~S'''
-      @spec foo(one :: String.t(), number) :: :ok | :error
-      '''
-
-      assert Spitfire.parse(code) == s2q(code)
-
-      code = ~S'''
-      @type diagnostic(severity) :: %{
-        required(:source) => Path.t() | nil,
-        required(:file) => Path.t() | nil,
-        required(:severity) => severity,
-        required(:message) => String.t(),
-        required(:position) => position(),
-        required(:stacktrace) => Exception.stacktrace(),
-        required(:span) => {line :: pos_integer(), column :: pos_integer()} | nil,
-        optional(:details) => term(),
-        optional(any()) => any()
-      }
-      '''
-
-      assert Spitfire.parse(code) == s2q(code)
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
+      end
     end
 
     test "parses unary operators" do
