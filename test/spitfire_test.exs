@@ -21,23 +21,19 @@ defmodule SpitfireTest do
     end
 
     test "access syntax" do
-      code = "foo[:bar]"
-      assert Spitfire.parse(code) == s2q(code)
+      codes = [
+        "foo[:bar]",
+        "foo[:bar][:baz]",
+        ~S'(meta[:end_of_expression] || meta)[:line]',
+        "%{bar: :foo}[:bar]",
+        "state.parent_meta[:line]",
+        "@preferred_envs[task]",
+        "!!meta[:diff]"
+      ]
 
-      code = "foo[:bar][:baz]"
-      assert Spitfire.parse(code) == s2q(code)
-
-      code = ~S'(meta[:end_of_expression] || meta)[:line]'
-      assert Spitfire.parse(code) == s2q(code)
-
-      code = "%{bar: :foo}[:bar]"
-      assert Spitfire.parse(code) == s2q(code)
-
-      code = "state.parent_meta[:line]"
-      assert Spitfire.parse(code) == s2q(code)
-
-      code = "@preferred_envs[task]"
-      assert Spitfire.parse(code) == s2q(code)
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
+      end
     end
 
     test "token metadata" do
