@@ -474,6 +474,13 @@ defmodule SpitfireTest do
           :two,
           "three"
         }
+        ''',
+        ~s'''
+        {
+          one,
+          :two,
+          "three",
+        }
         '''
       ]
 
@@ -557,6 +564,12 @@ defmodule SpitfireTest do
         ''',
         ~S'''
         %{acc | key => value, foo => bar, ding: dong, bing: bong}
+        ''',
+        ~S'''
+        %{
+          a: a,
+          b: b,
+        }
         '''
       ]
 
@@ -581,7 +594,13 @@ defmodule SpitfireTest do
         ~S'%__MODULE__{foo: bar}',
         ~S'%module{foo: bar}',
         ~S'%@foo{foo: bar}',
-        ~S'%unquote(struct){}'
+        ~S'%unquote(struct){}',
+        ~S'''
+        %UploadEntry{
+          a: a,
+          b: b,
+        }
+        '''
       ]
 
       for code <- codes do

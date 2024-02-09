@@ -417,7 +417,7 @@ defmodule Spitfire do
         parser = next_token(parser)
 
         case peek_token(parser) do
-          :"]" ->
+          delimiter when delimiter in [:"]", :"}"] ->
             {items, parser}
 
           _ ->
