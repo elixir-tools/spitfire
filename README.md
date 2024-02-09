@@ -6,7 +6,7 @@ The goal of the project is to make it easier for editor tooling to provide code 
 
 ## Progress
 
-- [ ] Parse all Elixir Syntax into core compatible AST [CSV parsing results from various projects](https://github.com/elixir-tools/spitfire/blob/main/results.csv)
+- [x] Parse all Elixir Syntax into core compatible AST.
 - [ ] Error tolerance
 - [ ] Environment querying API
 
@@ -21,7 +21,6 @@ For more information, please see [elixir-lang/elixir#12645](https://github.com/e
 The project is a handwritten Pratt parser (a type of recursive descent parser). A hand written parser allows for better error tolerance as well as (hopefully) better error messages.
 
 Pratt parsers are becoming very popular in the realm of error tolerant parsing. Projects that I have been watching and learning from include the `rustc` parser as well as the new [Prism](https://github.com/ruby/prism) parser for the Ruby project.
-
 
 ## Contributing
 
