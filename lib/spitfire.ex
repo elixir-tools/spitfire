@@ -291,76 +291,82 @@ defmodule Spitfire do
 
   defp parse_grouped_expression(parser) do
     orig_meta = current_meta(parser)
-    parser = parser |> next_token() |> eat_eol()
-    old_nestings = parser.nestings
-    parser = put_in(parser.nestings, [])
-    parser = inc_stab_depth(parser)
-    {expression, parser} = parse_expression(parser, top: true)
 
-    exprs = [push_meta(expression, end_of_expression: peek_eoe(parser))]
+    if peek_token(parser) == :")" do
+      parser = parser |> next_token() |> eat_eol()
+      {{:__block__, [], []}, parser}
+    else
+      parser = parser |> next_token() |> eat_eol()
+      old_nestings = parser.nestings
+      parser = put_in(parser.nestings, [])
+      parser = inc_stab_depth(parser)
+      {expression, parser} = parse_expression(parser, top: true)
 
-    cond do
-      peek_token(parser) == :")" or (peek_token(parser) == :eol and peek_token(next_token(parser)) == :")") ->
-        parser = parser.nestings |> put_in(old_nestings) |> next_token() |> eat_eol() |> dec_stab_depth()
+      exprs = [push_meta(expression, end_of_expression: peek_eoe(parser))]
 
-        ast =
-          case expression do
-            {:unquote_splicing, _, [_]} ->
-              {:__block__, [closing: current_meta(parser)] ++ orig_meta, [expression]}
+      cond do
+        peek_token(parser) == :")" or (peek_token(parser) == :eol and peek_token(next_token(parser)) == :")") ->
+          parser = parser.nestings |> put_in(old_nestings) |> next_token() |> eat_eol() |> dec_stab_depth()
 
-            {op, _, [_]} when op in [:not, :!] ->
-              {:__block__, [], [expression]}
+          ast =
+            case expression do
+              {:unquote_splicing, _, [_]} ->
+                {:__block__, [closing: current_meta(parser)] ++ orig_meta, [expression]}
 
-            _ ->
-              expression
-          end
+              {op, _, [_]} when op in [:not, :!] ->
+                {:__block__, [], [expression]}
 
-        {ast, parser}
-
-      peek_token(parser) == :eol ->
-        # second conditon checks of the next next token is a closing paren or another expression
-        {exprs, parser} =
-          while peek_token(parser) == :eol and parser |> next_token() |> peek_token() != :")" <- {exprs, parser} do
-            parser = parser |> next_token() |> eat_eol()
-            {expression, parser} = parse_expression(parser, top: true)
-
-            {[push_meta(expression, end_of_expression: peek_eoe(parser)) | exprs], parser}
-          end
-
-        # handles if the closing paren is on a new line or the same line
-        parser =
-          if peek_token(parser) == :eol do
-            next_token(parser)
-          else
-            parser
-          end
-
-        if peek_token(parser) == :")" do
-          parser = parser |> dec_stab_depth() |> put_in([:nestings], old_nestings)
-          parser = next_token(parser)
-
-          exprs =
-            case exprs do
-              [e | rest] -> [delete_meta(e, :end_of_expression) | rest]
-              exprs -> exprs
+              _ ->
+                expression
             end
 
-          exprs = Enum.reverse(exprs)
-          {{:__block__, [closing: current_meta(parser)] ++ orig_meta, exprs}, parser}
-        else
+          {ast, parser}
+
+        peek_token(parser) == :eol ->
+          # second conditon checks of the next next token is a closing paren or another expression
+          {exprs, parser} =
+            while peek_token(parser) == :eol and parser |> next_token() |> peek_token() != :")" <- {exprs, parser} do
+              parser = parser |> next_token() |> eat_eol()
+              {expression, parser} = parse_expression(parser, top: true)
+
+              {[push_meta(expression, end_of_expression: peek_eoe(parser)) | exprs], parser}
+            end
+
+          # handles if the closing paren is on a new line or the same line
+          parser =
+            if peek_token(parser) == :eol do
+              next_token(parser)
+            else
+              parser
+            end
+
+          if peek_token(parser) == :")" do
+            parser = parser |> dec_stab_depth() |> put_in([:nestings], old_nestings)
+            parser = next_token(parser)
+
+            exprs =
+              case exprs do
+                [e | rest] -> [delete_meta(e, :end_of_expression) | rest]
+                exprs -> exprs
+              end
+
+            exprs = Enum.reverse(exprs)
+            {{:__block__, [closing: current_meta(parser)] ++ orig_meta, exprs}, parser}
+          else
+            meta = current_meta(parser)
+            parser = put_error(parser, {meta, "missing closing parentheses"})
+            parser = parser |> dec_stab_depth() |> put_in([:nestings], old_nestings)
+
+            {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
+          end
+
+        true ->
           meta = current_meta(parser)
           parser = put_error(parser, {meta, "missing closing parentheses"})
           parser = parser |> dec_stab_depth() |> put_in([:nestings], old_nestings)
 
           {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
-        end
-
-      true ->
-        meta = current_meta(parser)
-        parser = put_error(parser, {meta, "missing closing parentheses"})
-        parser = parser |> dec_stab_depth() |> put_in([:nestings], old_nestings)
-
-        {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
+      end
     end
   end
 
@@ -637,6 +643,7 @@ defmodule Spitfire do
 
         lhs =
           case lhs do
+            {:__block__, [], []} -> []
             {:comma, _, lhs} -> lhs
             lhs -> [lhs]
           end
