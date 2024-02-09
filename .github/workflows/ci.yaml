@@ -30,7 +30,7 @@ jobs:
           - bitwalker/timex
           - mtrudel/bandit
           - witchcrafters/witchcraft
-          - witchcrafters/typeclass
+          - witchcrafters/type_class
           - witchcrafters/quark
           - oestrich/aino
           - sorentwo/oban
