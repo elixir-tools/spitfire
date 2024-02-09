@@ -580,7 +580,8 @@ defmodule SpitfireTest do
         ~s'%Foo.Bar{name: name, properties: %Properties{key: key, value: get_value()}}',
         ~S'%__MODULE__{foo: bar}',
         ~S'%module{foo: bar}',
-        ~S'%@foo{foo: bar}'
+        ~S'%@foo{foo: bar}',
+        ~S'%unquote(struct){}'
       ]
 
       for code <- codes do

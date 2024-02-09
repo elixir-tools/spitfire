@@ -1485,6 +1485,7 @@ defmodule Spitfire do
     prefix =
       case current_token_type(parser) do
         :identifier -> &parse_lone_identifier/1
+        :paren_identifier -> &parse_identifier/1
         :alias -> &parse_alias/1
         :at_op -> &parse_lone_module_attr/1
         _ -> nil
