@@ -29,7 +29,7 @@ defmodule Main do
     Enum.map(files, fn {file, content} ->
       IO.puts("==> #{file}")
 
-      spitfire = Spitfire.parse(content)
+      {time, spitfire} = :timer.tc(fn -> Spitfire.parse(content) end, :millisecond)
       core = Code.string_to_quoted(content, columns: true, token_metadata: true, emit_warnings: false)
       if spitfire == core do
         :ok
@@ -45,12 +45,14 @@ defmodule Main do
         IO.puts diff
         raise ParseException, "Failed on file: #{file}"
       end
+
+      time
     end)
   end
 end
 
 files = Main.collect_files(System.argv())
 
-{time, _data} = :timer.tc(fn -> Main.run(files) end, :microsecond)
+time = Main.run(files) |> Enum.sum()
 
-IO.puts("Parsed in #{time}us")
+IO.puts("Parsed in #{time}ms")
