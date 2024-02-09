@@ -35,6 +35,9 @@ defmodule SpitfireTest do
 
       code = "state.parent_meta[:line]"
       assert Spitfire.parse(code) == s2q(code)
+
+      code = "@preferred_envs[task]"
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "token metadata" do

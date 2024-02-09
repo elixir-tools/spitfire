@@ -1764,20 +1764,8 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_identifier(%{current_token: {:bracket_identifier, _, token}} = parser) do
-    ident_meta = current_meta(parser)
-    parser = parser |> next_token() |> eat_eol()
-
-    meta = current_meta(parser)
-    {key, parser} = parse_expression(parser |> next_token() |> eat_eol())
-    parser = parser |> next_token() |> eat_eol()
-    closing = current_meta(parser)
-
-    ast =
-      {{:., [{:from_brackets, true}, {:closing, closing} | meta], [Access, :get]},
-       [{:from_brackets, true}, {:closing, closing} | meta], [{token, ident_meta, nil}, key]}
-
-    {ast, parser}
+  defp parse_identifier(%{current_token: {:bracket_identifier, _, _token}} = parser) do
+    parse_lone_identifier(parser)
   end
 
   @operators [
