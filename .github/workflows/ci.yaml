@@ -1,0 +1,73 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: main
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    name: Test
+
+    strategy:
+      matrix:
+        repo: 
+          - elixir-lang/elixir
+          - elixir-ecto/ecto
+          - elixir-ecto/ecto_sql
+          - phoenixframework/phoenix
+          - phoenixframework/phoenix_live_view
+          - elixir-tools/next-ls
+          - elixir-tools/gen_lsp
+          - michalmuskala/jason
+          - beam-telmetry/telemetry
+          - elixir-plug/plug
+          - ericmj/decimal
+          - elixir-gettext/gettext
+          - rrrene/credo
+          - wojtekmac/req
+          - bitwalker/timex
+          - mtrudel/bandit
+          - witchcrafters/witchcraft
+          - witchcrafters/typeclass
+          - witchcrafters/quark
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
+
+      - name: Install Dependencies
+        run: mix deps.get
+      - name: Clone
+        run: gh repo clone ${{ matrix.repo }} proj
+
+
+  formatter:
+    runs-on: ubuntu-latest
+    name: Formatter
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
+
+      - name: Install Dependencies
+        run: mix deps.get
+
+      - name: Run Formatter
+        run: mix format --check-formatted
