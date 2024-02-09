@@ -52,8 +52,13 @@ jobs:
       - name: Install Dependencies
         run: mix deps.get
       - name: Clone
+        env: 
+          GH_TOKEN: ${{ github.token }}
         run: gh repo clone ${{ matrix.repo }} proj
 
+      - name: Test
+        run: |
+          bin/ci ./proj
 
   formatter:
     runs-on: ubuntu-latest
@@ -61,6 +66,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          mise_toml: |
+            [tools]
+            erlang = "26.2.1"
       - uses: jdx/mise-action@v2
       - uses: actions/cache@v4
         with:
