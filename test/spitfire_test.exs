@@ -806,6 +806,13 @@ defmodule SpitfireTest do
            quote do
              Enum.into(unquote(metadata), unquote(escape_metadata(maybe_application)))
            end}
+        ''',
+        ~S'''
+        type bar(
+                foo do
+                  a
+                end
+              )
         '''
       ]
 

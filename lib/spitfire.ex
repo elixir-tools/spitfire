@@ -1747,12 +1747,16 @@ defmodule Spitfire do
       closing = current_meta(parser)
       {{token, newlines ++ [{:closing, closing} | meta], []}, parser}
     else
+      old_nestings = parser.nestings
+      parser = put_in(parser.nestings, [])
+
       {pairs, parser} =
         parser
         |> next_token()
         |> eat_eol()
-        |> parse_comma_list()
+        |> parse_comma_list(pre_parse: fn parser -> inc_nesting(parser) end)
 
+      parser = put_in(parser, [:nestings], old_nestings)
       {pairs, _} = Enum.unzip(pairs)
 
       parser = eat_at(parser, :eol, 1)
