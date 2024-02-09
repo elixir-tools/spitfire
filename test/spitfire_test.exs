@@ -29,6 +29,7 @@ defmodule SpitfireTest do
         "state.parent_meta[:line]",
         "@preferred_envs[task]",
         "!!meta[:diff]",
+        "foo[1]",
         ~S'''
         foo[
           :bar
