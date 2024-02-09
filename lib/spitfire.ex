@@ -294,13 +294,14 @@ defmodule Spitfire do
     parser = parser |> next_token() |> eat_eol()
     old_nestings = parser.nestings
     parser = put_in(parser.nestings, [])
+    parser = inc_stab_depth(parser)
     {expression, parser} = parse_expression(parser, top: true)
 
     exprs = [push_meta(expression, end_of_expression: peek_eoe(parser))]
 
     cond do
       peek_token(parser) == :")" or (peek_token(parser) == :eol and peek_token(next_token(parser)) == :")") ->
-        parser = parser.nestings |> put_in(old_nestings) |> next_token() |> eat_eol()
+        parser = parser.nestings |> put_in(old_nestings) |> next_token() |> eat_eol() |> dec_stab_depth()
 
         ast =
           case expression do
@@ -335,7 +336,7 @@ defmodule Spitfire do
           end
 
         if peek_token(parser) == :")" do
-          parser = put_in(parser.nestings, old_nestings)
+          parser = parser |> dec_stab_depth() |> put_in([:nestings], old_nestings)
           parser = next_token(parser)
 
           exprs =
@@ -349,7 +350,7 @@ defmodule Spitfire do
         else
           meta = current_meta(parser)
           parser = put_error(parser, {meta, "missing closing parentheses"})
-          parser = put_in(parser.nestings, old_nestings)
+          parser = parser |> dec_stab_depth() |> put_in([:nestings], old_nestings)
 
           {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
         end
@@ -357,7 +358,7 @@ defmodule Spitfire do
       true ->
         meta = current_meta(parser)
         parser = put_error(parser, {meta, "missing closing parentheses"})
-        parser = put_in(parser.nestings, old_nestings)
+        parser = parser |> dec_stab_depth() |> put_in([:nestings], old_nestings)
 
         {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
     end

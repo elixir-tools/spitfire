@@ -318,7 +318,13 @@ defmodule SpitfireTest do
           !false
         )
         ''',
-        "(not false)"
+        "(not false)",
+        ~S'''
+        a do
+          d ->
+            (b -> c)
+        end
+        '''
       ]
 
       for code <- codes do
@@ -803,6 +809,13 @@ defmodule SpitfireTest do
       (min_line = line(meta)
       max_line = closing_line(meta)
       Enum.any?(comments, fn %{line: line} -> line > min_line and line < max_line end))
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      (foo -> bar
+       baz -> boo)
       '''
 
       assert Spitfire.parse(code) == s2q(code)
