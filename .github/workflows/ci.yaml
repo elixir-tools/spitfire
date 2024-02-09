@@ -5,9 +5,9 @@ on:
     branches: main
 
 jobs:
-  tests:
+  repos:
     runs-on: ubuntu-latest
-    name: Test
+    name: Repos
 
     strategy:
       fail-fast: false
@@ -59,31 +59,49 @@ jobs:
         run: |
           nix develop --command bash -c "bin/ci ./proj"
 
-  # formatter:
-  #   runs-on: ubuntu-latest
-  #   name: Formatter
+  test:
+    runs-on: ubuntu-latest
+    name: Tests
 
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: jdx/mise-action@v2
-  #       with:
-  #         install: false
-  #     - run: mise install erlang
-  #       env:
-  #         KERL_BUILD_DOCS: yes
-  #     - run: mise install elixir
-  #     - uses: actions/cache@v4
-  #       with:
-  #         path: |
-  #           deps
-  #           _build
-  #         key: ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-${{ hashFiles('**/mix.lock') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
 
-  #     - name: Install Dependencies
-  #       run: mix deps.get
+      - name: Install Dependencies
+        run: nix develop --command bash -c "mix deps.get"
 
-  #     - name: Run Formatter
-  #       run: mix format --check-formatted
+      - name: Run Formatter
+        run: nix develop --command bash -c "mix test"
+
+  formatter:
+    runs-on: ubuntu-latest
+    name: Formatter
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
+
+      - name: Install Dependencies
+        run: nix develop --command bash -c "mix deps.get"
+
+      - name: Run Formatter
+        run: nix develop --command bash -c "mix format --check-formatted"
 
