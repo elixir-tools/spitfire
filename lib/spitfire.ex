@@ -749,9 +749,15 @@ defmodule Spitfire do
 
     extra_meta = [from_brackets: true]
 
+    newlines =
+      case current_newlines(parser) || peek_newlines(parser, :eol) do
+        nil -> []
+        nl -> [newlines: nl]
+      end
+
     parser = parser |> next_token() |> eat_eol()
     closing = current_meta(parser)
-    meta = extra_meta ++ [{:closing, closing} | meta]
+    meta = extra_meta ++ newlines ++ [{:closing, closing} | meta]
 
     ast = {{:., meta, [Access, :get]}, meta, [lhs, rhs]}
 
