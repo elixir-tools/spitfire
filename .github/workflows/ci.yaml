@@ -21,7 +21,7 @@ jobs:
           - elixir-tools/next-ls
           - elixir-tools/gen_lsp
           - michalmuskala/jason
-          - beam-telmetry/telemetry
+          - beam-telemetry/telemetry
           - elixir-plug/plug
           - ericmj/decimal
           - elixir-gettext/gettext
