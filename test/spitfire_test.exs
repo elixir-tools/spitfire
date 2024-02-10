@@ -448,7 +448,7 @@ defmodule SpitfireTest do
         ["#{field}":
           value]
         ''',
-        ~S'foo(a, "#{field}": value)',
+        ~S'foo(a, "#{field}": value)'
       ]
 
       for code <- codes do
