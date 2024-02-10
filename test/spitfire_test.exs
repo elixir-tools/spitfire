@@ -426,7 +426,7 @@ defmodule SpitfireTest do
       end
     end
 
-    test "parses bracket-less keyword lists" do
+    test "parses keyword lists" do
       codes = [
         ~s'''
         foo(one, two, alice: alice, bob: bob)
@@ -442,7 +442,13 @@ defmodule SpitfireTest do
         ~s'''
         @moduledoc deprecated:
            "Use the new child specifications outlined in the Supervisor module instead"
-        '''
+        ''',
+        ~S'["#{field}": value]',
+        ~S'''
+        ["#{field}":
+          value]
+        ''',
+        ~S'foo(a, "#{field}": value)',
       ]
 
       for code <- codes do

@@ -163,7 +163,9 @@ defmodule Spitfire do
         :alias -> &parse_alias/1
         :"<<" -> &parse_bitstring/1
         :kw_identifier when is_list or is_map -> &parse_kw_identifier/1
+        :kw_identifier_unsafe when is_list or is_map -> &parse_kw_identifier/1
         :kw_identifier when not is_list and not is_map -> &parse_bracketless_kw_list/1
+        :kw_identifier_unsafe when not is_list and not is_map -> &parse_bracketless_kw_list/1
         :int -> &parse_int/1
         :flt -> &parse_float/1
         :atom -> &parse_atom/1
@@ -385,11 +387,51 @@ defmodule Spitfire do
     {pair, parser}
   end
 
+  defp parse_kw_identifier(%{current_token: {:kw_identifier_unsafe, meta, tokens}} = parser) do
+    {atom, parser} = parse_atom(%{parser | current_token: {:atom_unsafe, meta, tokens}})
+    parser = parser |> next_token() |> eat_eol()
+
+    {expr, parser} = parse_expression(parser, precedence: @kw_identifier)
+
+    atom =
+      case atom do
+        {t, meta, args} ->
+          {t, meta |> Keyword.delete(:delimiter) |> Keyword.put(:format, :keyword), args}
+      end
+
+    pair = {atom, expr}
+    {pair, parser}
+  end
+
   defp parse_bracketless_kw_list(%{current_token: {:kw_identifier, meta, token}} = parser) do
     parser = parser |> next_token() |> eat_eol()
 
     {value, parser} = parse_expression(parser, precedence: @kw_identifier)
     token = encode_literal(parser, token, meta)
+    kvs = [{token, value}]
+
+    {kvs, parser} =
+      while peek_token(parser) == :"," <- {kvs, parser} do
+        parser = parser |> next_token() |> next_token()
+        {pair, parser} = parse_kw_identifier(parser)
+
+        {[pair | kvs], parser}
+      end
+
+    {Enum.reverse(kvs), parser}
+  end
+
+  defp parse_bracketless_kw_list(%{current_token: {:kw_identifier_unsafe, meta, tokens}} = parser) do
+    {token, parser} = parse_atom(%{parser | current_token: {:atom_unsafe, meta, tokens}})
+    parser = parser |> next_token() |> eat_eol()
+
+    token =
+      case token do
+        {t, meta, args} ->
+          {t, meta |> Keyword.delete(:delimiter) |> Keyword.put(:format, :keyword), args}
+      end
+
+    {value, parser} = parse_expression(parser, precedence: @kw_identifier)
     kvs = [{token, value}]
 
     {kvs, parser} =
