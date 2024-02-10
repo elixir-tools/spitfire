@@ -903,6 +903,21 @@ defmodule Spitfire do
     meta = current_meta(parser)
 
     case peek_token_type(parser) do
+      :"{" ->
+        dot_meta = current_meta(parser)
+        parser = next_token(parser)
+        newlines = get_newlines(parser)
+
+        parser = parser |> next_token() |> eat_eol()
+        {items, parser} = parse_comma_list(parser)
+        parser = parser |> next_token() |> eat_eol()
+        {multis, _} = Enum.unzip(items)
+
+        multis =
+          {{:., dot_meta, [lhs, :{}]}, newlines ++ [{:closing, current_meta(parser)} | dot_meta], multis}
+
+        {multis, parser}
+
       :alias ->
         parser = next_token(parser)
 
@@ -1347,49 +1362,21 @@ defmodule Spitfire do
   defp parse_alias(%{current_token: {:alias, _, alias}} = parser) do
     meta = current_meta(parser)
     aliases = [{alias, meta}]
-    multis = []
 
-    {[{_alias, last} | _rest] = aliases, multis, parser} =
-      while peek_token(parser) == :. and peek_token(next_token(parser)) in [:alias, :"{"] <-
-              {aliases, multis, parser} do
+    {[{_alias, last} | _rest] = aliases, parser} =
+      while peek_token(parser) == :. and peek_token(next_token(parser)) == :alias <- {aliases, parser} do
         parser = next_token(parser)
 
         case parser.peek_token do
           {:alias, _, alias} ->
             parser = next_token(parser)
-            {[{alias, current_meta(parser)} | aliases], multis, parser}
-
-          {:"{", _} ->
-            dot_meta = current_meta(parser)
-            parser = next_token(parser)
-
-            newlines = get_newlines(parser)
-
-            parser = parser |> next_token() |> eat_eol()
-
-            {items, parser} = parse_comma_list(parser)
-            parser = parser |> next_token() |> eat_eol()
-            {multis, _} = Enum.unzip(items)
-            [{_alias, last} | _rest] = aliases
-
-            multis =
-              {{:., dot_meta,
-                [{:__aliases__, [{:last, last} | meta], aliases |> Enum.reverse() |> Enum.unzip() |> elem(0)}, :{}]},
-               newlines ++ [{:closing, current_meta(parser)} | dot_meta], multis}
-
-            {aliases, multis, parser}
+            {[{alias, current_meta(parser)} | aliases], parser}
         end
       end
 
     aliases = aliases |> Enum.reverse() |> Enum.unzip() |> elem(0)
 
-    case multis do
-      [] ->
-        {{:__aliases__, [{:last, last} | meta], aliases}, parser}
-
-      multis ->
-        {multis, parser}
-    end
+    {{:__aliases__, [{:last, last} | meta], aliases}, parser}
   end
 
   defp parse_bitstring(%{current_token: {:"<<", _}} = parser) do

@@ -35,6 +35,8 @@ jobs:
           - oestrich/aino
           - sorentwo/oban
           - ash-project/ash
+          - nerves-hub/nerves_hub_web
+          - nerves-hub/nerves_hub_link
 
     steps:
       - uses: actions/checkout@v4

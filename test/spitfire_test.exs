@@ -531,6 +531,13 @@ defmodule SpitfireTest do
           Context,
           Schema
         }
+        ''',
+        "__MODULE__.{Config, Default}",
+        ~S'''
+        __MODULE__.{
+          Config,
+          Default
+        }
         '''
       ]
 
