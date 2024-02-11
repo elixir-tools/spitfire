@@ -1805,6 +1805,47 @@ defmodule Spitfire do
     tokens ++ [:eof]
   end
 
+  def parse_interpolation(parser, tokens) do
+    args =
+      for token <- tokens do
+        case token do
+          token when is_binary(token) ->
+            token
+
+          {{line, col, _}, {cline, ccol, _}, tokens} ->
+            meta = [line: line, column: col]
+
+            # construct a new parser
+            ast =
+              if tokens == [] do
+                {:__block__, [], []}
+              else
+                parser = %{
+                  tokens: tokens ++ [:eof],
+                  current_token: nil,
+                  peek_token: nil,
+                  nestings: [],
+                  errors: [],
+                  literal_encoder: parser.literal_encoder,
+                  stab_depth: 0
+                }
+
+                {ast, _parser} = parse_expression(parser |> next_token() |> next_token() |> eat_eol())
+                ast
+              end
+
+            {:"::", meta,
+             [
+               {{:., meta, [Kernel, :to_string]},
+                [from_interpolation: true, closing: [line: cline, column: ccol]] ++ meta, [ast]},
+               {:binary, meta, nil}
+             ]}
+        end
+      end
+
+    {args, parser}
+  end
+
   def new(code, opts) do
     %{
       tokens: tokenize(code, opts),
@@ -2341,46 +2382,5 @@ defmodule Spitfire do
       _ ->
         {:__block__, [], Enum.reverse(exprs)}
     end
-  end
-
-  def parse_interpolation(parser, tokens) do
-    args =
-      for token <- tokens do
-        case token do
-          token when is_binary(token) ->
-            token
-
-          {{line, col, _}, {cline, ccol, _}, tokens} ->
-            meta = [line: line, column: col]
-
-            # construct a new parser
-            ast =
-              if tokens == [] do
-                {:__block__, [], []}
-              else
-                parser = %{
-                  tokens: tokens ++ [:eof],
-                  current_token: nil,
-                  peek_token: nil,
-                  nestings: [],
-                  errors: [],
-                  literal_encoder: parser.literal_encoder,
-                  stab_depth: 0
-                }
-
-                {ast, _parser} = parse_expression(parser |> next_token() |> next_token() |> eat_eol())
-                ast
-              end
-
-            {:"::", meta,
-             [
-               {{:., meta, [Kernel, :to_string]},
-                [from_interpolation: true, closing: [line: cline, column: ccol]] ++ meta, [ast]},
-               {:binary, meta, nil}
-             ]}
-        end
-      end
-
-    {args, parser}
   end
 end
