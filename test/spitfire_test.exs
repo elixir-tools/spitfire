@@ -448,6 +448,11 @@ defmodule SpitfireTest do
         ["#{field}":
           value]
         ''',
+        ~S'''
+        ["#{
+          field}":
+          value]
+        ''',
         ~S'foo(a, "#{field}": value)'
       ]
 
