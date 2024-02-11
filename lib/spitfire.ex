@@ -1792,7 +1792,8 @@ defmodule Spitfire do
       case code
            |> String.to_charlist()
            |> :elixir_tokenizer.tokenize(
-             1,
+             opts[:line] || 1,
+             opts[:column] || 1,
              opts |> Keyword.put(:check_terminators, false) |> Keyword.put(:cursor_completion, false)
            ) do
         {:ok, _, _, _, tokens} ->

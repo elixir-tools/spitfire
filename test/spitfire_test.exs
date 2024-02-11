@@ -1815,6 +1815,12 @@ defmodule SpitfireTest do
         assert Spitfire.parse(code) == s2q(code)
       end
     end
+
+    test "line and column opt" do
+      code = "foo"
+
+      assert Spitfire.parse(code, line: 12, column: 7) == s2q(code, line: 12, column: 7)
+    end
   end
 
   describe "code with errors" do
@@ -2317,7 +2323,9 @@ defmodule SpitfireTest do
     end
   end
 
-  defp s2q(code), do: Code.string_to_quoted(code, columns: true, token_metadata: true, emit_warnings: false)
+  defp s2q(code, opts \\ []) do
+    Code.string_to_quoted(code, Keyword.merge([columns: true, token_metadata: true, emit_warnings: false], opts))
+  end
 
   def print(ast) do
     ast |> Macro.to_string() |> IO.puts()
