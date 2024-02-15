@@ -20,6 +20,8 @@ jobs:
           - phoenixframework/phoenix_live_view
           - elixir-tools/next-ls
           - elixir-tools/gen_lsp
+          - elixir-tools/spitfire
+          - elixir-tools/tableau
           - michalmuskala/jason
           - beam-telemetry/telemetry
           - elixir-plug/plug
@@ -38,7 +40,11 @@ jobs:
           - nerves-hub/nerves_hub_web
           - nerves-hub/nerves_hub_link
           - mishka-group/mishka_developer_tools
-          - absinthe-graphql/absinthe
+          # - absinthe-graphql/absinthe
+          - elixir-wallaby/wallaby
+          - livebook-dev/livebook
+          - livebook-dev/kino
+          - livebook-dev/vega_lite
 
     steps:
       - uses: actions/checkout@v4
