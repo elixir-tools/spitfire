@@ -34,7 +34,8 @@ defmodule SpitfireTest do
         foo[
           :bar
         ]
-        '''
+        ''',
+        ~S'foo[bar["baz"]]'
       ]
 
       for code <- codes do

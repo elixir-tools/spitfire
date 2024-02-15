@@ -782,10 +782,9 @@ defmodule Spitfire do
   end
 
   defp parse_access_expression(parser, lhs) do
-    precedence = current_precedence(parser)
     meta = current_meta(parser)
     parser = parser |> next_token() |> eat_eol()
-    {rhs, parser} = parse_expression(parser, precedence: precedence)
+    {rhs, parser} = parse_expression(parser)
 
     extra_meta = [from_brackets: true]
 
