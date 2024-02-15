@@ -38,6 +38,7 @@ jobs:
           - nerves-hub/nerves_hub_web
           - nerves-hub/nerves_hub_link
           - mishka-group/mishka_developer_tools
+          - absinthe-graphql/absinthe
 
     steps:
       - uses: actions/checkout@v4
