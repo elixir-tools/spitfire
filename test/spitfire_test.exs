@@ -645,7 +645,14 @@ defmodule SpitfireTest do
           b: b,
         }
         ''',
-        "%^resource{}"
+        "%^resource{}",
+        ~S'%__MODULE__.Foo{bar: "foo"}',
+        ~S'%Bar.__MODULE__.Foo{bar: "foo"}',
+        ~S'''
+        %Bar.__MODULE__.Foo{
+          bar: "foo"
+        }
+        '''
       ]
 
       for code <- codes do
@@ -1760,7 +1767,8 @@ defmodule SpitfireTest do
       codes = [
         "__MODULE__",
         "__MODULE__.foo()",
-        "__MODULE__.Foo"
+        "__MODULE__.Foo",
+        "Foo.__MODULE__.Bar"
       ]
 
       for code <- codes do
