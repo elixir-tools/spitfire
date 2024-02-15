@@ -1352,6 +1352,9 @@ defmodule Spitfire do
   defp parse_struct_type(parser) do
     # structs can only have certain expressions to denote the type,
     # so we special case them here rather than parse an arbitrary expression
+
+    {associativity, precedence} = @lowest
+
     prefix =
       case current_token_type(parser) do
         :identifier -> &parse_lone_identifier/1
@@ -1379,7 +1382,43 @@ defmodule Spitfire do
 
       {{:__error__, meta, ["unknown token: #{ctype}"]}, parser}
     else
-      prefix.(parser)
+      {left, parser} = prefix.(parser)
+
+      calc_prec = fn parser ->
+        {_associativity, power} = peek_precedence(parser)
+
+        precedence =
+          case associativity do
+            :left -> precedence
+            :right -> precedence - 1
+          end
+
+        precedence < power
+      end
+
+      terminals = [:eol, :eof, :"}", :")", :"]", :">>"]
+
+      {parser, is_valid} = validate_peek(parser, current_token_type(parser))
+
+      if is_valid do
+        while peek_token(parser) not in terminals && calc_prec.(parser) <- {left, parser} do
+          infix =
+            case peek_token_type(parser) do
+              :. -> &parse_dot_expression/2
+              _ -> nil
+            end
+
+          case infix do
+            nil ->
+              {left, parser}
+
+            _ ->
+              infix.(next_token(parser), left)
+          end
+        end
+      else
+        {left, parser}
+      end
     end
   end
 
@@ -2301,6 +2340,10 @@ defmodule Spitfire do
   end
 
   defp valid_peek?(:")", :"(") do
+    true
+  end
+
+  defp valid_peek?(:")", :"{") do
     true
   end
 
