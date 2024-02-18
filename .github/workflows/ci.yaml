@@ -71,7 +71,7 @@ jobs:
 
       - name: Test
         run: |
-          nix develop --command bash -c "bin/ci ./proj"
+          nix develop --command bash -c "bin/ci.exs ./proj"
 
   test:
     runs-on: ubuntu-latest
