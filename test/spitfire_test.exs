@@ -1856,6 +1856,17 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code, line: 12, column: 7) == s2q(code, line: 12, column: 7)
     end
+
+    test "ellipsis_op ..." do
+      code = ~S'''
+      @callback a([B.spec(), ...], C.t(), D.t()) :: [
+          E.spec(),
+          ...
+        ]
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
   end
 
   describe "code with errors" do

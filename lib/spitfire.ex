@@ -215,6 +215,7 @@ defmodule Spitfire do
         :"{" -> &parse_tuple_literal/1
         :%{} -> &parse_map_literal/1
         :% -> &parse_struct_literal/1
+        :ellipsis_op -> &parse_ellipsis_op/1
         nil -> &parse_nil_literal/1
         _ -> nil
       end
@@ -1407,6 +1408,10 @@ defmodule Spitfire do
         {left, parser}
       end
     end
+  end
+
+  defp parse_ellipsis_op(parser) do
+    {{:..., current_meta(parser), []}, parser}
   end
 
   defp parse_struct_literal(%{current_token: {:%, _}} = parser) do
