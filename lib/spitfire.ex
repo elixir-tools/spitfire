@@ -1914,7 +1914,7 @@ defmodule Spitfire do
     {{token, meta, [ident]}, parser}
   end
 
-  def tokenize(code, opts) do
+  defp tokenize(code, opts) do
     tokens =
       case code
            |> String.to_charlist()
@@ -1933,7 +1933,7 @@ defmodule Spitfire do
     tokens ++ [:eof]
   end
 
-  def parse_interpolation(parser, tokens) do
+  defp parse_interpolation(parser, tokens) do
     args =
       for token <- tokens do
         case token do
@@ -1977,7 +1977,7 @@ defmodule Spitfire do
     {args, parser}
   end
 
-  def new(code, opts) do
+  defp new(code, opts) do
     %{
       tokens: tokenize(code, opts),
       current_token: nil,
@@ -1988,23 +1988,23 @@ defmodule Spitfire do
     }
   end
 
-  def next_token(%{tokens: :eot, current_token: nil, peek_token: nil} = parser) do
+  defp next_token(%{tokens: :eot, current_token: nil, peek_token: nil} = parser) do
     parser
   end
 
-  def next_token(%{tokens: :eot, current_token: :eof, peek_token: nil} = parser) do
+  defp next_token(%{tokens: :eot, current_token: :eof, peek_token: nil} = parser) do
     %{parser | tokens: :eot, current_token: nil}
   end
 
-  def next_token(%{tokens: [], current_token: nil, peek_token: nil} = parser) do
+  defp next_token(%{tokens: [], current_token: nil, peek_token: nil} = parser) do
     %{parser | tokens: :eot}
   end
 
-  def next_token(%{tokens: [], peek_token: nil} = parser) do
+  defp next_token(%{tokens: [], peek_token: nil} = parser) do
     %{parser | tokens: :eot, current_token: nil}
   end
 
-  def next_token(%{tokens: []} = parser) do
+  defp next_token(%{tokens: []} = parser) do
     %{
       parser
       | current_token: parser.peek_token,
@@ -2013,7 +2013,7 @@ defmodule Spitfire do
     }
   end
 
-  def next_token(%{tokens: [token | tokens]} = parser) do
+  defp next_token(%{tokens: [token | tokens]} = parser) do
     %{
       parser
       | tokens: tokens,
@@ -2022,7 +2022,7 @@ defmodule Spitfire do
     }
   end
 
-  def eat(edible, %{tokens: [], current_token: {edible, _}, peek_token: nil} = parser) do
+  defp eat(edible, %{tokens: [], current_token: {edible, _}, peek_token: nil} = parser) do
     %{
       parser
       | tokens: :eot,
@@ -2031,7 +2031,7 @@ defmodule Spitfire do
     }
   end
 
-  def eat(edible, %{tokens: [], current_token: {edible, _}, peek_token: peek} = parser) do
+  defp eat(edible, %{tokens: [], current_token: {edible, _}, peek_token: peek} = parser) do
     %{
       parser
       | tokens: :eot,
@@ -2040,7 +2040,7 @@ defmodule Spitfire do
     }
   end
 
-  def eat(edible, %{tokens: [token | tokens], current_token: {edible, _}} = parser) do
+  defp eat(edible, %{tokens: [token | tokens], current_token: {edible, _}} = parser) do
     %{
       parser
       | tokens: tokens,
@@ -2049,19 +2049,19 @@ defmodule Spitfire do
     }
   end
 
-  def eat(_edible, parser) do
+  defp eat(_edible, parser) do
     parser
   end
 
-  def eat_eol(parser) do
+  defp eat_eol(parser) do
     eat(:eol, parser)
   end
 
-  def eat_at(parser, token, 0) do
+  defp eat_at(parser, token, 0) do
     eat(token, parser)
   end
 
-  def eat_at(%{peek_token: peek_token, tokens: [next | rest]} = parser, token, 1) do
+  defp eat_at(%{peek_token: peek_token, tokens: [next | rest]} = parser, token, 1) do
     case peek_token do
       {^token, _} ->
         %{parser | peek_token: next, tokens: rest}
@@ -2074,7 +2074,7 @@ defmodule Spitfire do
     end
   end
 
-  def eat_at(%{tokens: tokens} = parser, token, idx) when is_list(tokens) do
+  defp eat_at(%{tokens: tokens} = parser, token, idx) when is_list(tokens) do
     tokens =
       case Enum.at(tokens, idx) do
         {^token, _, _} ->
@@ -2090,99 +2090,99 @@ defmodule Spitfire do
     %{parser | tokens: tokens}
   end
 
-  def eat_at(%{tokens: :eot} = parser, _token, _idx) do
+  defp eat_at(%{tokens: :eot} = parser, _token, _idx) do
     parser
   end
 
-  def peek_token(%{peek_token: {:stab_op, _, token}}) do
+  defp peek_token(%{peek_token: {:stab_op, _, token}}) do
     token
   end
 
-  def peek_token(%{peek_token: {type, _, _, _}}) when type in [:list_heredoc, :bin_heredoc] do
+  defp peek_token(%{peek_token: {type, _, _, _}}) when type in [:list_heredoc, :bin_heredoc] do
     type
   end
 
-  def peek_token(%{peek_token: {token, _, _}}) do
+  defp peek_token(%{peek_token: {token, _, _}}) do
     token
   end
 
-  def peek_token(%{peek_token: {token, _}}) do
+  defp peek_token(%{peek_token: {token, _}}) do
     token
   end
 
-  def peek_token(%{peek_token: {token, _, _, _, _, _, _}}) do
+  defp peek_token(%{peek_token: {token, _, _, _, _, _, _}}) do
     token
   end
 
-  def peek_token(%{peek_token: :eof}) do
+  defp peek_token(%{peek_token: :eof}) do
     :eof
   end
 
-  def peek_token(%{tokens: :eot}) do
+  defp peek_token(%{tokens: :eot}) do
     :eof
   end
 
-  def current_token_type(%{tokens: :eot}) do
+  defp current_token_type(%{tokens: :eot}) do
     :eot
   end
 
-  def current_token_type(%{tokens: :eof}) do
+  defp current_token_type(%{tokens: :eof}) do
     :eof
   end
 
-  def current_token_type(%{current_token: {:sigil, _meta, _token, _tokens, _mods, _, _delimiter}}) do
+  defp current_token_type(%{current_token: {:sigil, _meta, _token, _tokens, _mods, _, _delimiter}}) do
     :sigil
   end
 
-  def current_token_type(%{current_token: {:bin_heredoc, _meta, _indent, _tokens}}) do
+  defp current_token_type(%{current_token: {:bin_heredoc, _meta, _indent, _tokens}}) do
     :bin_heredoc
   end
 
-  def current_token_type(%{current_token: {:list_heredoc, _meta, _indent, _tokens}}) do
+  defp current_token_type(%{current_token: {:list_heredoc, _meta, _indent, _tokens}}) do
     :list_heredoc
   end
 
-  def current_token_type(%{current_token: {type, _}}) do
+  defp current_token_type(%{current_token: {type, _}}) do
     type
   end
 
-  def current_token_type(%{current_token: {type, _, _}}) do
+  defp current_token_type(%{current_token: {type, _, _}}) do
     type
   end
 
-  def peek_token_type(%{peek_token: {type, _}}) do
+  defp peek_token_type(%{peek_token: {type, _}}) do
     type
   end
 
-  def peek_token_type(%{peek_token: {type, _, _}}) do
+  defp peek_token_type(%{peek_token: {type, _, _}}) do
     type
   end
 
-  def peek_token_type(_) do
+  defp peek_token_type(_) do
     :no_peek
   end
 
-  def current_token(%{current_token: nil}) do
+  defp current_token(%{current_token: nil}) do
     :eof
   end
 
-  def current_token(%{current_token: :eof}) do
+  defp current_token(%{current_token: :eof}) do
     :eof
   end
 
-  def current_token(%{current_token: {:sigil, _meta, token, _tokens, _mods, _indent, _delimiter}}) do
+  defp current_token(%{current_token: {:sigil, _meta, token, _tokens, _mods, _indent, _delimiter}}) do
     token
   end
 
-  def current_token(%{current_token: {:bin_heredoc, _meta, _indent, _tokens}}) do
+  defp current_token(%{current_token: {:bin_heredoc, _meta, _indent, _tokens}}) do
     :bin_heredoc
   end
 
-  def current_token(%{current_token: {:list_heredoc, _meta, _indent, _tokens}}) do
+  defp current_token(%{current_token: {:list_heredoc, _meta, _indent, _tokens}}) do
     :list_heredoc
   end
 
-  def current_token(%{current_token: {op, _, token}})
+  defp current_token(%{current_token: {op, _, token}})
       when op in [
              :arrow_op,
              :pipe_op,
@@ -2212,109 +2212,101 @@ defmodule Spitfire do
     token
   end
 
-  def current_token(%{current_token: {token, _, _}}) do
+  defp current_token(%{current_token: {token, _, _}}) do
     token
   end
 
-  def current_token(%{current_token: {token, _}}) do
+  defp current_token(%{current_token: {token, _}}) do
     token
   end
 
-  def current_meta(%{current_token: {:sigil, {line, col, _}, _token, _tokens, _mods, _, _delimiter}}) do
+  defp current_meta(%{current_token: {:sigil, {line, col, _}, _token, _tokens, _mods, _, _delimiter}}) do
     [line: line, column: col]
   end
 
-  def current_meta(%{current_token: {:bin_heredoc, {line, col, _}, _indent, _tokens}}) do
+  defp current_meta(%{current_token: {:bin_heredoc, {line, col, _}, _indent, _tokens}}) do
     [line: line, column: col]
   end
 
-  def current_meta(%{current_token: {:list_heredoc, {line, col, _}, _indent, _tokens}}) do
+  defp current_meta(%{current_token: {:list_heredoc, {line, col, _}, _indent, _tokens}}) do
     [line: line, column: col]
   end
 
-  def current_meta(%{current_token: {token, _}})
+  defp current_meta(%{current_token: {token, _}})
       when token in [:fake_closing_brace, :fake_closing_bracket, :fake_closing_brackets] do
     []
   end
 
-  def current_meta(%{current_token: {_token, {line, col, _}, _}}) do
+  defp current_meta(%{current_token: {_token, {line, col, _}, _}}) do
     [line: line, column: col]
   end
 
-  def current_meta(%{current_token: {_token, {line, col, _}}}) do
+  defp current_meta(%{current_token: {_token, {line, col, _}}}) do
     [line: line, column: col]
   end
 
-  def current_meta(_) do
+  defp current_meta(_) do
     []
   end
 
-  def current_eoe(%{current_token: {:eol, {line, col, newlines}}}) when is_integer(newlines) do
+  defp current_eoe(%{current_token: {:eol, {line, col, newlines}}}) when is_integer(newlines) do
     [newlines: newlines, line: line, column: col]
   end
 
-  def current_eoe(%{current_token: {:eol, {line, col, _}, _}}) do
+  defp current_eoe(%{current_token: {:eol, {line, col, _}, _}}) do
     [line: line, column: col]
   end
 
-  def current_eoe(%{current_token: {:eol, {line, col, _}}}) do
+  defp current_eoe(%{current_token: {:eol, {line, col, _}}}) do
     [line: line, column: col]
   end
 
-  def current_eoe(_) do
+  defp current_eoe(_) do
     nil
   end
 
-  def peek_eoe(%{peek_token: {:eol, {line, col, newlines}}}) when is_integer(newlines) do
+  defp peek_eoe(%{peek_token: {:eol, {line, col, newlines}}}) when is_integer(newlines) do
     [newlines: newlines, line: line, column: col]
   end
 
-  def peek_eoe(%{peek_token: {:eol, {line, col, _}, _}}) do
+  defp peek_eoe(%{peek_token: {:eol, {line, col, _}, _}}) do
     [line: line, column: col]
   end
 
-  def peek_eoe(%{peek_token: {:eol, {line, col, _}}}) do
+  defp peek_eoe(%{peek_token: {:eol, {line, col, _}}}) do
     [line: line, column: col]
   end
 
-  def peek_eoe(_) do
+  defp peek_eoe(_) do
     nil
   end
 
-  def current_newlines(%{current_token: {_token, {_line, _col, newlines}, _}}) when is_integer(newlines) do
+  defp current_newlines(%{current_token: {_token, {_line, _col, newlines}, _}}) when is_integer(newlines) do
     newlines
   end
 
-  def current_newlines(%{current_token: {_token, {_line, _col, newlines}}}) when is_integer(newlines) do
+  defp current_newlines(%{current_token: {_token, {_line, _col, newlines}}}) when is_integer(newlines) do
     newlines
   end
 
-  def current_newlines(_) do
+  defp current_newlines(_) do
     nil
   end
 
-  def peek_newlines(%{peek_token: {:eol, {_line, _col, newlines}}}) when is_integer(newlines) do
+  defp peek_newlines(%{peek_token: {:eol, {_line, _col, newlines}}}) when is_integer(newlines) do
     newlines
   end
 
-  def peek_newlines(_) do
+  defp peek_newlines(_) do
     nil
   end
 
-  def peek_newlines(%{peek_token: {token, {_line, _col, newlines}}}, token) when is_integer(newlines) do
+  defp peek_newlines(%{peek_token: {token, {_line, _col, newlines}}}, token) when is_integer(newlines) do
     newlines
   end
 
-  def peek_newlines(_, _) do
+  defp peek_newlines(_, _) do
     nil
-  end
-
-  def token_loc({_, {row, col, _}, _}) do
-    {row, col}
-  end
-
-  def token_loc({_, {row, col, _}}) do
-    {row, col}
   end
 
   defp current_precedence(parser) do
