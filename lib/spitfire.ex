@@ -163,6 +163,18 @@ defmodule Spitfire do
     {exprs, parser}
   end
 
+  defp calc_prec(parser, associativity, precedence) do
+    {_associativity, power} = peek_precedence(parser)
+
+    precedence =
+      case associativity do
+        :left -> precedence
+        :right -> precedence - 1
+      end
+
+    precedence < power
+  end
+
   @terminals MapSet.new([:eol, :eof, :"}", :")", :"]", :">>"])
   defp parse_expression(parser, assoc \\ @lowest, is_list \\ false, is_map \\ false, is_top \\ false, is_stab \\ false)
 
@@ -230,18 +242,6 @@ defmodule Spitfire do
     else
       {left, parser} = prefix.(parser)
 
-      calc_prec = fn parser ->
-        {_associativity, power} = peek_precedence(parser)
-
-        precedence =
-          case associativity do
-            :left -> precedence
-            :right -> precedence - 1
-          end
-
-        precedence < power
-      end
-
       terminals =
         if is_top do
           @terminals
@@ -252,7 +252,8 @@ defmodule Spitfire do
       {parser, is_valid} = validate_peek(parser, current_token_type(parser))
 
       if is_valid do
-        while is_nil(parser[:stab_state]) and not MapSet.member?(terminals, peek_token(parser)) && calc_prec.(parser) <-
+        while is_nil(parser[:stab_state]) and not MapSet.member?(terminals, peek_token(parser)) &&
+                calc_prec(parser, associativity, precedence) <-
                 {left, parser} do
           peek_token_type = peek_token_type(parser)
 
