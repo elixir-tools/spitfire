@@ -319,7 +319,7 @@ defmodule Spitfire do
       parser = parser |> next_token() |> eat_eol()
       {{:__block__, [], []}, parser}
     else
-      parser = parser |> next_token() |> eat_eol() |> inc_depth()
+      parser = parser |> next_token() |> eat_eol()
       old_nestings = parser.nestings
 
       parser =
@@ -356,7 +356,7 @@ defmodule Spitfire do
                 expression
             end
 
-          {ast, dec_depth(parser)}
+          {ast, parser}
 
         # if the next token is a new line, but the next next token is not the closing paren (implied from previous clause)
         peek_token(parser) == :eol or current_token(parser) == :-> ->
@@ -432,7 +432,7 @@ defmodule Spitfire do
                   {:__block__, [{:closing, current_meta(parser)} | orig_meta], exprs}
               end
 
-            {ast, dec_depth(parser)}
+            {ast, parser}
           else
             meta = current_meta(parser)
 
@@ -441,7 +441,7 @@ defmodule Spitfire do
               |> put_error({meta, "missing closing parentheses"})
               |> put_in([:nestings], old_nestings)
 
-            {{:__error__, meta, ["missing closing parentheses"]}, parser |> next_token() |> dec_depth()}
+            {{:__error__, meta, ["missing closing parentheses"]}, parser |> next_token()}
           end
 
         true ->
@@ -452,7 +452,7 @@ defmodule Spitfire do
             |> put_error({meta, "missing closing parentheses"})
             |> put_in([:nestings], old_nestings)
 
-          {{:__error__, meta, ["missing closing parentheses"]}, parser |> next_token() |> dec_depth()}
+          {{:__error__, meta, ["missing closing parentheses"]}, parser |> next_token()}
       end
     end
   end
@@ -846,7 +846,7 @@ defmodule Spitfire do
   defp parse_do_block(%{current_token: {:do, meta}} = parser, lhs) do
     do_meta = current_meta(parser)
     exprs = [{encode_literal(parser, :do, meta), []}]
-    parser = parser |> next_token() |> eat_eol() |> inc_depth()
+    parser = parser |> next_token() |> eat_eol()
 
     old_nestings = parser.nestings
     parser = put_in(parser.nestings, [])
@@ -936,7 +936,7 @@ defmodule Spitfire do
       end
 
     parser = put_in(parser, [:nestings], old_nestings)
-    {ast, dec_depth(parser)}
+    {ast, parser}
   end
 
   defp parse_dot_expression(parser, lhs) do
@@ -1983,7 +1983,6 @@ defmodule Spitfire do
       current_token: nil,
       peek_token: nil,
       nestings: [],
-      depth: 0,
       literal_encoder: Keyword.get(opts, :literal_encoder, fn literal, _meta -> {:ok, literal} end),
       errors: []
     }
@@ -2479,14 +2478,6 @@ defmodule Spitfire do
       literal ->
         literal
     end
-  end
-
-  defp inc_depth(%{depth: depth} = parser) do
-    %{parser | depth: depth + 1}
-  end
-
-  defp dec_depth(%{depth: depth} = parser) do
-    %{parser | depth: depth - 1}
   end
 
   defp build_block(exprs) do
