@@ -2379,7 +2379,7 @@ defmodule Spitfire do
   end
 
   defp additional_meta(_literal, %{current_token: {:char, _, token}}) do
-    [token: "?#{List.to_string([token])}"]
+    [token: "?" <> List.to_string([token])]
   end
 
   defp additional_meta(literal, _) when is_atom(literal) do
