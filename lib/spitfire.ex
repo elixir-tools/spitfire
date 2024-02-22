@@ -2402,7 +2402,7 @@ defmodule Spitfire do
   defp validate_peek(parser, current_type) do
     peek = peek_token_type(parser)
 
-    if peek != :no_peek && not valid_peek?(current_type, peek) do
+    if not valid_peek?(current_type, peek) && peek != :no_peek do
       parser =
         if MapSet.member?(@braces, peek) do
           parser
