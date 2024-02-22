@@ -314,12 +314,11 @@ defmodule Spitfire do
   end
 
   defp parse_grouped_expression(parser) do
-    orig_meta = current_meta(parser)
-
     if peek_token(parser) == :")" do
       parser = parser |> next_token() |> eat_eol()
       {{:__block__, [], []}, parser}
     else
+      orig_meta = current_meta(parser)
       parser = parser |> next_token() |> eat_eol()
       old_nestings = parser.nestings
 
