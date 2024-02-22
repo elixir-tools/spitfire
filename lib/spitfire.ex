@@ -155,15 +155,6 @@ defmodule Spitfire do
 
         ast = push_eoe(ast, current_eoe(parser))
 
-        ast =
-          case ast do
-            [{:->, [{:depth, _} | meta], args} | rest] ->
-              [{:->, meta, args} | rest]
-
-            ast ->
-              ast
-          end
-
         {[ast | exprs], eat_eol(parser)}
       end
 
@@ -173,9 +164,9 @@ defmodule Spitfire do
   end
 
   @terminals MapSet.new([:eol, :eof, :"}", :")", :"]", :">>"])
-  defp parse_expression(parser, assoc \\ @lowest, is_list \\ false, is_map \\ false, is_top \\ false)
+  defp parse_expression(parser, assoc \\ @lowest, is_list \\ false, is_map \\ false, is_top \\ false, is_stab \\ false)
 
-  defp parse_expression(parser, {associativity, precedence}, is_list, is_map, is_top) do
+  defp parse_expression(parser, {associativity, precedence}, is_list, is_map, is_top, is_stab) do
     prefix =
       case current_token_type(parser) do
         :identifier -> &parse_identifier/1
@@ -261,9 +252,12 @@ defmodule Spitfire do
       {parser, is_valid} = validate_peek(parser, current_token_type(parser))
 
       if is_valid do
-        while not MapSet.member?(terminals, peek_token(parser)) && calc_prec.(parser) <- {left, parser} do
+        while is_nil(parser[:stab_state]) and not MapSet.member?(terminals, peek_token(parser)) && calc_prec.(parser) <-
+                {left, parser} do
+          peek_token_type = peek_token_type(parser)
+
           infix =
-            case peek_token_type(parser) do
+            case peek_token_type do
               :match_op -> &parse_infix_expression/2
               :when_op -> &parse_infix_expression/2
               :pipe_op when is_map -> &parse_pipe_op/2
@@ -285,7 +279,7 @@ defmodule Spitfire do
               :xor_op -> &parse_infix_expression/2
               :in_match_op -> &parse_infix_expression/2
               :range_op -> &parse_range_expression/2
-              :stab_op -> &parse_stab_expression/2
+              :stab_op when not is_stab -> &parse_stab_expression/2
               :do -> &parse_do_block/2
               :dot_call_op -> &parse_dot_call_expression/2
               :"(" -> &parse_call_expression/2
@@ -297,6 +291,11 @@ defmodule Spitfire do
           do_block = &parse_do_block/2
 
           case infix do
+            nil when is_stab and peek_token_type == :stab_op ->
+              parser = Map.put(parser, :stab_state, %{ast: left})
+              # this will be ignored on the return
+              {left, parser}
+
             nil ->
               {left, parser}
 
@@ -342,9 +341,6 @@ defmodule Spitfire do
 
           ast =
             case expression do
-              [{:->, [{:depth, _} | meta], args} | rest] ->
-                [{:->, meta, args} | rest]
-
               # unquote splicing is special cased, if it has one expression as an arg, its wrapped in a block
               {:unquote_splicing, _, [_]} ->
                 {:__block__, [{:closing, current_meta(parser)} | orig_meta], [expression]}
@@ -353,6 +349,9 @@ defmodule Spitfire do
               {op, _, [_]} when op in [:not, :!] ->
                 {:__block__, [], [expression]}
 
+              {:->, _, _} ->
+                [expression]
+
               _ ->
                 expression
             end
@@ -360,14 +359,52 @@ defmodule Spitfire do
           {ast, dec_depth(parser)}
 
         # if the next token is a new line, but the next next token is not the closing paren (implied from previous clause)
-        peek_token(parser) == :eol ->
+        peek_token(parser) == :eol or current_token(parser) == :-> ->
           # second conditon checks of the next next token is a closing paren or another expression
           {exprs, parser} =
-            while peek_token(parser) == :eol && parser |> next_token() |> peek_token() != :")" <- {exprs, parser} do
-              parser = parser |> next_token() |> eat_eol()
-              {expression, parser} = parse_expression(parser, @lowest, false, false, true)
+            while current_token(parser) == :-> ||
+                    (peek_token(parser) == :eol && parser |> next_token() |> peek_token() != :")") <- {exprs, parser} do
+              {ast, parser} =
+                case parser[:stab_state] do
+                  %{ast: lhs} ->
+                    {ast, parser} = parse_stab_expression(Map.delete(parser, :stab_state), lhs)
 
-              {[push_eoe(expression, peek_eoe(parser)) | exprs], parser}
+                    {ast, parser} =
+                      if current_token(parser) == :-> do
+                        {ast, parser}
+                      else
+                        if peek_token(parser) == :")" do
+                          {ast, parser}
+                        else
+                          eoe = current_eoe(parser)
+                          ast = push_eoe(ast, eoe)
+                          {ast, next_token(parser)}
+                        end
+                      end
+
+                    {ast, parser}
+
+                  nil ->
+                    parser = parser |> next_token() |> eat_eol()
+                    {ast, parser} = parse_expression(parser, @lowest, false, false, true)
+
+                    {ast, parser} =
+                      if current_token(parser) == :-> do
+                        {ast, parser}
+                      else
+                        if peek_token(parser) == :")" do
+                          {ast, parser}
+                        else
+                          eoe = peek_eoe(parser)
+                          ast = push_eoe(ast, eoe)
+                          {ast, parser}
+                        end
+                      end
+
+                    {ast, parser}
+                end
+
+              {[ast | exprs], parser}
             end
 
           # handles if the closing paren is on a new line or the same line
@@ -386,7 +423,16 @@ defmodule Spitfire do
 
             exprs = Enum.reverse(exprs)
 
-            {{:__block__, [{:closing, current_meta(parser)} | orig_meta], exprs}, dec_depth(parser)}
+            ast =
+              case exprs do
+                [{:->, _, _} | _] ->
+                  exprs
+
+                _ ->
+                  {:__block__, [{:closing, current_meta(parser)} | orig_meta], exprs}
+              end
+
+            {ast, dec_depth(parser)}
           else
             meta = current_meta(parser)
 
@@ -580,8 +626,8 @@ defmodule Spitfire do
     exprs = []
 
     {exprs, parser} =
-      while peek_token(parser) not in [:eof, :end, :")"] <- {exprs, parser} do
-        parser = next_token(parser)
+      while peek_token(parser) not in [:end, :")"] <- {exprs, parser} do
+        parser = parser |> next_token() |> eat_eol()
         {ast, parser} = parse_expression(parser, @lowest, false, false, true)
         eoe = peek_eoe(parser)
 
@@ -589,13 +635,13 @@ defmodule Spitfire do
 
         ast = push_eoe(ast, eoe)
 
-        {[ast | exprs], eat_eol(parser)}
+        {[ast | exprs], parser}
       end
 
     rhs = build_block(exprs)
 
     ast =
-      [{token, newlines ++ meta, [[], rhs]}]
+      {token, newlines ++ meta, [[], rhs]}
 
     {ast, parser}
   end
@@ -636,28 +682,20 @@ defmodule Spitfire do
         parser = put_in(parser.nestings, [])
 
         {exprs, parser} =
-          while peek_token(parser) not in [:eof, :end, :")", :block_identifier] <- {exprs, parser} do
+          while parser[:stab_state] == nil and peek_token(parser) not in [:eof, :end, :")", :block_identifier] <-
+                  {exprs, parser} do
             parser = next_token(parser)
-            {ast, parser} = parse_expression(parser, @lowest, false, false, true)
+            {ast, parser} = parse_expression(parser, @lowest, false, false, true, true)
 
-            eoe = peek_eoe(parser)
+            if parser[:stab_state] == nil do
+              eoe = peek_eoe(parser)
+              ast = push_eoe(ast, eoe)
+              parser = eat_at(parser, :eol, 1)
 
-            parser = eat_at(parser, :eol, 1)
-
-            ast = push_eoe(ast, eoe)
-
-            {[ast | exprs], eat_eol(parser)}
-          end
-
-        current_depth = parser.depth
-
-        {stabs, exprs} =
-          case exprs do
-            [[{:->, [{:depth, ^current_depth} | meta], args} | srest] | rest] ->
-              {[{:->, meta, args} | srest], rest}
-
-            exprs ->
-              {[], exprs}
+              {[ast | exprs], eat_eol(parser)}
+            else
+              {exprs, next_token(parser)}
+            end
           end
 
         rhs = build_block(exprs)
@@ -672,9 +710,10 @@ defmodule Spitfire do
         meta = newlines ++ meta
 
         ast =
-          [{token, [{:depth, parser.depth} | meta], [lhs, rhs]}] ++ stabs
+          {token, meta, [lhs, rhs]}
 
         parser = put_in(parser.nestings, old_nestings)
+
         {ast, eat_eol(parser)}
     end
   end
@@ -818,27 +857,47 @@ defmodule Spitfire do
 
         {exprs, parser} =
           while current_token(parser) not in [:end, :block_identifier, :eof] <- {current_exprs, parser} do
-            {ast, parser} = parse_expression(parser, @lowest, false, false, true)
+            {ast, parser} =
+              case parser[:stab_state] do
+                %{ast: lhs} ->
+                  {ast, parser} = parse_stab_expression(Map.delete(parser, :stab_state), lhs)
 
-            parser = next_token(parser)
-            eoe = current_eoe(parser)
+                  {ast, parser} =
+                    if current_token(parser) == :-> do
+                      {ast, parser}
+                    else
+                      if peek_token(parser) in [:end, :block_identifier] do
+                        parser = next_token(parser)
+                        {ast, parser}
+                      else
+                        parser = next_token(parser)
+                        eoe = current_eoe(parser)
+                        ast = push_eoe(ast, eoe)
+                        {ast, eat_eol(parser)}
+                      end
+                    end
 
-            parser =
-              if current_token(parser) in [:end, :block_identifier] do
-                parser
-              else
-                parser |> next_token() |> eat_eol()
-              end
+                  {ast, parser}
 
-            ast = push_eoe(ast, eoe)
+                nil ->
+                  {ast, parser} = parse_expression(parser, @lowest, false, false, true)
 
-            ast =
-              case ast do
-                [{:->, [{:depth, _} | meta], args} | rest] ->
-                  [{:->, meta, args} | rest]
+                  {ast, parser} =
+                    if current_token(parser) == :-> do
+                      {ast, parser}
+                    else
+                      if peek_token(parser) in [:end, :block_identifier] do
+                        parser = next_token(parser)
+                        {ast, parser}
+                      else
+                        parser = next_token(parser)
+                        eoe = current_eoe(parser)
+                        ast = push_eoe(ast, eoe)
+                        {ast, parser |> next_token() |> eat_eol()}
+                      end
+                    end
 
-                ast ->
-                  ast
+                  {ast, parser}
               end
 
             {[ast | current_exprs], parser}
@@ -965,29 +1024,66 @@ defmodule Spitfire do
     newlines = get_newlines(parser)
     parser = parser |> next_token() |> eat_eol()
 
-    {ast, parser} = parse_expression(parser, @lowest, false, false, true)
+    exprs = []
 
-    ast =
-      case ast do
-        [{:->, [{:depth, _} | meta], args} | rest] ->
-          [{:->, meta, args} | rest]
+    {exprs, parser} =
+      while current_token(parser) not in [:end, :eof] <- {exprs, parser} do
+        {ast, parser} =
+          case parser[:stab_state] do
+            %{ast: lhs} ->
+              {ast, parser} = parse_stab_expression(Map.delete(parser, :stab_state), lhs)
 
-        ast ->
-          ast
+              {ast, parser} =
+                if current_token(parser) == :-> do
+                  {ast, parser}
+                else
+                  if peek_token(parser) == :end do
+                    parser = next_token(parser)
+                    {ast, parser}
+                  else
+                    parser = next_token(parser)
+                    eoe = current_eoe(parser)
+                    ast = push_eoe(ast, eoe)
+                    {ast, eat_eol(parser)}
+                  end
+                end
+
+              {ast, parser}
+
+            nil ->
+              {ast, parser} = parse_expression(parser, @lowest, false, false, true)
+
+              {ast, parser} =
+                if current_token(parser) in [:->] do
+                  {ast, parser}
+                else
+                  if peek_token(parser) == :end do
+                    parser = next_token(parser)
+                    {ast, parser}
+                  else
+                    parser = next_token(parser)
+                    eoe = current_eoe(parser)
+                    ast = push_eoe(ast, eoe)
+                    {ast, eat_eol(parser)}
+                  end
+                end
+
+              {ast, parser}
+          end
+
+        {[ast | exprs], parser}
       end
 
-    parser =
-      case peek_token(parser) do
+    {parser, meta} =
+      case current_token(parser) do
         :end ->
-          parser |> next_token() |> eat_eol()
+          {parser, [{:closing, current_meta(parser)} | meta]}
 
         _ ->
-          put_error(parser, {meta, "missing closing end for anonymous function"})
+          {put_error(parser, {meta, "missing closing end for anonymous function"}), meta}
       end
 
-    meta = [{:closing, current_meta(parser)} | meta]
-
-    {{:fn, newlines ++ meta, ast}, parser}
+    {{:fn, newlines ++ meta, Enum.reverse(exprs)}, parser}
   end
 
   defp parse_dot_call_expression(parser, lhs) do
@@ -2150,6 +2246,10 @@ defmodule Spitfire do
     [line: line, column: col]
   end
 
+  def current_meta(_) do
+    []
+  end
+
   def current_eoe(%{current_token: {:eol, {line, col, newlines}}}) when is_integer(newlines) do
     [newlines: newlines, line: line, column: col]
   end
@@ -2373,7 +2473,7 @@ defmodule Spitfire do
 
   defp push_eoe(ast, eoe) do
     case ast do
-      {t, meta, a} when not is_nil(eoe) ->
+      {t, meta, a} when not is_nil(eoe) and t != :-> ->
         {t, [{:end_of_expression, eoe} | meta], a}
 
       literal ->
@@ -2391,6 +2491,12 @@ defmodule Spitfire do
 
   defp build_block(exprs) do
     case exprs do
+      {:->, _, _} ->
+        [exprs]
+
+      [{:->, _, _} | _] ->
+        Enum.reverse(exprs)
+
       [{:unquote_splicing, _, [_]}] ->
         {:__block__, [], exprs}
 

@@ -14,6 +14,8 @@ defmodule Bench do
         "Spitfire.parse!" => fn input -> Spitfire.parse!(input) end,
         "Code.string_to_quoted!" => fn input -> Code.string_to_quoted!(input, columns: true, token_metadata: true) end
       },
+      memory_time: 5,
+      reduction_time: 5,
       formatters: [
         # Benchee.Formatters.HTML,
         Benchee.Formatters.Console
@@ -22,14 +24,14 @@ defmodule Bench do
         # "small file" => File.read!("mix.exs"),
         # "medium file" => File.read!("lib/spitfire.ex"),
         # "big file" => File.read!("/home/mitchell/src/elixir/lib/elixir/lib/enum.ex"),
-        # "test file" => File.read!("test.ex"),
+        "test file" => File.read!("test.ex"),
         # "int" => "1",
-        "multi expression" => ~S'''
-        1
-        2
-        3
-        4
-        '''
+        # "multi expression" => ~S'''
+        # 1
+        # 2
+        # 3
+        # 4
+        # '''
         # "string" => ~S'"foobar"',
         # "identifier" => ~S'foobar',
         # "function call parens" => ~S'foobar(a, b, c)',
