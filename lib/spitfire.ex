@@ -441,7 +441,7 @@ defmodule Spitfire do
               |> put_error({meta, "missing closing parentheses"})
               |> put_in([:nestings], old_nestings)
 
-            {{:__error__, meta, ["missing closing parentheses"]}, parser |> next_token()}
+            {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
           end
 
         true ->
@@ -452,7 +452,7 @@ defmodule Spitfire do
             |> put_error({meta, "missing closing parentheses"})
             |> put_in([:nestings], old_nestings)
 
-          {{:__error__, meta, ["missing closing parentheses"]}, parser |> next_token()}
+          {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
       end
     end
   end
@@ -1983,7 +1983,7 @@ defmodule Spitfire do
       current_token: nil,
       peek_token: nil,
       nestings: [],
-      literal_encoder: Keyword.get(opts, :literal_encoder, fn literal, _meta -> {:ok, literal} end),
+      literal_encoder: Keyword.get(opts, :literal_encoder),
       errors: []
     }
   end
@@ -2182,34 +2182,35 @@ defmodule Spitfire do
     :list_heredoc
   end
 
-  defp current_token(%{current_token: {op, _, token}})
-      when op in [
-             :arrow_op,
-             :pipe_op,
-             :when_op,
-             :ternary_op,
-             :range_op,
-             :xor_op,
-             :in_match_op,
-             :type_op,
-             :capture_op,
-             :capture_int,
-             :in_op,
-             :or_op,
-             :and_op,
-             :comp_op,
-             :rel_op,
-             :assoc_op,
-             :at_op,
-             :concat_op,
-             :dual_op,
-             :mult_op,
-             :stab_op,
-             :power_op,
-             :match_op,
-             :unary_op
-           ] do
-    token
+  for op <- [
+        :arrow_op,
+        :pipe_op,
+        :when_op,
+        :ternary_op,
+        :range_op,
+        :xor_op,
+        :in_match_op,
+        :type_op,
+        :capture_op,
+        :capture_int,
+        :in_op,
+        :or_op,
+        :and_op,
+        :comp_op,
+        :rel_op,
+        :assoc_op,
+        :at_op,
+        :concat_op,
+        :dual_op,
+        :mult_op,
+        :stab_op,
+        :power_op,
+        :match_op,
+        :unary_op
+      ] do
+    defp current_token(%{current_token: {unquote(op), _, token}}) do
+      token
+    end
   end
 
   defp current_token(%{current_token: {token, _, _}}) do
@@ -2233,7 +2234,7 @@ defmodule Spitfire do
   end
 
   defp current_meta(%{current_token: {token, _}})
-      when token in [:fake_closing_brace, :fake_closing_bracket, :fake_closing_brackets] do
+       when token in [:fake_closing_brace, :fake_closing_bracket, :fake_closing_brackets] do
     []
   end
 
@@ -2329,7 +2330,7 @@ defmodule Spitfire do
     %{parser | nestings: [nesting | nestings]}
   end
 
-  defp encode_literal(parser, literal, {line, col, _}) do
+  defp encode_literal(%{literal_encoder: encoder} = parser, literal, {line, col, _}) when is_function(encoder) do
     meta = additional_meta(literal, parser) ++ [line: line, column: col]
 
     case parser.literal_encoder.(literal, meta) do
@@ -2340,6 +2341,10 @@ defmodule Spitfire do
         Logger.error(reason)
         literal
     end
+  end
+
+  defp encode_literal(_parser, literal, _) do
+    literal
   end
 
   defp additional_meta(_literal, %{current_token: {:list_string, _, _}}) do
