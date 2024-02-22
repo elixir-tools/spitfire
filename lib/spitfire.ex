@@ -389,16 +389,17 @@ defmodule Spitfire do
                     {ast, parser} = parse_expression(parser, @lowest, false, false, true)
 
                     {ast, parser} =
-                      if current_token(parser) == :-> do
-                        {ast, parser}
-                      else
-                        if peek_token(parser) == :")" do
+                      cond do
+                        current_token(parser) == :-> ->
                           {ast, parser}
-                        else
+
+                        peek_token(parser) == :")" ->
+                          {ast, parser}
+
+                        true ->
                           eoe = peek_eoe(parser)
                           ast = push_eoe(ast, eoe)
                           {ast, parser}
-                        end
                       end
 
                     {ast, parser}
