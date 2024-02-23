@@ -840,16 +840,14 @@ defmodule Spitfire do
 
   defp parse_do_block(%{current_token: {:do, meta}} = parser, lhs) do
     do_meta = current_meta(parser)
-    exprs = [{encode_literal(parser, :do, meta), []}]
+    type = encode_literal(parser, :do, meta)
     parser = parser |> next_token() |> eat_eol()
 
     old_nestings = parser.nestings
     parser = put_in(parser.nestings, [])
 
-    {exprs, parser} =
-      while current_token(parser) not in [:end, :eof] <- {exprs, parser} do
-        [{type, _current_exprs} | rest] = exprs
-
+    {exprs, {_, parser}} =
+      while2 current_token(parser) not in [:end, :eof] <- {type, parser} do
         {exprs, parser} =
           while2 current_token(parser) not in [:end, :block_identifier, :eof] <- parser do
             {ast, parser} =
@@ -900,10 +898,10 @@ defmodule Spitfire do
 
         case parser do
           %{current_token: {:block_identifier, meta, token}} ->
-            {[{encode_literal(parser, token, meta), []}, {type, exprs} | rest], parser |> next_token() |> eat_eol()}
+            {{type, exprs}, {encode_literal(parser, token, meta), parser |> next_token() |> eat_eol()}}
 
           _ ->
-            {[{type, exprs} | rest], parser}
+            {{type, exprs}, {type, parser}}
         end
       end
 
@@ -917,7 +915,13 @@ defmodule Spitfire do
       end
 
     exprs =
-      for {type, expr} <- Enum.reverse(exprs) do
+      case exprs do
+        [] -> [{type, []}]
+        _ -> exprs
+      end
+
+    exprs =
+      for {type, expr} <- exprs do
         {type, build_block_nr(expr)}
       end
 
@@ -1018,7 +1022,6 @@ defmodule Spitfire do
 
     newlines = get_newlines(parser)
     parser = parser |> next_token() |> eat_eol()
-
 
     {exprs, parser} =
       while2 current_token(parser) not in [:end, :eof] <- parser do

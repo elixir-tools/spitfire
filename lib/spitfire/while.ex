@@ -21,6 +21,7 @@ defmodule Spitfire.While2 do
     predicate =
       quote do
         fn unquote(token) ->
+          _ = unquote(token)
           unquote(condition)
         end
       end
@@ -28,6 +29,7 @@ defmodule Spitfire.While2 do
     callback =
       quote do
         fn unquote(token) ->
+          _ = unquote(token)
           unquote(block)
         end
       end
