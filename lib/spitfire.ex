@@ -1295,22 +1295,24 @@ defmodule Spitfire do
 
   defp parse_alias(%{current_token: {:alias, _, alias}} = parser) do
     meta = current_meta(parser)
-    aliases = [{alias, meta}]
+    Process.put(:alias_last_meta, meta)
 
-    {[{_alias, last} | _rest] = aliases, parser} =
-      while peek_token(parser) == :. && peek_token(next_token(parser)) == :alias <- {aliases, parser} do
+    {aliases, parser} =
+      while2 peek_token(parser) == :. && peek_token(next_token(parser)) == :alias <- parser do
         parser = next_token(parser)
 
         case parser.peek_token do
           {:alias, _, alias} ->
             parser = next_token(parser)
-            {[{alias, current_meta(parser)} | aliases], parser}
+            meta = current_meta(parser)
+            Process.put(:alias_last_meta, meta)
+            {alias, parser}
         end
       end
 
-    aliases = aliases |> Enum.reverse() |> Enum.unzip() |> elem(0)
+    aliases = [alias | aliases]
 
-    {{:__aliases__, [{:last, last} | meta], aliases}, parser}
+    {{:__aliases__, [{:last, Process.get(:alias_last_meta)} | meta], aliases}, parser}
   end
 
   defp parse_bitstring(%{current_token: {:"<<", _}} = parser) do
