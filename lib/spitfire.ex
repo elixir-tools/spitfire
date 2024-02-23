@@ -327,7 +327,6 @@ defmodule Spitfire do
       {expression, parser} = parse_expression(parser, @lowest, false, false, true)
 
       expression = push_eoe(expression, peek_eoe(parser))
-      exprs = [expression]
 
       cond do
         # if the next token is the closing paren or if the next token is a newline and the next next token is the closing paren
@@ -361,8 +360,8 @@ defmodule Spitfire do
         peek_token(parser) == :eol or current_token(parser) == :-> ->
           # second conditon checks of the next next token is a closing paren or another expression
           {exprs, parser} =
-            while current_token(parser) == :-> ||
-                    (peek_token(parser) == :eol && parser |> next_token() |> peek_token() != :")") <- {exprs, parser} do
+            while2 current_token(parser) == :-> ||
+                    (peek_token(parser) == :eol && parser |> next_token() |> peek_token() != :")") <- parser do
               {ast, parser} =
                 case parser[:stab_state] do
                   %{ast: lhs} ->
@@ -404,7 +403,7 @@ defmodule Spitfire do
                     {ast, parser}
                 end
 
-              {[ast | exprs], parser}
+              {ast, parser}
             end
 
           # handles if the closing paren is on a new line or the same line
@@ -421,7 +420,7 @@ defmodule Spitfire do
               |> put_in([:nestings], old_nestings)
               |> next_token()
 
-            exprs = Enum.reverse(exprs)
+            exprs = [expression | exprs]
 
             ast =
               case exprs do
