@@ -6,32 +6,91 @@ Mix.install([
   {:spitfire, path: "."}
 ])
 
+defmodule Runner do
+  @moduledoc false
+  defmodule While do
+    @moduledoc false
+    import Spitfire.While
+
+    def while(input) do
+      items = []
+      token = %{items: input}
+
+      while token.items != [] <- {items, token} do
+        {item, token} = get_and_update_in(token.items, fn [item | rest] -> {item, rest} end)
+        {[item | items], token}
+      end
+    end
+  end
+
+  defmodule While2 do
+    @moduledoc false
+    import Spitfire.While2
+
+    def while(input) do
+      token = %{items: input}
+
+      while2 token.items != [] <- token do
+        get_and_update_in(token.items, fn [item | rest] -> {item, rest} end)
+      end
+    end
+  end
+
+  def new(input) do
+    token = %{items: input}
+
+    items =
+      recurse(token, &(&1.items != []), fn token ->
+        get_and_update_in(token.items, fn [item | rest] -> {item, rest} end)
+      end)
+
+    token = Process.get(:while_token)
+    Process.delete(:while_token)
+
+    {items, token}
+  end
+
+  defp recurse(token, pred, callback) do
+    if pred.(token) do
+      {item, token} = callback.(token)
+
+      [item | recurse(token, pred, callback)]
+    else
+      Process.put(:while_token, token)
+      []
+    end
+  end
+end
+
 defmodule Bench do
   @moduledoc false
   def run do
     Benchee.run(
       %{
         "Spitfire.parse!" => fn input -> Spitfire.parse!(input) end,
-        "Code.string_to_quoted!" => fn input -> Code.string_to_quoted!(input, columns: true, token_metadata: true) end
+        "Code.string_to_quoted!" => fn input -> Code.string_to_quoted!(input, columns: true, token_metadata: true) end,
+        # "while" => &Runner.While.while/1,
+        # "while2" => &Runner.While2.while/1,
+        # "new" => &Runner.new/1
       },
-      memory_time: 5,
-      reduction_time: 5,
+      # time: 30,
+      # memory_time: 5,
+      # reduction_time: 5,
       formatters: [
         # Benchee.Formatters.HTML,
         Benchee.Formatters.Console
       ],
       inputs: %{
-        # "small file" => File.read!("mix.exs"),
-        # "medium file" => File.read!("lib/spitfire.ex"),
-        # "big file" => File.read!("/home/mitchell/src/elixir/lib/elixir/lib/enum.ex"),
-        "test file" => File.read!("test.ex"),
+        # "50" => Enum.to_list(1..50),
+        # "100" => Enum.to_list(1..100),
+        # "1000" => Enum.to_list(1..1000),
+        # "5000" => Enum.to_list(1..5000)
+        "small file" => File.read!("mix.exs"),
+        "medium file" => File.read!("lib/spitfire.ex"),
+        "big file" => File.read!("/home/mitchell/src/elixir/lib/elixir/lib/enum.ex")
+        # "test file" => File.read!("test.ex"),
         # "int" => "1",
-        # "multi expression" => ~S'''
-        # 1
-        # 2
-        # 3
-        # 4
-        # '''
+        # "multi expression" => Enum.map_join(0..10_000, "\n", &to_string/1)
         # "string" => ~S'"foobar"',
         # "identifier" => ~S'foobar',
         # "function call parens" => ~S'foobar(a, b, c)',
