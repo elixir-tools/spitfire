@@ -1815,21 +1815,22 @@ defmodule Spitfire do
       parser = push_nesting(parser, 1)
       {first_arg, parser} = parse_expression(parser)
 
-      args = [first_arg]
+      front = first_arg
 
       {args, parser} =
-        while peek_token(parser) == :"," <- {args, parser} do
+        while2 peek_token(parser) == :"," <- parser do
           parser = parser |> next_token() |> next_token()
           parser = inc_nesting(parser)
           {arg, parser} = parse_expression(parser)
 
-          {[arg | args], parser}
+          {arg, parser}
         end
 
+      args = [front | args]
       parser = pop_nesting(parser)
 
       if parser.nestings == [] && current_token(parser) == :do do
-        parse_do_block(parser, {token, meta, Enum.reverse(args)})
+        parse_do_block(parser, {token, meta, args})
       else
         meta =
           if identifier == :op_identifier && length(args) == 1 do
@@ -1838,7 +1839,7 @@ defmodule Spitfire do
             meta
           end
 
-        {{token, meta, Enum.reverse(args)}, parser}
+        {{token, meta, args}, parser}
       end
     end
   end
