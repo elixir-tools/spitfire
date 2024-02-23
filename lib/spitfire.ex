@@ -1,6 +1,7 @@
 defmodule Spitfire do
   @moduledoc false
   import Spitfire.While
+  import Spitfire.While2
 
   require Logger
 
@@ -140,10 +141,8 @@ defmodule Spitfire do
   end
 
   defp parse_program(parser) do
-    exprs = []
-
     {exprs, parser} =
-      while current_token(parser) != :eof <- {exprs, parser} do
+      while2 current_token(parser) != :eof <- parser do
         {ast, parser} = parse_expression(parser, @lowest, false, false, true)
 
         parser =
@@ -155,10 +154,10 @@ defmodule Spitfire do
 
         ast = push_eoe(ast, current_eoe(parser))
 
-        {[ast | exprs], eat_eol(parser)}
+        {ast, eat_eol(parser)}
       end
 
-    exprs = build_block(exprs)
+    exprs = build_block_nr(exprs)
 
     {exprs, parser}
   end
@@ -2494,6 +2493,25 @@ defmodule Spitfire do
 
       _ ->
         {:__block__, [], Enum.reverse(exprs)}
+    end
+  end
+
+  defp build_block_nr(exprs) do
+    case exprs do
+      {:->, _, _} ->
+        [exprs]
+
+      [{:->, _, _} | _] ->
+        exprs
+
+      [{:unquote_splicing, _, [_]}] ->
+        {:__block__, [], exprs}
+
+      [expr] ->
+        expr
+
+      _ ->
+        {:__block__, [], exprs}
     end
   end
 end
