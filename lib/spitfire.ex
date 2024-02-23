@@ -491,17 +491,16 @@ defmodule Spitfire do
 
     {value, parser} = parse_expression(parser, @kw_identifier, false, false, false)
     token = encode_literal(parser, token, meta)
-    kvs = [{token, value}]
 
     {kvs, parser} =
-      while peek_token(parser) == :"," <- {kvs, parser} do
+      while2 peek_token(parser) == :"," <- parser do
         parser = parser |> next_token() |> next_token()
         {pair, parser} = parse_kw_identifier(parser)
 
-        {[pair | kvs], parser}
+        {pair, parser}
       end
 
-    {Enum.reverse(kvs), parser}
+    {[{token, value} | kvs], parser}
   end
 
   defp parse_bracketless_kw_list(%{current_token: {:kw_identifier_unsafe, meta, tokens}} = parser) do
