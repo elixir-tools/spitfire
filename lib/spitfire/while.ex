@@ -2,9 +2,13 @@ defmodule Spitfire.While2 do
   @moduledoc false
   def recurse(token, pred, callback) do
     if pred.(token) do
-      {item, token} = callback.(token)
+      case callback.(token) do
+        {:filter, {_, token}} ->
+          recurse(token, pred, callback)
 
-      [item | recurse(token, pred, callback)]
+        {item, token} ->
+          [item | recurse(token, pred, callback)]
+      end
     else
       Process.put(:while_token, token)
       []

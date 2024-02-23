@@ -541,25 +541,25 @@ defmodule Spitfire do
     {expr, parser} = parse_expression(parser, precedence, is_list, is_map, false)
     # we zip together the expression and parser state so that we can potentially 
     # backtrack later
-    items = [{expr, parser}]
+    front = {expr, parser}
 
     {items, parser} =
-      while peek_token(parser) == :"," <- {items, parser} do
+      while2 peek_token(parser) == :"," <- parser do
         parser = next_token(parser)
 
         case peek_token(parser) do
           delimiter when delimiter in [:"]", :"}"] ->
-            {items, parser}
+            {:filter, {nil, parser}}
 
           _ ->
             parser = next_token(parser)
             {item, parser} = parse_expression(parser, precedence, is_list, is_map, false)
 
-            {[{item, parser} | items], parser}
+            {{item, parser}, parser}
         end
       end
 
-    {Enum.reverse(items), parser}
+    {[front | items], parser}
   end
 
   defp parse_prefix_expression(parser) do
