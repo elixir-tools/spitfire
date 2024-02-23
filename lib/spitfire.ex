@@ -678,7 +678,7 @@ defmodule Spitfire do
 
         {exprs, parser} =
           while2 parser[:stab_state] == nil and peek_token(parser) not in [:eof, :end, :")", :block_identifier] <-
-                  parser do
+                   parser do
             parser = next_token(parser)
             {ast, parser} = parse_expression(parser, @lowest, false, false, true, true)
 
@@ -848,10 +848,10 @@ defmodule Spitfire do
 
     {exprs, parser} =
       while current_token(parser) not in [:end, :eof] <- {exprs, parser} do
-        [{type, current_exprs} | rest] = exprs
+        [{type, _current_exprs} | rest] = exprs
 
         {exprs, parser} =
-          while current_token(parser) not in [:end, :block_identifier, :eof] <- {current_exprs, parser} do
+          while2 current_token(parser) not in [:end, :block_identifier, :eof] <- parser do
             {ast, parser} =
               case parser[:stab_state] do
                 %{ast: lhs} ->
@@ -895,7 +895,7 @@ defmodule Spitfire do
                   {ast, parser}
               end
 
-            {[ast | current_exprs], parser}
+            {ast, parser}
           end
 
         case parser do
@@ -918,7 +918,7 @@ defmodule Spitfire do
 
     exprs =
       for {type, expr} <- Enum.reverse(exprs) do
-        {type, build_block(expr)}
+        {type, build_block_nr(expr)}
       end
 
     ast =
@@ -2469,25 +2469,6 @@ defmodule Spitfire do
 
       literal ->
         literal
-    end
-  end
-
-  defp build_block(exprs) do
-    case exprs do
-      {:->, _, _} ->
-        [exprs]
-
-      [{:->, _, _} | _] ->
-        Enum.reverse(exprs)
-
-      [{:unquote_splicing, _, [_]}] ->
-        {:__block__, [], exprs}
-
-      [expr] ->
-        expr
-
-      _ ->
-        {:__block__, [], Enum.reverse(exprs)}
     end
   end
 
