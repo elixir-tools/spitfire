@@ -672,14 +672,13 @@ defmodule Spitfire do
         newlines = get_newlines(parser)
 
         parser = eat_at(parser, :eol, 1)
-        exprs = []
 
         old_nestings = parser.nestings
         parser = put_in(parser.nestings, [])
 
         {exprs, parser} =
-          while parser[:stab_state] == nil and peek_token(parser) not in [:eof, :end, :")", :block_identifier] <-
-                  {exprs, parser} do
+          while2 parser[:stab_state] == nil and peek_token(parser) not in [:eof, :end, :")", :block_identifier] <-
+                  parser do
             parser = next_token(parser)
             {ast, parser} = parse_expression(parser, @lowest, false, false, true, true)
 
@@ -688,13 +687,13 @@ defmodule Spitfire do
               ast = push_eoe(ast, eoe)
               parser = eat_at(parser, :eol, 1)
 
-              {[ast | exprs], eat_eol(parser)}
+              {ast, eat_eol(parser)}
             else
-              {exprs, next_token(parser)}
+              {:filter, {nil, next_token(parser)}}
             end
           end
 
-        rhs = build_block(exprs)
+        rhs = build_block_nr(exprs)
 
         lhs =
           case lhs do
