@@ -361,7 +361,7 @@ defmodule Spitfire do
           # second conditon checks of the next next token is a closing paren or another expression
           {exprs, parser} =
             while2 current_token(parser) == :-> ||
-                    (peek_token(parser) == :eol && parser |> next_token() |> peek_token() != :")") <- parser do
+                     (peek_token(parser) == :eol && parser |> next_token() |> peek_token() != :")") <- parser do
               {ast, parser} =
                 case parser[:stab_state] do
                   %{ast: lhs} ->
@@ -515,17 +515,16 @@ defmodule Spitfire do
       end
 
     {value, parser} = parse_expression(parser, @kw_identifier, false, false, false)
-    kvs = [{atom, value}]
 
     {kvs, parser} =
-      while peek_token(parser) == :"," <- {kvs, parser} do
+      while2 peek_token(parser) == :"," <- parser do
         parser = parser |> next_token() |> next_token()
         {pair, parser} = parse_kw_identifier(parser)
 
-        {[pair | kvs], parser}
+        {pair, parser}
       end
 
-    {Enum.reverse(kvs), parser}
+    {[{atom, value} | kvs], parser}
   end
 
   defp parse_assoc_op(%{current_token: {:assoc_op, _, _token}} = parser, key) do
