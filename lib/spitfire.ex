@@ -620,10 +620,9 @@ defmodule Spitfire do
     newlines = get_newlines(parser)
 
     parser = eat_at(parser, :eol, 1)
-    exprs = []
 
     {exprs, parser} =
-      while peek_token(parser) not in [:end, :")"] <- {exprs, parser} do
+      while2 peek_token(parser) not in [:end, :")"] <- parser do
         parser = parser |> next_token() |> eat_eol()
         {ast, parser} = parse_expression(parser, @lowest, false, false, true)
         eoe = peek_eoe(parser)
@@ -632,10 +631,10 @@ defmodule Spitfire do
 
         ast = push_eoe(ast, eoe)
 
-        {[ast | exprs], parser}
+        {ast, parser}
       end
 
-    rhs = build_block(exprs)
+    rhs = build_block_nr(exprs)
 
     ast =
       {token, newlines ++ meta, [[], rhs]}
