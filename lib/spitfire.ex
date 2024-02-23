@@ -1019,10 +1019,9 @@ defmodule Spitfire do
     newlines = get_newlines(parser)
     parser = parser |> next_token() |> eat_eol()
 
-    exprs = []
 
     {exprs, parser} =
-      while current_token(parser) not in [:end, :eof] <- {exprs, parser} do
+      while2 current_token(parser) not in [:end, :eof] <- parser do
         {ast, parser} =
           case parser[:stab_state] do
             %{ast: lhs} ->
@@ -1066,7 +1065,7 @@ defmodule Spitfire do
               {ast, parser}
           end
 
-        {[ast | exprs], parser}
+        {ast, parser}
       end
 
     {parser, meta} =
@@ -1078,7 +1077,7 @@ defmodule Spitfire do
           {put_error(parser, {meta, "missing closing end for anonymous function"}), meta}
       end
 
-    {{:fn, newlines ++ meta, Enum.reverse(exprs)}, parser}
+    {{:fn, newlines ++ meta, exprs}, parser}
   end
 
   defp parse_dot_call_expression(parser, lhs) do
