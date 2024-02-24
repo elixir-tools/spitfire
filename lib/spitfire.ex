@@ -175,6 +175,7 @@ defmodule Spitfire do
   end
 
   @terminals MapSet.new([:eol, :eof, :"}", :")", :"]", :">>"])
+  @terminals_with_comma MapSet.new([:eol, :eof, :"}", :")", :"]", :">>", :","])
   defp parse_expression(parser, assoc \\ @lowest, is_list \\ false, is_map \\ false, is_top \\ false, is_stab \\ false)
 
   defp parse_expression(parser, {associativity, precedence}, is_list, is_map, is_top, is_stab) do
@@ -245,7 +246,7 @@ defmodule Spitfire do
         if is_top do
           @terminals
         else
-          MapSet.put(@terminals, :",")
+          @terminals_with_comma
         end
 
       {parser, is_valid} = validate_peek(parser, current_token_type(parser))
