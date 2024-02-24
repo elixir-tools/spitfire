@@ -182,9 +182,9 @@ defmodule Spitfire do
     prefix =
       case current_token_type(parser) do
         :identifier -> &parse_identifier/1
-        :do_identifier -> &parse_identifier/1
-        :paren_identifier -> &parse_identifier/1
-        :bracket_identifier -> &parse_identifier/1
+        :do_identifier -> &parse_do_identifier/1
+        :paren_identifier -> &parse_paren_identifier/1
+        :bracket_identifier -> &parse_lone_identifier/1
         :op_identifier -> &parse_identifier/1
         :alias -> &parse_alias/1
         :"<<" -> &parse_bitstring/1
@@ -299,7 +299,7 @@ defmodule Spitfire do
             nil ->
               {left, parser}
 
-            ^do_block when parser.nestings != [] ->
+            ^do_block when parser.nestings != 0 ->
               {left, next_token(parser)}
 
             _ ->
@@ -321,7 +321,7 @@ defmodule Spitfire do
       parser = parser |> next_token() |> eat_eol()
       old_nestings = parser.nestings
 
-      parser = Map.put(parser, :nestings, [])
+      parser = Map.put(parser, :nestings, 0)
 
       {expression, parser} = parse_expression(parser, @lowest, false, false, true)
 
@@ -677,7 +677,7 @@ defmodule Spitfire do
         parser = eat_at(parser, :eol, 1)
 
         old_nestings = parser.nestings
-        parser = Map.put(parser, :nestings, [])
+        parser = Map.put(parser, :nestings, 0)
 
         {exprs, parser} =
           while2 Map.get(parser, :stab_state) == nil and peek_token(parser) not in [:eof, :end, :")", :block_identifier] <-
@@ -737,9 +737,7 @@ defmodule Spitfire do
         nl -> [newlines: nl]
       end
 
-    parser = next_token(parser)
-
-    parser = eat_eol(parser)
+    parser = parser |> next_token() |> eat_eol()
 
     {rhs, parser} = parse_expression(parser, precedence, false, false, false)
 
@@ -846,7 +844,7 @@ defmodule Spitfire do
     parser = parser |> next_token() |> eat_eol()
 
     old_nestings = parser.nestings
-    parser = Map.put(parser, :nestings, [])
+    parser = Map.put(parser, :nestings, 0)
 
     {exprs, {_, parser}} =
       while2 current_token(parser) not in [:end, :eof] <- {type, parser} do
@@ -1184,7 +1182,7 @@ defmodule Spitfire do
                     tokens: tokens ++ [:eof],
                     current_token: nil,
                     peek_token: nil,
-                    nestings: [],
+                    nestings: 0,
                     errors: [],
                     literal_encoder: parser.literal_encoder
                   }
@@ -1251,7 +1249,7 @@ defmodule Spitfire do
                     tokens: tokens ++ [:eof],
                     current_token: nil,
                     peek_token: nil,
-                    nestings: [],
+                    nestings: 0,
                     errors: [],
                     literal_encoder: parser.literal_encoder
                   }
@@ -1388,7 +1386,7 @@ defmodule Spitfire do
 
     parser = parser |> next_token() |> eat_eol()
     old_nestings = parser.nestings
-    parser = Map.put(parser, :nestings, [])
+    parser = Map.put(parser, :nestings, 0)
 
     if current_token(parser) == :"}" do
       closing = current_meta(parser)
@@ -1439,7 +1437,7 @@ defmodule Spitfire do
     prefix =
       case current_token_type(parser) do
         :identifier -> &parse_lone_identifier/1
-        :paren_identifier -> &parse_identifier/1
+        :paren_identifier -> &parse_paren_identifier/1
         :alias -> &parse_alias/1
         :at_op -> &parse_lone_module_attr/1
         :unary_op -> &parse_prefix_lone_identifer/1
@@ -1514,7 +1512,7 @@ defmodule Spitfire do
     parser = eat_eol(parser)
 
     old_nestings = parser.nestings
-    parser = Map.put(parser, :nestings, [])
+    parser = Map.put(parser, :nestings, 0)
 
     if current_token(parser) == :"}" do
       closing = current_meta(parser)
@@ -1549,7 +1547,7 @@ defmodule Spitfire do
 
     parser = parser |> next_token() |> eat_eol()
     old_nestings = parser.nestings
-    parser = Map.put(parser, :nestings, [])
+    parser = Map.put(parser, :nestings, 0)
 
     cond do
       current_token(parser) == :"}" ->
@@ -1643,7 +1641,7 @@ defmodule Spitfire do
     orig_parser = parser
     parser = parser |> next_token() |> eat_eol()
     old_nestings = parser.nestings
-    parser = Map.put(parser, :nestings, [])
+    parser = Map.put(parser, :nestings, 0)
 
     cond do
       current_token(parser) == :"]" ->
@@ -1706,7 +1704,7 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_identifier(%{current_token: {:paren_identifier, _, token}} = parser) do
+  defp parse_paren_identifier(%{current_token: {:paren_identifier, _, token}} = parser) do
     meta = current_meta(parser)
     parser = next_token(parser)
     newlines = get_newlines(parser)
@@ -1718,7 +1716,7 @@ defmodule Spitfire do
       {{token, newlines ++ [{:closing, closing} | meta], []}, parser}
     else
       old_nestings = parser.nestings
-      parser = Map.put(parser, :nestings, [])
+      parser = Map.put(parser, :nestings, 0)
 
       {pairs, parser} =
         parser
@@ -1743,10 +1741,6 @@ defmodule Spitfire do
 
       {{token, newlines ++ [{:closing, closing} | meta], List.wrap(pairs)}, parser}
     end
-  end
-
-  defp parse_identifier(%{current_token: {:bracket_identifier, _, _token}} = parser) do
-    parse_lone_identifier(parser)
   end
 
   @operators [
@@ -1789,17 +1783,20 @@ defmodule Spitfire do
 
   @peeks MapSet.new([:";", :eol, :eof, :end, :",", :")", :do, :., :"}", :"]", :">>"] ++ @operators)
 
+  defp parse_identifier(%{current_token: {_identifier, _, token}} = parser)
+       when token in [:__MODULE__, :__ENV__, :__DIR__, :__CALLER__] do
+    parse_lone_identifier(parser)
+  end
+
   defp parse_identifier(%{current_token: {identifier, _, token}} = parser)
        when identifier in [:identifier, :op_identifier] do
-    meta = current_meta(parser)
-
-    if token in [:__MODULE__, :__ENV__, :__DIR__, :__CALLER__] ||
-         (identifier == :identifier && MapSet.member?(@peeks, peek_token(parser))) do
+    if identifier == :identifier && MapSet.member?(@peeks, peek_token(parser)) do
       parse_lone_identifier(parser)
     else
+      meta = current_meta(parser)
       parser = next_token(parser)
 
-      parser = push_nesting(parser, 1)
+      parser = push_nesting(parser)
       {first_arg, parser} = parse_expression(parser)
 
       front = first_arg
@@ -1815,7 +1812,7 @@ defmodule Spitfire do
       args = [front | args]
       parser = pop_nesting(parser)
 
-      if parser.nestings == [] && current_token(parser) == :do do
+      if parser.nestings == 0 && current_token(parser) == :do do
         parse_do_block(parser, {token, meta, args})
       else
         meta =
@@ -1830,9 +1827,8 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_identifier(%{current_token: {:do_identifier, _, token}} = parser) do
+  defp parse_do_identifier(%{current_token: {:do_identifier, _, token}} = parser) do
     meta = current_meta(parser)
-
     parser = next_token(parser)
 
     # if nesting is empty, that means we are not currently an argument for a function call
@@ -1840,7 +1836,7 @@ defmodule Spitfire do
     # foo do
     #   :ok
     # end
-    if parser.nestings == [] do
+    if parser.nestings == 0 do
       parse_do_block(parser, {token, meta, []})
     else
       {{token, meta, nil}, parser}
@@ -1932,7 +1928,7 @@ defmodule Spitfire do
                     tokens: tokens ++ [:eof],
                     current_token: nil,
                     peek_token: nil,
-                    nestings: [],
+                    nestings: 0,
                     literal_encoder: parser.literal_encoder
                   }
                   |> next_token()
@@ -1961,7 +1957,7 @@ defmodule Spitfire do
       tokens: tokenize(code, opts),
       current_token: nil,
       peek_token: nil,
-      nestings: [],
+      nestings: 0,
       literal_encoder: Keyword.get(opts, :literal_encoder),
       errors: []
     }
@@ -2297,12 +2293,12 @@ defmodule Spitfire do
     Map.get(@precedences, peek_token_type(parser), @lowest)
   end
 
-  defp pop_nesting(%{nestings: [_top | rest]} = parser) do
-    %{parser | nestings: rest}
+  defp pop_nesting(%{nestings: nestings} = parser) do
+    %{parser | nestings: nestings - 1}
   end
 
-  defp push_nesting(%{nestings: nestings} = parser, nesting) do
-    %{parser | nestings: [nesting | nestings]}
+  defp push_nesting(%{nestings: nestings} = parser) do
+    %{parser | nestings: nestings + 1}
   end
 
   defp encode_literal(%{literal_encoder: encoder} = parser, literal, {line, col, _}) when is_function(encoder) do
