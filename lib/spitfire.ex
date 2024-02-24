@@ -252,7 +252,7 @@ defmodule Spitfire do
       {parser, is_valid} = validate_peek(parser, current_token_type(parser))
 
       if is_valid do
-        while is_nil(parser[:stab_state]) and not MapSet.member?(terminals, peek_token(parser)) &&
+        while is_nil(Map.get(parser, :stab_state)) and not MapSet.member?(terminals, peek_token(parser)) &&
                 calc_prec(parser, associativity, precedence) <-
                 {left, parser} do
           peek_token_type = peek_token_type(parser)
@@ -363,7 +363,7 @@ defmodule Spitfire do
             while2 current_token(parser) == :-> ||
                      (peek_token(parser) == :eol && parser |> next_token() |> peek_token() != :")") <- parser do
               {ast, parser} =
-                case parser[:stab_state] do
+                case Map.get(parser, :stab_state) do
                   %{ast: lhs} ->
                     {ast, parser} = parse_stab_expression(Map.delete(parser, :stab_state), lhs)
 
@@ -681,12 +681,12 @@ defmodule Spitfire do
         parser = Map.put(parser, :nestings, [])
 
         {exprs, parser} =
-          while2 parser[:stab_state] == nil and peek_token(parser) not in [:eof, :end, :")", :block_identifier] <-
+          while2 Map.get(parser, :stab_state) == nil and peek_token(parser) not in [:eof, :end, :")", :block_identifier] <-
                    parser do
             parser = next_token(parser)
             {ast, parser} = parse_expression(parser, @lowest, false, false, true, true)
 
-            if parser[:stab_state] == nil do
+            if Map.get(parser, :stab_state) == nil do
               eoe = peek_eoe(parser)
               ast = push_eoe(ast, eoe)
               parser = eat_at(parser, :eol, 1)
@@ -854,7 +854,7 @@ defmodule Spitfire do
         {exprs, parser} =
           while2 current_token(parser) not in [:end, :block_identifier, :eof] <- parser do
             {ast, parser} =
-              case parser[:stab_state] do
+              case Map.get(parser, :stab_state) do
                 %{ast: lhs} ->
                   {ast, parser} = parse_stab_expression(Map.delete(parser, :stab_state), lhs)
 
@@ -1028,7 +1028,7 @@ defmodule Spitfire do
     {exprs, parser} =
       while2 current_token(parser) not in [:end, :eof] <- parser do
         {ast, parser} =
-          case parser[:stab_state] do
+          case Map.get(parser, :stab_state) do
             %{ast: lhs} ->
               {ast, parser} = parse_stab_expression(Map.delete(parser, :stab_state), lhs)
 
