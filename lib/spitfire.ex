@@ -299,7 +299,7 @@ defmodule Spitfire do
             nil ->
               {left, parser}
 
-            ^do_block when parser.nestings != 0 ->
+            ^do_block when parser.nesting != 0 ->
               {left, next_token(parser)}
 
             _ ->
@@ -319,9 +319,9 @@ defmodule Spitfire do
     else
       orig_meta = current_meta(parser)
       parser = parser |> next_token() |> eat_eol()
-      old_nestings = parser.nestings
+      old_nesting = parser.nesting
 
-      parser = Map.put(parser, :nestings, 0)
+      parser = Map.put(parser, :nesting, 0)
 
       {expression, parser} = parse_expression(parser, @lowest, false, false, true)
 
@@ -332,7 +332,7 @@ defmodule Spitfire do
         peek_token(parser) == :")" || (peek_token(parser) == :eol && peek_token(next_token(parser)) == :")") ->
           parser =
             parser
-            |> Map.put(:nestings, old_nestings)
+            |> Map.put(:nesting, old_nesting)
             |> next_token()
             |> eat_eol()
 
@@ -416,7 +416,7 @@ defmodule Spitfire do
           if peek_token(parser) == :")" do
             parser =
               parser
-              |> Map.put(:nestings, old_nestings)
+              |> Map.put(:nesting, old_nesting)
               |> next_token()
 
             exprs = [expression | exprs]
@@ -437,7 +437,7 @@ defmodule Spitfire do
             parser =
               parser
               |> put_error({meta, "missing closing parentheses"})
-              |> Map.put(:nestings, old_nestings)
+              |> Map.put(:nesting, old_nesting)
 
             {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
           end
@@ -448,7 +448,7 @@ defmodule Spitfire do
           parser =
             parser
             |> put_error({meta, "missing closing parentheses"})
-            |> Map.put(:nestings, old_nestings)
+            |> Map.put(:nesting, old_nesting)
 
           {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
       end
@@ -676,8 +676,8 @@ defmodule Spitfire do
 
         parser = eat_at(parser, :eol, 1)
 
-        old_nestings = parser.nestings
-        parser = Map.put(parser, :nestings, 0)
+        old_nesting = parser.nesting
+        parser = Map.put(parser, :nesting, 0)
 
         {exprs, parser} =
           while2 Map.get(parser, :stab_state) == nil and peek_token(parser) not in [:eof, :end, :")", :block_identifier] <-
@@ -710,7 +710,7 @@ defmodule Spitfire do
         ast =
           {token, meta, [lhs, rhs]}
 
-        parser = Map.put(parser, :nestings, old_nestings)
+        parser = Map.put(parser, :nesting, old_nesting)
 
         {ast, eat_eol(parser)}
     end
@@ -843,8 +843,8 @@ defmodule Spitfire do
     type = encode_literal(parser, :do, meta)
     parser = parser |> next_token() |> eat_eol()
 
-    old_nestings = parser.nestings
-    parser = Map.put(parser, :nestings, 0)
+    old_nesting = parser.nesting
+    parser = Map.put(parser, :nesting, 0)
 
     {exprs, {_, parser}} =
       while2 current_token(parser) not in [:end, :eof] <- {type, parser} do
@@ -934,7 +934,7 @@ defmodule Spitfire do
           {token, [do: do_meta, end: end_meta] ++ meta, args ++ [exprs]}
       end
 
-    parser = Map.put(parser, :nestings, old_nestings)
+    parser = Map.put(parser, :nesting, old_nesting)
     {ast, parser}
   end
 
@@ -1182,7 +1182,7 @@ defmodule Spitfire do
                     tokens: tokens ++ [:eof],
                     current_token: nil,
                     peek_token: nil,
-                    nestings: 0,
+                    nesting: 0,
                     errors: [],
                     literal_encoder: parser.literal_encoder
                   }
@@ -1249,7 +1249,7 @@ defmodule Spitfire do
                     tokens: tokens ++ [:eof],
                     current_token: nil,
                     peek_token: nil,
-                    nestings: 0,
+                    nesting: 0,
                     errors: [],
                     literal_encoder: parser.literal_encoder
                   }
@@ -1385,12 +1385,12 @@ defmodule Spitfire do
     newlines = peek_newlines(parser)
 
     parser = parser |> next_token() |> eat_eol()
-    old_nestings = parser.nestings
-    parser = Map.put(parser, :nestings, 0)
+    old_nesting = parser.nesting
+    parser = Map.put(parser, :nesting, 0)
 
     if current_token(parser) == :"}" do
       closing = current_meta(parser)
-      parser = Map.put(parser, :nestings, old_nestings)
+      parser = Map.put(parser, :nesting, old_nesting)
 
       extra =
         if newlines do
@@ -1415,7 +1415,7 @@ defmodule Spitfire do
         end
 
       closing = current_meta(parser)
-      parser = Map.put(parser, :nestings, old_nestings)
+      parser = Map.put(parser, :nesting, old_nesting)
 
       extra =
         if newlines do
@@ -1511,13 +1511,13 @@ defmodule Spitfire do
 
     parser = eat_eol(parser)
 
-    old_nestings = parser.nestings
-    parser = Map.put(parser, :nestings, 0)
+    old_nesting = parser.nesting
+    parser = Map.put(parser, :nesting, 0)
 
     if current_token(parser) == :"}" do
       closing = current_meta(parser)
       ast = {:%, meta, [type, {:%{}, newlines ++ [{:closing, closing} | brace_meta], []}]}
-      parser = Map.put(parser, :nestings, old_nestings)
+      parser = Map.put(parser, :nesting, old_nesting)
       {ast, parser}
     else
       {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
@@ -1535,7 +1535,7 @@ defmodule Spitfire do
 
       closing = current_meta(parser)
       ast = {:%, meta, [type, {:%{}, newlines ++ [{:closing, closing} | brace_meta], pairs}]}
-      parser = Map.put(parser, :nestings, old_nestings)
+      parser = Map.put(parser, :nesting, old_nesting)
       {ast, parser}
     end
   end
@@ -1546,13 +1546,13 @@ defmodule Spitfire do
     newlines = peek_newlines(parser)
 
     parser = parser |> next_token() |> eat_eol()
-    old_nestings = parser.nestings
-    parser = Map.put(parser, :nestings, 0)
+    old_nesting = parser.nesting
+    parser = Map.put(parser, :nesting, 0)
 
     cond do
       current_token(parser) == :"}" ->
         closing = current_meta(parser)
-        parser = Map.put(parser, :nestings, old_nestings)
+        parser = Map.put(parser, :nesting, old_nesting)
 
         extra =
           if newlines do
@@ -1576,7 +1576,7 @@ defmodule Spitfire do
           |> put_in([:peek_token], parser.current_token)
           |> update_in([:tokens], &[parser.peek_token | &1])
 
-        parser = put_in(parser.nestings, old_nestings)
+        parser = put_in(parser.nesting, old_nesting)
         {{:{}, meta, []}, parser}
 
       true ->
@@ -1618,11 +1618,11 @@ defmodule Spitfire do
 
         if length(pairs) == 2 do
           tuple = encode_literal(parser, pairs |> List.wrap() |> List.to_tuple(), orig_meta)
-          parser = Map.put(parser, :nestings, old_nestings)
+          parser = Map.put(parser, :nesting, old_nesting)
           {tuple, parser}
         else
           closing = current_meta(parser)
-          parser = Map.put(parser, :nestings, old_nestings)
+          parser = Map.put(parser, :nesting, old_nesting)
 
           extra =
             if newlines do
@@ -1640,12 +1640,12 @@ defmodule Spitfire do
     meta = current_meta(parser)
     orig_parser = parser
     parser = parser |> next_token() |> eat_eol()
-    old_nestings = parser.nestings
-    parser = Map.put(parser, :nestings, 0)
+    old_nesting = parser.nesting
+    parser = Map.put(parser, :nesting, 0)
 
     cond do
       current_token(parser) == :"]" ->
-        parser = Map.put(parser, :nestings, old_nestings)
+        parser = Map.put(parser, :nesting, old_nesting)
         {encode_literal(parser, [], orig_meta), parser}
 
       current_token(parser) in [:end, :"}", :")", :">>"] ->
@@ -1661,7 +1661,7 @@ defmodule Spitfire do
           |> put_in([:peek_token], parser.current_token)
           |> update_in([:tokens], &[parser.peek_token | &1])
 
-        parser = Map.put(parser, :nestings, old_nestings)
+        parser = Map.put(parser, :nesting, old_nesting)
         {encode_literal(parser, [], orig_meta), parser}
 
       true ->
@@ -1671,7 +1671,7 @@ defmodule Spitfire do
 
         case peek_token(parser) do
           :"]" ->
-            parser = Map.put(parser, :nestings, old_nestings)
+            parser = Map.put(parser, :nesting, old_nesting)
             {encode_literal(parser, pairs, orig_meta), next_token(parser)}
 
           _ ->
@@ -1698,7 +1698,7 @@ defmodule Spitfire do
 
             {pairs, _} = pairs |> Enum.reverse() |> Enum.unzip()
 
-            parser = Map.put(parser, :nestings, old_nestings)
+            parser = Map.put(parser, :nesting, old_nesting)
             {encode_literal(parser, List.wrap(pairs), orig_meta), parser}
         end
     end
@@ -1715,8 +1715,8 @@ defmodule Spitfire do
       closing = current_meta(parser)
       {{token, newlines ++ [{:closing, closing} | meta], []}, parser}
     else
-      old_nestings = parser.nestings
-      parser = Map.put(parser, :nestings, 0)
+      old_nesting = parser.nesting
+      parser = Map.put(parser, :nesting, 0)
 
       {pairs, parser} =
         parser
@@ -1724,7 +1724,7 @@ defmodule Spitfire do
         |> eat_eol()
         |> parse_comma_list()
 
-      parser = Map.put(parser, :nestings, old_nestings)
+      parser = Map.put(parser, :nesting, old_nesting)
 
       parser = eat_at(parser, :eol, 1)
 
@@ -1803,16 +1803,16 @@ defmodule Spitfire do
 
       {args, parser} =
         while2 peek_token(parser) == :"," <- parser do
-          parser = parser |> next_token() |> next_token()
-          {arg, parser} = parse_expression(parser)
-
-          {arg, parser}
+          parser
+          |> next_token()
+          |> next_token()
+          |> parse_expression()
         end
 
       args = [front | args]
       parser = pop_nesting(parser)
 
-      if parser.nestings == 0 && current_token(parser) == :do do
+      if parser.nesting == 0 && current_token(parser) == :do do
         parse_do_block(parser, {token, meta, args})
       else
         meta =
@@ -1831,12 +1831,12 @@ defmodule Spitfire do
     meta = current_meta(parser)
     parser = next_token(parser)
 
-    # if nesting is empty, that means we are not currently an argument for a function call
+    # if nesting is 0, that means we are not currently an argument for a function call
     # and can assume we are a "lone do_identifier" and parse the block
     # foo do
     #   :ok
     # end
-    if parser.nestings == 0 do
+    if parser.nesting == 0 do
       parse_do_block(parser, {token, meta, []})
     else
       {{token, meta, nil}, parser}
@@ -1928,7 +1928,7 @@ defmodule Spitfire do
                     tokens: tokens ++ [:eof],
                     current_token: nil,
                     peek_token: nil,
-                    nestings: 0,
+                    nesting: 0,
                     literal_encoder: parser.literal_encoder
                   }
                   |> next_token()
@@ -1957,7 +1957,7 @@ defmodule Spitfire do
       tokens: tokenize(code, opts),
       current_token: nil,
       peek_token: nil,
-      nestings: 0,
+      nesting: 0,
       literal_encoder: Keyword.get(opts, :literal_encoder),
       errors: []
     }
@@ -2293,12 +2293,12 @@ defmodule Spitfire do
     Map.get(@precedences, peek_token_type(parser), @lowest)
   end
 
-  defp pop_nesting(%{nestings: nestings} = parser) do
-    %{parser | nestings: nestings - 1}
+  defp pop_nesting(%{nesting: nesting} = parser) do
+    %{parser | nesting: nesting - 1}
   end
 
-  defp push_nesting(%{nestings: nestings} = parser) do
-    %{parser | nestings: nestings + 1}
+  defp push_nesting(%{nesting: nesting} = parser) do
+    %{parser | nesting: nesting + 1}
   end
 
   defp encode_literal(%{literal_encoder: encoder} = parser, literal, {line, col, _}) when is_function(encoder) do
