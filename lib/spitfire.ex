@@ -1807,7 +1807,6 @@ defmodule Spitfire do
       {args, parser} =
         while2 peek_token(parser) == :"," <- parser do
           parser = parser |> next_token() |> next_token()
-          parser = inc_nesting(parser)
           {arg, parser} = parse_expression(parser)
 
           {arg, parser}
@@ -2296,10 +2295,6 @@ defmodule Spitfire do
 
   defp peek_precedence(parser) do
     Map.get(@precedences, peek_token_type(parser), @lowest)
-  end
-
-  defp inc_nesting(%{nestings: [top | rest]} = parser) do
-    %{parser | nestings: [top + 1 | rest]}
   end
 
   defp pop_nesting(%{nestings: [_top | rest]} = parser) do
