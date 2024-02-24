@@ -1466,24 +1466,12 @@ defmodule Spitfire do
     else
       {left, parser} = prefix.(parser)
 
-      calc_prec = fn parser ->
-        {_associativity, power} = peek_precedence(parser)
-
-        precedence =
-          case associativity do
-            :left -> precedence
-            :right -> precedence - 1
-          end
-
-        precedence < power
-      end
-
       terminals = [:eol, :eof, :"}", :")", :"]", :">>"]
 
       {parser, is_valid} = validate_peek(parser, current_token_type(parser))
 
       if is_valid do
-        while peek_token(parser) not in terminals && calc_prec.(parser) <- {left, parser} do
+        while peek_token(parser) not in terminals && calc_prec(parser, associativity, precedence) <- {left, parser} do
           infix =
             case peek_token_type(parser) do
               :. -> &parse_dot_expression/2
