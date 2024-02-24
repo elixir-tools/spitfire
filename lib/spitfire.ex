@@ -541,7 +541,8 @@ defmodule Spitfire do
     {expr, parser} = parse_expression(parser, precedence, is_list, is_map, false)
     # we zip together the expression and parser state so that we can potentially 
     # backtrack later
-    front = {expr, parser}
+    front = expr
+    Process.put(:comma_list_parsers, [parser])
 
     {items, parser} =
       while2 peek_token(parser) == :"," <- parser do
@@ -555,7 +556,10 @@ defmodule Spitfire do
             parser = next_token(parser)
             {item, parser} = parse_expression(parser, precedence, is_list, is_map, false)
 
-            {{item, parser}, parser}
+            clp = Process.get(:comma_list_parsers)
+            Process.put(:comma_list_parsers, [parser | clp])
+
+            {item, parser}
         end
       end
 
@@ -716,7 +720,7 @@ defmodule Spitfire do
   defp parse_comma(parser, lhs) do
     parser = parser |> next_token() |> eat_eol()
     {exprs, parser} = parse_comma_list(parser, @comma)
-    {exprs, _} = Enum.unzip(exprs)
+    # {exprs, _} = Enum.unzip(exprs)
 
     {{:comma, [], [lhs | exprs]}, eat_eol(parser)}
   end
@@ -786,7 +790,6 @@ defmodule Spitfire do
     parser = eat_eol(parser)
 
     {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
-    {pairs, _} = Enum.unzip(pairs)
 
     ast = {token, newlines ++ meta, [lhs, pairs]}
 
@@ -952,9 +955,8 @@ defmodule Spitfire do
         newlines = get_newlines(parser)
 
         parser = parser |> next_token() |> eat_eol()
-        {items, parser} = parse_comma_list(parser)
+        {multis, parser} = parse_comma_list(parser)
         parser = parser |> next_token() |> eat_eol()
-        {multis, _} = Enum.unzip(items)
 
         multis =
           {{:., dot_meta, [lhs, :{}]}, newlines ++ [{:closing, current_meta(parser)} | dot_meta], multis}
@@ -1097,7 +1099,6 @@ defmodule Spitfire do
       {ast, parser}
     else
       {pairs, parser} = parse_comma_list(parser |> next_token() |> eat_eol())
-      {pairs, _} = Enum.unzip(pairs)
       parser = parser |> next_token() |> eat_eol()
       closing = [closing: current_meta(parser)]
       ast = {{:., meta, [lhs]}, newlines ++ closing ++ meta, pairs}
@@ -1347,7 +1348,6 @@ defmodule Spitfire do
 
         case peek_token(parser) do
           :">>" ->
-            pairs = pairs |> Enum.unzip() |> elem(0)
             parser = next_token(parser)
             {{:<<>>, newlines ++ [{:closing, current_meta(parser)} | meta], pairs}, eat_eol(parser)}
 
@@ -1405,7 +1405,6 @@ defmodule Spitfire do
       {{:%{}, extra ++ meta, []}, parser}
     else
       {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
-      {pairs, _} = Enum.unzip(pairs)
 
       parser = eat_at(parser, :eol, 1)
 
@@ -1537,7 +1536,6 @@ defmodule Spitfire do
       {ast, parser}
     else
       {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
-      {pairs, _} = Enum.unzip(pairs)
 
       parser = eat_at(parser, :eol, 1)
 
@@ -1604,7 +1602,6 @@ defmodule Spitfire do
         {pairs, parser} =
           case peek_token(parser) do
             :"}" ->
-              pairs = pairs |> Enum.unzip() |> elem(0)
               {pairs, parser |> next_token() |> eat_eol()}
 
             _ ->
@@ -1689,7 +1686,6 @@ defmodule Spitfire do
 
         case peek_token(parser) do
           :"]" ->
-            pairs = pairs |> Enum.unzip() |> elem(0)
             parser = Map.put(parser, :nestings, old_nestings)
             {encode_literal(parser, pairs, orig_meta), next_token(parser)}
 
@@ -1743,7 +1739,6 @@ defmodule Spitfire do
         |> eat_eol()
         |> parse_comma_list()
 
-      {pairs, _} = Enum.unzip(pairs)
       parser = Map.put(parser, :nestings, old_nestings)
 
       parser = eat_at(parser, :eol, 1)
@@ -1882,8 +1877,6 @@ defmodule Spitfire do
         |> next_token()
         |> eat_eol()
         |> parse_comma_list()
-
-      {pairs, _} = Enum.unzip(pairs)
 
       parser = eat_at(parser, :eol, 1)
 
