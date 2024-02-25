@@ -1728,18 +1728,17 @@ defmodule Spitfire do
 
       parser = eat_at(parser, :eol, 1)
 
-      parser =
-        case peek_token(parser) do
-          :")" ->
-            next_token(parser)
+      case peek_token(parser) do
+        :")" ->
+          parser = next_token(parser)
+          closing = current_meta(parser)
 
-          _ ->
-            put_error(parser, {error_meta, "missing closing parentheses for function invocation"})
-        end
+          {{token, newlines ++ [{:closing, closing} | meta], List.wrap(pairs)}, parser}
 
-      closing = current_meta(parser)
-
-      {{token, newlines ++ [{:closing, closing} | meta], List.wrap(pairs)}, parser}
+        _ ->
+          parser = put_error(parser, {error_meta, "missing closing parentheses for function invocation"})
+          {{token, newlines ++ meta, List.wrap(pairs)}, parser}
+      end
     end
   end
 

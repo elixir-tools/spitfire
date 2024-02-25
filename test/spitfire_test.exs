@@ -2077,7 +2077,7 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code) == {
                :error,
-               {:foo, [{:closing, [line: 3, column: 8]}, {:line, 1}, {:column, 1}],
+               {:foo, [{:line, 1}, {:column, 1}],
                 [
                   {:+, [newlines: 2, line: 1, column: 7],
                    [
