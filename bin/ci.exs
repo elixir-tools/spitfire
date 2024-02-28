@@ -5,10 +5,12 @@ Mix.install([
 ])
 
 defmodule ParseException do
+  @moduledoc false
   defexception [:message]
 end
 
 defmodule Main do
+  @moduledoc false
   @ignore [
     "/lib/**/ebin/**/*",
     "/lib/**/_build/**/*",
@@ -19,6 +21,7 @@ defmodule Main do
     root = List.first(argv)
     files = Path.wildcard(Path.join(root, "lib/**/*.ex"))
     ignore = Enum.flat_map(@ignore, &Path.wildcard(Path.join(root, &1)))
+
     for file <- files, file not in ignore, {:ok, content} <- [File.read(file)] do
       {file, content}
     end
@@ -26,11 +29,13 @@ defmodule Main do
 
   def run(files) do
     IO.puts("#{length(files)} files")
+
     Enum.map(files, fn {file, content} ->
       IO.puts("==> #{file}")
 
       {time, spitfire} = :timer.tc(fn -> Spitfire.parse(content) end, :millisecond)
       core = Code.string_to_quoted(content, columns: true, token_metadata: true, emit_warnings: false)
+
       if spitfire == core do
         :ok
       else
@@ -41,8 +46,8 @@ defmodule Main do
         exe = System.find_executable("delta") || "diff"
 
         {diff, _} = System.cmd(exe, ["tmp/spitfire.ex", "tmp/core.ex"])
-        IO.puts file
-        IO.puts diff
+        IO.puts(file)
+        IO.puts(diff)
         raise ParseException, "Failed on file: #{file}"
       end
 
@@ -53,6 +58,6 @@ end
 
 files = Main.collect_files(System.argv())
 
-time = Main.run(files) |> Enum.sum()
+time = files |> Main.run() |> Enum.sum()
 
 IO.puts("Parsed in #{time}ms")
