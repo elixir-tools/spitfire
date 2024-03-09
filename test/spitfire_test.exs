@@ -2111,7 +2111,7 @@ defmodule SpitfireTest do
                    {
                      {:., [line: 2, column: 7],
                       [{:__aliases__, [last: [line: 2, column: 3], line: 2, column: 3], [:Enum]}, :map]},
-                     [closing: [], line: 2, column: 8],
+                     [line: 2, column: 8],
                      [
                        {:some_list, [line: 2, column: 12], nil},
                        {

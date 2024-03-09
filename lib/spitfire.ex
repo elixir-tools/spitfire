@@ -439,6 +439,7 @@ defmodule Spitfire do
               |> put_error({meta, "missing closing parentheses"})
               |> Map.put(:nesting, old_nesting)
 
+            # FIXME: we shouldn't emit errors into the actual ast, just stickem in the parser
             {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
           end
 
@@ -537,10 +538,9 @@ defmodule Spitfire do
 
   defp parse_comma_list(parser, precedence, is_list, is_map) do
     precedence = precedence || @list_comma
-    {expr, parser} = parse_expression(parser, precedence, is_list, is_map, false)
+    {front, parser} = parse_expression(parser, precedence, is_list, is_map, false)
     # we zip together the expression and parser state so that we can potentially 
     # backtrack later
-    front = expr
     Process.put(:comma_list_parsers, [parser])
 
     {items, parser} =
@@ -1582,6 +1582,7 @@ defmodule Spitfire do
         {{:{}, meta, []}, parser}
 
       true ->
+        old_comma_list_parsers = Process.get(:comma_list_parsers)
         {pairs, parser} = parse_comma_list(parser)
 
         parser = eat_at(parser, :eol, 1)
@@ -1592,7 +1593,10 @@ defmodule Spitfire do
               {pairs, parser |> next_token() |> eat_eol()}
 
             _ ->
-              [{potential_error, parser}, {item, parser_for_errors} | rest] = all_pairs = Enum.reverse(pairs)
+              [{potential_error, parser}, {item, parser_for_errors} | rest] =
+                all_pairs = pairs |> Enum.reverse() |> Enum.zip(Process.get(:comma_list_parsers))
+
+              Process.put(:comma_list_parsers, old_comma_list_parsers)
 
               # if the last item is an unknown token error, that means that it parsed past the
               # recovery point and we need to insert a fake closing brace, and backtrack
@@ -1608,14 +1612,15 @@ defmodule Spitfire do
                      |> update_in([:tokens], &[parser.peek_token | &1])}
 
                   _ ->
+                    # parser = next_token(parser)
                     {all_pairs, parser}
                 end
 
               parser = put_error(parser, {meta, "missing closing brace for tuple"})
 
-              {pairs, _} = pairs |> Enum.reverse() |> Enum.unzip()
+              {pairs, _} = Enum.unzip(pairs)
 
-              {pairs, parser}
+              {Enum.reverse(pairs), parser}
           end
 
         if length(pairs) == 2 do
@@ -1667,6 +1672,7 @@ defmodule Spitfire do
         {encode_literal(parser, [], orig_meta), parser}
 
       true ->
+        old_comma_list_parsers = Process.get(:comma_list_parsers)
         {pairs, parser} = parse_comma_list(parser, @list_comma, true, false)
 
         parser = eat_at(parser, :eol, 1)
@@ -1677,7 +1683,12 @@ defmodule Spitfire do
             {encode_literal(parser, pairs, orig_meta), next_token(parser)}
 
           _ ->
-            [{potential_error, parser}, {item, parser_for_errors} | rest] = all_pairs = Enum.reverse(pairs)
+            peek_token(parser)
+
+            [{potential_error, parser}, {item, parser_for_errors} | rest] =
+              all_pairs = pairs |> Enum.reverse() |> Enum.zip(Process.get(:comma_list_parsers))
+
+            Process.put(:comma_list_parsers, old_comma_list_parsers)
 
             # if the last item is an unknown token error, that means that it parsed past the
             # recovery point and we need to insert a fake closing bracket, and backtrack
@@ -1693,15 +1704,17 @@ defmodule Spitfire do
                    |> update_in([:tokens], &[parser.peek_token | &1])}
 
                 _ ->
+                  # parser = next_token(parser)
                   {all_pairs, parser}
               end
 
             parser = put_error(parser, {meta, "missing closing bracket for list"})
 
-            {pairs, _} = pairs |> Enum.reverse() |> Enum.unzip()
+            {pairs, _} = Enum.unzip(pairs)
 
+            pairs = Enum.reverse(pairs)
             parser = Map.put(parser, :nesting, old_nesting)
-            {encode_literal(parser, List.wrap(pairs), orig_meta), parser}
+            {encode_literal(parser, pairs, orig_meta), parser}
         end
     end
   end
