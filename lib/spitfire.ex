@@ -461,11 +461,11 @@ defmodule Spitfire do
   end
 
   defp parse_kw_identifier(%{current_token: {:kw_identifier, meta, token}} = parser) do
+    token = encode_literal(parser, token, meta)
     parser = parser |> next_token() |> eat_eol()
 
     {expr, parser} = parse_expression(parser, @kw_identifier, false, false, false)
 
-    token = encode_literal(parser, token, meta)
     {{token, expr}, parser}
   end
 
@@ -486,10 +486,10 @@ defmodule Spitfire do
   end
 
   defp parse_bracketless_kw_list(%{current_token: {:kw_identifier, meta, token}} = parser) do
+    token = encode_literal(parser, token, meta)
     parser = parser |> next_token() |> eat_eol()
 
     {value, parser} = parse_expression(parser, @kw_identifier, false, false, false)
-    token = encode_literal(parser, token, meta)
 
     {kvs, parser} =
       while2 peek_token(parser) == :"," <- parser do
@@ -601,7 +601,9 @@ defmodule Spitfire do
     token = current_token(parser)
     meta = current_meta(parser)
     parser = next_token(parser)
+    {encoder, parser} = Map.pop(parser, :literal_encoder)
     {rhs, parser} = parse_int(parser)
+    parser = Map.put(parser, :literal_encoder, encoder)
 
     ast = {token, meta, [rhs]}
 
@@ -2319,6 +2321,10 @@ defmodule Spitfire do
 
   defp additional_meta(_literal, %{current_token: {:list_string, _, _}}) do
     [delimiter: "'"]
+  end
+
+  defp additional_meta(_literal, %{current_token: {:kw_identifier, _, _}}) do
+    [format: :keyword]
   end
 
   defp additional_meta(_, %{current_token: {type, _, indent, _token}}) when type in [:list_heredoc] do

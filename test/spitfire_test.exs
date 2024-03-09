@@ -1652,7 +1652,10 @@ defmodule SpitfireTest do
         foo
         '''
         """,
-        ~S'{one, two}'
+        ~S'{one, two}',
+        ~S'''
+        Foo.run(f: &{:ok, {:__literal__, &2, [&1]}})
+        '''
       ]
 
       encoder = fn l, m -> {:ok, {:__literal__, m, [l]}} end
