@@ -253,6 +253,7 @@ defmodule Spitfire do
 
       if is_valid do
         while is_nil(Map.get(parser, :stab_state)) and not MapSet.member?(terminals, peek_token(parser)) &&
+                (current_token(parser) != :do and peek_token(parser) != :eol) &&
                 calc_prec(parser, associativity, precedence) <- {left, parser} do
           peek_token_type = peek_token_type(parser)
 
@@ -2430,7 +2431,7 @@ defmodule Spitfire do
     true
   end
 
-  @ops MapSet.new(@operators ++ [:";", :eol, :eof, :",", :")", :do, :., :"}", :"]", :">>", :end])
+  @ops MapSet.new(@operators ++ [:";", :eol, :eof, :",", :")", :do, :., :"}", :"]", :">>", :end, :block_identifier])
   defp valid_peek?(_ctype, ptype) do
     MapSet.member?(@ops, ptype)
   end

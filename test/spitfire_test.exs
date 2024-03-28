@@ -891,6 +891,19 @@ defmodule SpitfireTest do
                   a
                 end
               )
+        ''',
+        ~S'''
+        if selectable == false do " unselectable" else [] end
+        ''',
+        ~S'''
+        if group_id do
+          [~S( data-group-id="), group_id, ~S(")] 
+        else
+          []
+        end
+        ''',
+        ~S'''
+        if group_id do [~S( data-group-id="), group_id, ~S(")] else [] end
         '''
       ]
 
