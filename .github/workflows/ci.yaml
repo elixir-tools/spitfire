@@ -45,6 +45,7 @@ jobs:
           - livebook-dev/livebook
           - livebook-dev/kino
           - livebook-dev/vega_lite
+          - elixir-makeup/makeup
 
     steps:
       - uses: actions/checkout@v4
