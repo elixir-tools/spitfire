@@ -140,6 +140,21 @@ defmodule Spitfire do
     end
   end
 
+  def parse_with_comments(code, opts \\ []) do
+    Process.put(:code_formatter_comments, [])
+
+    opts = [{:preserve_comments, &preserve_comments/5} | opts]
+    result = parse(code, opts)
+    comments = Enum.reverse(Process.get(:code_formatter_comments))
+
+    case result do
+      {:ok, ast} -> {:ok, ast, comments}
+      {:error, ast, errors} -> {:error, ast, comments, errors}
+    end
+  after
+    Process.delete(:code_formatter_comments)
+  end
+
   defp parse_program(parser) do
     {exprs, parser} =
       while2 current_token(parser) != :eof <- parser do
@@ -2531,4 +2546,31 @@ defmodule Spitfire do
         {:__block__, [], exprs}
     end
   end
+
+  defp preserve_comments(line, column, tokens, comment, rest) do
+    comments = Process.get(:code_formatter_comments)
+
+    comment = %{
+      line: line,
+      column: column,
+      previous_eol_count: previous_eol_count(tokens),
+      next_eol_count: next_eol_count(rest, 0),
+      text: List.to_string(comment)
+    }
+
+    Process.put(:code_formatter_comments, [comment | comments])
+  end
+
+  defp next_eol_count([?\s | rest], count), do: next_eol_count(rest, count)
+  defp next_eol_count([?\t | rest], count), do: next_eol_count(rest, count)
+  defp next_eol_count([?\n | rest], count), do: next_eol_count(rest, count + 1)
+  defp next_eol_count([?\r, ?\n | rest], count), do: next_eol_count(rest, count + 1)
+  defp next_eol_count(_, count), do: count
+
+  defp previous_eol_count([{token, {_, _, count}} | _]) when token in [:eol, :",", :";"] and count > 0 do
+    count
+  end
+
+  defp previous_eol_count([]), do: 1
+  defp previous_eol_count(_), do: 0
 end
