@@ -2547,6 +2547,9 @@ defmodule Spitfire do
     end
   end
 
+  # Code taken from Code.string_to_quoted_with_comments in Elixir core
+  # Check it out here: https://github.com/elixir-lang/elixir/blob/12f62e49ca2399a15976d2051a2d7743dae48449/lib/elixir/lib/code.ex#L1327
+  # Consult Elixir's license here: https://github.com/elixir-lang/elixir/blob/main/LICENSE
   defp preserve_comments(line, column, tokens, comment, rest) do
     comments = Process.get(:code_formatter_comments)
 
