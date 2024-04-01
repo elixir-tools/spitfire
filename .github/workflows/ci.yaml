@@ -98,7 +98,7 @@ jobs:
       - name: Install Dependencies
         run: nix develop --command bash -c "mix deps.get"
 
-      - name: Run Formatter
+      - name: Unit Tests
         run: nix develop --command bash -c "mix test"
 
   formatter:
