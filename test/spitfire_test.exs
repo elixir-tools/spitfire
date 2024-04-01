@@ -875,7 +875,7 @@ defmodule SpitfireTest do
         ~s'''
         if arg do
          "howdy"
-         else
+        else
          :partner
         end
         ''',
@@ -904,6 +904,28 @@ defmodule SpitfireTest do
         ''',
         ~S'''
         if group_id do [~S( data-group-id="), group_id, ~S(")] else [] end
+        ''',
+        ~S'''
+        if true do
+          :ok
+        else
+        end
+        ''',
+        ~S'''
+        if true do
+          :ok
+        else
+          :error
+        rescue
+        end
+        ''',
+        ~S'''
+        if true do
+          :ok
+        else
+        rescue
+          :error
+        end
         '''
       ]
 
@@ -1966,7 +1988,13 @@ defmodule SpitfireTest do
                :error,
                {
                  :foo,
-                 [do: [line: 1, column: 5], end: [line: 1, column: 5], line: 1, column: 1],
+                 [
+                   end_of_expression: [newlines: 1, line: 3, column: 6],
+                   do: [line: 1, column: 5],
+                   end: [line: 1, column: 5],
+                   line: 1,
+                   column: 1
+                 ],
                  [
                    [
                      do: {
@@ -2010,7 +2038,13 @@ defmodule SpitfireTest do
                :error,
                {
                  :bar,
-                 [do: [line: 1, column: 5], end: [line: 1, column: 5], line: 1, column: 1],
+                 [
+                   end_of_expression: [newlines: 1, line: 5, column: 4],
+                   do: [line: 1, column: 5],
+                   end: [line: 1, column: 5],
+                   line: 1,
+                   column: 1
+                 ],
                  [
                    [
                      do: {

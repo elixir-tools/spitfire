@@ -841,86 +841,99 @@ defmodule Spitfire do
     end
   end
 
+  # Do Block Algorithm: The Movie
+  #
+  # A do block consists of the keyword `do`, following by 0 or more expressions
+  # separated by newlines/semicolons, followed by 0 or more block identifier
+  # (else, rescue, after, catch) + 0 or more expressions separated by newlines/semicolons
+  # and concluded with the keyword `end`
+  #
+  # - beginning of parse function, current_token = :do
+  # - encode `:do` literal in case of literal_encoder
+  # - save the old nesting level and insert a 0 
+  # - enter outer loop
+  #   - the job of the outer loop is to collect the expressions for each do+block_identifier
+  #     (from now on just referred to as block_identifier)
+  #   - else, start inner loop
+  #     - each iteration of the loop continues if the peek token (while eating an eol) is not in end, block_identifier, or eof
+  #     - increment the token, and eat the eol token
+  #     - if the current token is end or a block_identifier, then the expression
+  #       list is empty. return the expressions and end the iteration
+  #     - else, parse the current expression
+  #       - each iteration of the loop continues if the peek token is not in end, block_identifier, or eof
+  #       - increment the token, and eat the eol token
+  #       - if stab_state
+  #         - we are in the body of a stab expression, don't increment and parse the stab
+  #       - else 
+  #         - parse expression
+  #         - push eoe of the next token, but don't actually increment the parser
+  #     - end inner loop
+  #   - encode block_identifier and save as {type, expressions} 
+  #   - end outer loop
+  # - if current token is block_identifier, that means the last section was empty. encode the token
+  #   and create an empty list of expressions
+  # - assert peek token is end
+  # - various clean up and metadata
+
   defp parse_do_block(%{current_token: {:do, meta}} = parser, lhs) do
     do_meta = current_meta(parser)
     type = encode_literal(parser, :do, meta)
-    parser = parser |> next_token() |> eat_eol()
 
     old_nesting = parser.nesting
     parser = Map.put(parser, :nesting, 0)
 
     {exprs, {_, parser}} =
-      while2 current_token(parser) not in [:end, :eof] <- {type, parser} do
+      while2 peek_token_eat_eol(parser) not in [:end, :eof] <- {type, parser} do
         {exprs, parser} =
-          while2 current_token(parser) not in [:end, :block_identifier, :eof] <- parser do
+          while2 peek_token_eat_eol(parser) not in [:end, :block_identifier, :eof] <- parser do
             {ast, parser} =
               case Map.get(parser, :stab_state) do
                 %{ast: lhs} ->
-                  {ast, parser} = parse_stab_expression(Map.delete(parser, :stab_state), lhs)
-
-                  {ast, parser} =
-                    if current_token(parser) == :-> do
-                      {ast, parser}
-                    else
-                      if peek_token(parser) in [:end, :block_identifier] do
-                        parser = next_token(parser)
-                        {ast, parser}
-                      else
-                        parser = next_token(parser)
-                        eoe = current_eoe(parser)
-                        ast = push_eoe(ast, eoe)
-                        {ast, eat_eol(parser)}
-                      end
-                    end
-
-                  {ast, parser}
+                  parse_stab_expression(Map.delete(parser, :stab_state), lhs)
 
                 nil ->
-                  {ast, parser} = parse_expression(parser, @lowest, false, false, true)
-
-                  {ast, parser} =
-                    if current_token(parser) == :-> do
-                      {ast, parser}
-                    else
-                      if peek_token(parser) in [:end, :block_identifier] do
-                        parser = next_token(parser)
-                        {ast, parser}
-                      else
-                        parser = next_token(parser)
-                        eoe = current_eoe(parser)
-                        ast = push_eoe(ast, eoe)
-                        {ast, parser |> next_token() |> eat_eol()}
-                      end
-                    end
-
-                  {ast, parser}
+                  parser = parser |> next_token() |> eat_eol()
+                  parse_expression(parser, @lowest, false, false, true)
               end
+
+            temp_parser = next_token(parser)
+            eoe = current_eoe(temp_parser)
+            ast = push_eoe(ast, eoe)
 
             {ast, parser}
           end
 
-        case parser do
-          %{current_token: {:block_identifier, meta, token}} ->
-            {{type, exprs}, {encode_literal(parser, token, meta), parser |> next_token() |> eat_eol()}}
+        case peek_token_eat_eol(parser) do
+          :block_identifier ->
+            parser = parser |> next_token() |> eat_eol()
+            {:block_identifier, meta, token} = parser.current_token
+            {{type, exprs}, {encode_literal(parser, token, meta), parser}}
 
           _ ->
             {{type, exprs}, {type, parser}}
         end
       end
 
-    {parser, end_meta} =
-      case current_token(parser) do
-        :end ->
-          {parser, current_meta(parser)}
+    extra_exprs =
+      if current_token_type(parser) == :block_identifier do
+        {:block_identifier, meta, token} = parser.current_token
+        [{encode_literal(parser, token, meta), []}]
+      else
+        []
+      end
 
-        _ ->
-          {put_error(parser, {do_meta, "missing `end` for do block"}), do_meta}
+    {parser, end_meta} =
+      if peek_token_eat_eol(parser) == :end do
+        parser = parser |> next_token() |> eat_eol()
+        {parser, current_meta(parser)}
+      else
+        {put_error(parser, {do_meta, "missing `end` for do block"}), do_meta}
       end
 
     exprs =
-      case exprs do
+      case exprs ++ extra_exprs do
         [] -> [{type, []}]
-        _ -> exprs
+        exprs -> exprs
       end
 
     exprs =
@@ -2112,6 +2125,38 @@ defmodule Spitfire do
     :eof
   end
 
+  defp peek_token_eat_eol(%{peek_token: {:eol, _token}} = parser) do
+    peek_token_eat_eol(next_token(parser))
+  end
+
+  defp peek_token_eat_eol(%{peek_token: {:stab_op, _, token}}) do
+    token
+  end
+
+  defp peek_token_eat_eol(%{peek_token: {type, _, _, _}}) when type in [:list_heredoc, :bin_heredoc] do
+    type
+  end
+
+  defp peek_token_eat_eol(%{peek_token: {token, _, _}}) do
+    token
+  end
+
+  defp peek_token_eat_eol(%{peek_token: {token, _}}) do
+    token
+  end
+
+  defp peek_token_eat_eol(%{peek_token: {token, _, _, _, _, _, _}}) do
+    token
+  end
+
+  defp peek_token_eat_eol(%{peek_token: :eof}) do
+    :eof
+  end
+
+  defp peek_token_eat_eol(%{tokens: :eot}) do
+    :eof
+  end
+
   defp current_token_type(%{tokens: :eot}) do
     :eot
   end
@@ -2183,6 +2228,7 @@ defmodule Spitfire do
         :type_op,
         :capture_op,
         :capture_int,
+        :block_identifier,
         :in_op,
         :or_op,
         :and_op,
