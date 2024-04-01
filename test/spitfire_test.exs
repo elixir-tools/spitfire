@@ -2431,8 +2431,45 @@ defmodule SpitfireTest do
     end
   end
 
+  describe "&parse_with_comments/2" do
+    test "returns the comments" do
+      code = ~S'''
+        # hello
+        # world
+        :foo
+      '''
+
+      assert {:ok, _ast, comments} = Spitfire.parse_with_comments(code)
+      assert [%{line: 1, text: "# hello"}, %{line: 2, text: "# world"}] = comments
+      assert Spitfire.parse_with_comments(code) == s2qwc(code)
+    end
+
+    test "returns the same comments as string_to_quoted_with_comments" do
+      code = ~S'''
+        # This is a comment
+        :foo # This is also a valid comment
+        defmodule Foo do
+          # I am a comment in the module
+          def foo() do
+            :foo # Another one
+          end
+        end
+        # Some more comments!
+      '''
+
+      assert Spitfire.parse_with_comments(code) == s2qwc(code)
+    end
+  end
+
   defp s2q(code, opts \\ []) do
     Code.string_to_quoted(code, Keyword.merge([columns: true, token_metadata: true, emit_warnings: false], opts))
+  end
+
+  defp s2qwc(code, opts \\ []) do
+    Code.string_to_quoted_with_comments(
+      code,
+      Keyword.merge([columns: true, token_metadata: true, emit_warnings: false], opts)
+    )
   end
 
   def print(ast) do
