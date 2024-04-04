@@ -1370,34 +1370,39 @@ defmodule Spitfire do
         {{:<<>>, [{:closing, current_meta(parser)} | meta], []}, parser}
 
       true ->
+        old_comma_list_parsers = Process.get(:comma_list_parsers)
         {pairs, parser} = parse_comma_list(parser, @list_comma, true, false)
 
-        parser = eat_at(parser, :eol, 1)
-
-        case peek_token(parser) do
+        case peek_token_eat_eol(parser) do
           :">>" ->
+            parser = eat_at(parser, :eol, 1)
             parser = next_token(parser)
             {{:<<>>, newlines ++ [{:closing, current_meta(parser)} | meta], pairs}, eat_eol(parser)}
 
           _ ->
-            [{potential_error, parser}, {item, parser_for_errors} | rest] = all_pairs = Enum.reverse(pairs)
+            all_pairs = pairs |> Enum.reverse() |> Enum.zip(Process.get(:comma_list_parsers))
 
-            # if the last item is an unknown token error, that means that it parsed past the
-            # recovery point and we need to insert a fake closing bracket, and backtrack
-            # the errors from the previous item.
             {pairs, parser} =
-              case potential_error do
-                {:__error__, _, ["unknown token: " <> _]} ->
-                  {[{item, parser} | rest],
-                   parser
-                   |> put_in([:current_token], {:fake_closing_brackets, nil})
-                   |> put_in([:peek_token], parser.current_token)
-                   |> put_in([:errors], parser_for_errors.errors)
-                   |> update_in([:tokens], &[parser.peek_token | &1])}
-
+              with [{potential_error, parser}, {item, parser_for_errors} | rest] <- all_pairs,
+                   {:__error__, _, ["unknown token: " <> _]} <- potential_error do
+                {[{item, parser} | rest],
+                 parser
+                 |> put_in([:current_token], {:fake_closing_bracket, nil})
+                 |> put_in([:peek_token], parser.current_token)
+                 |> put_in([:errors], parser_for_errors.errors)
+                 |> update_in([:tokens], &[parser.peek_token | &1])}
+              else
                 _ ->
-                  {all_pairs, parser}
+                  parser = next_token(parser)
+
+                  {all_pairs,
+                   parser
+                   |> put_in([:current_token], {:">>", nil})
+                   |> put_in([:peek_token], parser.current_token)
+                   |> update_in([:tokens], &[parser.peek_token | &1])}
               end
+
+            Process.put(:comma_list_parsers, old_comma_list_parsers)
 
             parser = put_error(parser, {meta, "missing closing brackets for bitstring"})
 
@@ -1614,36 +1619,36 @@ defmodule Spitfire do
         old_comma_list_parsers = Process.get(:comma_list_parsers)
         {pairs, parser} = parse_comma_list(parser)
 
-        parser = eat_at(parser, :eol, 1)
-
         {pairs, parser} =
-          case peek_token(parser) do
+          case peek_token_eat_eol(parser) do
             :"}" ->
+              parser = eat_at(parser, :eol, 1)
               {pairs, parser |> next_token() |> eat_eol()}
 
             _ ->
-              [{potential_error, parser}, {item, parser_for_errors} | rest] =
-                all_pairs = pairs |> Enum.reverse() |> Enum.zip(Process.get(:comma_list_parsers))
+              all_pairs = pairs |> Enum.reverse() |> Enum.zip(Process.get(:comma_list_parsers))
+
+              {pairs, parser} =
+                with [{potential_error, parser}, {item, parser_for_errors} | rest] <- all_pairs,
+                     {:__error__, _, ["unknown token: " <> _]} <- potential_error do
+                  {[{item, parser} | rest],
+                   parser
+                   |> put_in([:current_token], {:fake_closing_brace, nil})
+                   |> put_in([:peek_token], parser.current_token)
+                   |> put_in([:errors], parser_for_errors.errors)
+                   |> update_in([:tokens], &[parser.peek_token | &1])}
+                else
+                  _ ->
+                    parser = next_token(parser)
+
+                    {all_pairs,
+                     parser
+                     |> put_in([:current_token], {:"}", nil})
+                     |> put_in([:peek_token], parser.current_token)
+                     |> update_in([:tokens], &[parser.peek_token | &1])}
+                end
 
               Process.put(:comma_list_parsers, old_comma_list_parsers)
-
-              # if the last item is an unknown token error, that means that it parsed past the
-              # recovery point and we need to insert a fake closing brace, and backtrack
-              # the errors from the previous item.
-              {pairs, parser} =
-                case potential_error do
-                  {:__error__, _, ["unknown token: " <> _]} ->
-                    {[{item, parser} | rest],
-                     parser
-                     |> put_in([:current_token], {:fake_closing_brace, nil})
-                     |> put_in([:peek_token], parser.current_token)
-                     |> put_in([:errors], parser_for_errors.errors)
-                     |> update_in([:tokens], &[parser.peek_token | &1])}
-
-                  _ ->
-                    # parser = next_token(parser)
-                    {all_pairs, parser}
-                end
 
               parser = put_error(parser, {meta, "missing closing brace for tuple"})
 
@@ -1704,38 +1709,38 @@ defmodule Spitfire do
         old_comma_list_parsers = Process.get(:comma_list_parsers)
         {pairs, parser} = parse_comma_list(parser, @list_comma, true, false)
 
-        parser = eat_at(parser, :eol, 1)
+        # parser = eat_at(parser, :eol, 1)
 
-        case peek_token(parser) do
+        case peek_token_eat_eol(parser) do
           :"]" ->
+            parser = eat_at(parser, :eol, 1)
             parser = Map.put(parser, :nesting, old_nesting)
             {encode_literal(parser, pairs, orig_meta), next_token(parser)}
 
           _ ->
-            peek_token(parser)
+            all_pairs = pairs |> Enum.reverse() |> Enum.zip(Process.get(:comma_list_parsers))
 
-            [{potential_error, parser}, {item, parser_for_errors} | rest] =
-              all_pairs = pairs |> Enum.reverse() |> Enum.zip(Process.get(:comma_list_parsers))
+            {pairs, parser} =
+              with [{potential_error, parser}, {item, parser_for_errors} | rest] <- all_pairs,
+                   {:__error__, _, ["unknown token: " <> _]} <- potential_error do
+                {[{item, parser} | rest],
+                 parser
+                 |> put_in([:current_token], {:fake_closing_bracket, nil})
+                 |> put_in([:peek_token], parser.current_token)
+                 |> put_in([:errors], parser_for_errors.errors)
+                 |> update_in([:tokens], &[parser.peek_token | &1])}
+              else
+                _ ->
+                  parser = next_token(parser)
+
+                  {all_pairs,
+                   parser
+                   |> put_in([:current_token], {:"]", nil})
+                   |> put_in([:peek_token], parser.current_token)
+                   |> update_in([:tokens], &[parser.peek_token | &1])}
+              end
 
             Process.put(:comma_list_parsers, old_comma_list_parsers)
-
-            # if the last item is an unknown token error, that means that it parsed past the
-            # recovery point and we need to insert a fake closing bracket, and backtrack
-            # the errors from the previous item.
-            {pairs, parser} =
-              case potential_error do
-                {:__error__, _, ["unknown token: " <> _]} ->
-                  {[{item, parser} | rest],
-                   parser
-                   |> put_in([:current_token], {:fake_closing_bracket, nil})
-                   |> put_in([:peek_token], parser.current_token)
-                   |> put_in([:errors], parser_for_errors.errors)
-                   |> update_in([:tokens], &[parser.peek_token | &1])}
-
-                _ ->
-                  # parser = next_token(parser)
-                  {all_pairs, parser}
-              end
 
             parser = put_error(parser, {meta, "missing closing bracket for list"})
 
