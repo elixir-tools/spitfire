@@ -1919,6 +1919,20 @@ defmodule SpitfireTest do
                 [{[line: 1, column: 5], "unknown token: %"}]}
     end
 
+    test "missing bitstring brackets" do
+      code = """
+      <<one::
+      :ok
+      """
+
+      assert Spitfire.parse(code) ==
+               {:error,
+                {:<<>>,
+                 [{:end_of_expression, [newlines: 1, line: 2, column: 4]}, {:closing, []}, {:line, 1}, {:column, 1}],
+                 [{:"::", [newlines: 1, line: 1, column: 6], [{:one, [line: 1, column: 3], nil}, :ok]}]},
+                [{[line: 1, column: 1], "missing closing brackets for bitstring"}]}
+    end
+
     test "missing closing parentheses" do
       code = "1 * (2 + 3"
 
@@ -1934,6 +1948,14 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) ==
                {:error, [1, {:++, [line: 1, column: 8], [2, [4]]}],
                 [{[line: 1, column: 2], "missing closing bracket for list"}]}
+
+      code = """
+      [1
+      :ok
+      """
+
+      assert Spitfire.parse(code) ==
+               {:error, {:__block__, [], [[1], :ok]}, [{[line: 1, column: 1], "missing closing bracket for list"}]}
     end
 
     test "missing closing tuple brace" do
@@ -1942,6 +1964,19 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) ==
                {:error, {1, {:++, [line: 1, column: 8], [2, [4]]}},
                 [{[line: 1, column: 2], "missing closing brace for tuple"}]}
+
+      code = """
+      {1
+      :ok
+      """
+
+      assert Spitfire.parse(code) ==
+               {:error,
+                {:__block__, [],
+                 [
+                   {:{}, [end_of_expression: [newlines: 1, line: 1, column: 3], closing: [], line: 1, column: 1], [1]},
+                   :ok
+                 ]}, [{[line: 1, column: 1], "missing closing brace for tuple"}]}
     end
 
     test "missing closing map brace" do
