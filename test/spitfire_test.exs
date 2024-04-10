@@ -101,6 +101,13 @@ defmodule SpitfireTest do
       '''
 
       assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      ^
+      foo
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses numbers" do
@@ -840,6 +847,11 @@ defmodule SpitfireTest do
       codes = [
         ~s'''
         @foo bar()
+        ''',
+        ~s'''
+        @
+
+        __cursor__()
         ''',
         ~s'''
         @foo %{
