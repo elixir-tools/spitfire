@@ -593,7 +593,7 @@ defmodule Spitfire do
         current_precedence(parser)
       end
 
-    parser = next_token(parser)
+    parser = parser |> next_token() |> eat_eol()
     {rhs, parser} = parse_expression(parser, precedence, false, false, false)
 
     ast = {token, meta, [rhs]}
