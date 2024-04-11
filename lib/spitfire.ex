@@ -5,6 +5,16 @@ defmodule Spitfire do
 
   require Logger
 
+  defmodule NoFuelRemaining do
+    @moduledoc false
+    defexception message: """
+                 The parser ran out of fuel!
+
+                 This happens when the parser recurses too many times without consuming a new token,
+                 and most likely indicates a bug in the parser.
+                 """
+  end
+
   # precedences
 
   # pratt parsers are top down operator precedence recursive descent parsers
@@ -194,6 +204,8 @@ defmodule Spitfire do
   defp parse_expression(parser, assoc \\ @lowest, is_list \\ false, is_map \\ false, is_top \\ false, is_stab \\ false)
 
   defp parse_expression(parser, {associativity, precedence}, is_list, is_map, is_top, is_stab) do
+    parser = consume_fuel(parser)
+
     prefix =
       case current_token_type(parser) do
         :identifier -> &parse_identifier/1
@@ -1214,6 +1226,7 @@ defmodule Spitfire do
                     current_token: nil,
                     peek_token: nil,
                     nesting: 0,
+                    fuel: 150,
                     errors: [],
                     literal_encoder: parser.literal_encoder
                   }
@@ -1281,6 +1294,7 @@ defmodule Spitfire do
                     current_token: nil,
                     peek_token: nil,
                     nesting: 0,
+                    fuel: 150,
                     errors: [],
                     literal_encoder: parser.literal_encoder
                   }
@@ -1977,6 +1991,7 @@ defmodule Spitfire do
                     current_token: nil,
                     peek_token: nil,
                     nesting: 0,
+                    fuel: 150,
                     literal_encoder: parser.literal_encoder
                   }
                   |> next_token()
@@ -2003,6 +2018,7 @@ defmodule Spitfire do
   defp new(code, opts) do
     %{
       tokens: tokenize(code, opts),
+      fuel: 150,
       current_token: nil,
       peek_token: nil,
       nesting: 0,
@@ -2016,15 +2032,15 @@ defmodule Spitfire do
   end
 
   defp next_token(%{tokens: :eot, current_token: :eof, peek_token: nil} = parser) do
-    %{parser | tokens: :eot, current_token: nil}
+    %{parser | tokens: :eot, current_token: nil, fuel: 150}
   end
 
   defp next_token(%{tokens: [], current_token: nil, peek_token: nil} = parser) do
-    %{parser | tokens: :eot}
+    %{parser | tokens: :eot, fuel: 150}
   end
 
   defp next_token(%{tokens: [], peek_token: nil} = parser) do
-    %{parser | tokens: :eot, current_token: nil}
+    %{parser | tokens: :eot, current_token: nil, fuel: 150}
   end
 
   defp next_token(%{tokens: []} = parser) do
@@ -2032,7 +2048,8 @@ defmodule Spitfire do
       parser
       | current_token: parser.peek_token,
         peek_token: nil,
-        tokens: :eot
+        tokens: :eot,
+        fuel: 150
     }
   end
 
@@ -2041,8 +2058,19 @@ defmodule Spitfire do
       parser
       | tokens: tokens,
         current_token: parser.peek_token,
-        peek_token: token
+        peek_token: token,
+        fuel: 150
     }
+  end
+
+  defp consume_fuel(parser) do
+    parser = Map.update!(parser, :fuel, &(&1 - 1))
+
+    if parser.fuel < 1 do
+      raise Spitfire.NoFuelRemaining
+    end
+
+    parser
   end
 
   defp eat(edible, %{tokens: [], current_token: {edible, _}, peek_token: nil} = parser) do
