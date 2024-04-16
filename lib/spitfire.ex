@@ -122,6 +122,7 @@ defmodule Spitfire do
     at_op: @at_op
   }
 
+  @spec parse(String.t(), Keyword.t()) :: {:ok, Macro.t()} | {:error, :no_fuel_remaining} | {:error, Macro.t(), list()}
   def parse(code, opts \\ []) do
     parser = code |> new(opts) |> next_token() |> next_token()
 
@@ -138,12 +139,18 @@ defmodule Spitfire do
       {ast, %{errors: errors}} ->
         {:error, ast, Enum.reverse(errors)}
     end
+  rescue
+    NoFuelRemaining ->
+      {:error, :no_fuel_remaining}
   end
 
   def parse!(code, opts \\ []) do
     case parse(code, opts) do
       {:ok, ast} ->
         ast
+
+      {:error, :no_fuel_remaining} ->
+        raise "No fuel remaining!"
 
       {:error, _ast, _errors} ->
         raise "Failed to parse!"
@@ -282,6 +289,8 @@ defmodule Spitfire do
         while is_nil(Map.get(parser, :stab_state)) and not MapSet.member?(terminals, peek_token(parser)) &&
                 (current_token(parser) != :do and peek_token(parser) != :eol) &&
                 calc_prec(parser, associativity, precedence) <- {left, parser} do
+          # dbg(parser)
+          parser = consume_fuel(parser)
           peek_token_type = peek_token_type(parser)
 
           infix =
