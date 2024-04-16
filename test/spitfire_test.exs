@@ -2400,6 +2400,36 @@ defmodule SpitfireTest do
                }
     end
 
+    test "heex templates" do
+      code = ~S'''
+      <%= form_for @changeset, @action, fn f -> %>
+        <%= if @changeset.action do %>
+          <div class="alert alert-danger">
+            <p>Oops, something went wrong! Please check the errors below.</p>
+          </div>
+        <% end %>
+
+        <div class="form-group">
+          <label for="name_input" class="tooltip-label">
+            <span>Organization Name</span>
+            <span class="tooltip-info"></span>
+            <span class="tooltip-text">Must be one word</span>
+          </label>
+          <%= text_input(f, :name, class: "form-control", id: "name_input") %>
+          <div class="has-error">
+            <%= error_tag(f, :name) %>
+          </div>
+        </div>
+
+        <div class="button-submit-wrapper">
+          <%= submit("Create Organization", class: "btn btn-primary") %>
+        </div>
+      <% end %>
+      '''
+
+      assert Spitfire.parse(code) == {:error, :no_fuel_remaining}
+    end
+
     test "example from github issue with list elements" do
       code = ~S'''
       defmodule Foo do
