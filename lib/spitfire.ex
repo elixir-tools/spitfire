@@ -178,10 +178,15 @@ defmodule Spitfire do
         {ast, parser} = parse_expression(parser, @lowest, false, false, true)
 
         parser =
-          if peek_token(parser) in [:eol, :eof] and parser.tokens != :eot do
-            next_token(parser)
-          else
-            parser
+          cond do
+            match?({:__block__, [{:error, true} | _], _}, ast) ->
+              next_token(parser)
+
+            peek_token(parser) in [:eol, :eof] and parser.tokens != :eot ->
+              next_token(parser)
+
+            true ->
+              parser
           end
 
         ast = push_eoe(ast, current_eoe(parser))
@@ -272,7 +277,7 @@ defmodule Spitfire do
           _ -> next_token(parser)
         end
 
-      {{:__error__, meta, ["unknown token: #{ctype}"]}, parser}
+      {{:__block__, [{:error, true} | meta], []}, parser}
     else
       {left, parser} = prefix.(parser)
 
@@ -289,7 +294,6 @@ defmodule Spitfire do
         while is_nil(Map.get(parser, :stab_state)) and not MapSet.member?(terminals, peek_token(parser)) &&
                 (current_token(parser) != :do and peek_token(parser) != :eol) &&
                 calc_prec(parser, associativity, precedence) <- {left, parser} do
-          # dbg(parser)
           parser = consume_fuel(parser)
           peek_token_type = peek_token_type(parser)
 
@@ -476,8 +480,7 @@ defmodule Spitfire do
               |> put_error({meta, "missing closing parentheses"})
               |> Map.put(:nesting, old_nesting)
 
-            # FIXME: we shouldn't emit errors into the actual ast, just stickem in the parser
-            {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
+            {{:__block__, [{:error, true} | meta], []}, next_token(parser)}
           end
 
         true ->
@@ -488,7 +491,7 @@ defmodule Spitfire do
             |> put_error({meta, "missing closing parentheses"})
             |> Map.put(:nesting, old_nesting)
 
-          {{:__error__, meta, ["missing closing parentheses"]}, next_token(parser)}
+          {{:__block__, [{:error, true} | meta], []}, next_token(parser)}
       end
     end
   end
@@ -782,9 +785,9 @@ defmodule Spitfire do
 
     {rhs, parser} =
       case rhs do
-        {:__error__, _, ["unknown token:" <> _]} ->
+        {:__block__, [{:error, true} | _], []} ->
           parser = put_error(pre_parser, {meta, "malformed right-hand side of #{token} operator"})
-          {{:__error__, meta, ["malformed right-hand side of #{token} operator"]}, parser}
+          {{:__block__, [{:error, true} | meta], []}, parser}
 
         _ ->
           {rhs, parser}
@@ -1407,7 +1410,7 @@ defmodule Spitfire do
 
             {pairs, parser} =
               with [{potential_error, parser}, {item, parser_for_errors} | rest] <- all_pairs,
-                   {:__error__, _, ["unknown token: " <> _]} <- potential_error do
+                   {:__block__, [{:error, true} | _], []} <- potential_error do
                 {[{item, parser} | rest],
                  parser
                  |> put_in([:current_token], {:fake_closing_bracket, nil})
@@ -1518,7 +1521,7 @@ defmodule Spitfire do
           _ -> next_token(parser)
         end
 
-      {{:__error__, meta, ["unknown token: #{ctype}"]}, parser}
+      {{:__block__, [], []}, parser}
     else
       {left, parser} = prefix.(parser)
 
@@ -1653,7 +1656,7 @@ defmodule Spitfire do
 
               {pairs, parser} =
                 with [{potential_error, parser}, {item, parser_for_errors} | rest] <- all_pairs,
-                     {:__error__, _, ["unknown token: " <> _]} <- potential_error do
+                     {:__block__, [{:error, true} | _], []} <- potential_error do
                   {[{item, parser} | rest],
                    parser
                    |> put_in([:current_token], {:fake_closing_brace, nil})
@@ -1745,7 +1748,7 @@ defmodule Spitfire do
 
             {pairs, parser} =
               with [{potential_error, parser}, {item, parser_for_errors} | rest] <- all_pairs,
-                   {:__error__, _, ["unknown token: " <> _]} <- potential_error do
+                   {:__block__, [{:error, true} | _meta], []} <- potential_error do
                 {[{item, parser} | rest],
                  parser
                  |> put_in([:current_token], {:fake_closing_bracket, nil})
