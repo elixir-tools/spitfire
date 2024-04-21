@@ -1927,7 +1927,7 @@ defmodule SpitfireTest do
       code = "foo $bar, baz"
 
       assert Spitfire.parse(code) ==
-               {:error, {:foo, [line: 1, column: 1], [{:__error__, [line: 1, column: 5], ["unknown token: %"]}]},
+               {:error, {:foo, [line: 1, column: 1], [{:__block__, [error: true, line: 1, column: 5], []}]},
                 [{[line: 1, column: 5], "unknown token: %"}]}
     end
 
@@ -1949,9 +1949,15 @@ defmodule SpitfireTest do
       code = "1 * (2 + 3"
 
       assert Spitfire.parse(code) ==
-               {:error,
-                {:*, [line: 1, column: 3], [1, {:__error__, [line: 1, column: 10], ["missing closing parentheses"]}]},
-                [{[line: 1, column: 10], "missing closing parentheses"}]}
+               {
+                 :error,
+                 {{:*, [line: 1, column: 3], [1, {:__block__, [error: true, line: 1, column: 3], []}]},
+                  [{:closing, [line: 1, column: 10]}, {:line, 1}, {:column, 3}], [{:+, [line: 1, column: 8], [2, 3]}]},
+                 [
+                   {[line: 1, column: 3], "malformed right-hand side of * operator"},
+                   {[line: 1, column: 3], "missing closing parentheses for function invocation"}
+                 ]
+               }
     end
 
     test "missing closing list bracket" do
@@ -1968,6 +1974,13 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code) ==
                {:error, {:__block__, [], [[1], :ok]}, [{[line: 1, column: 1], "missing closing bracket for list"}]}
+
+      code = """
+      [1, 2, 3,,
+      """
+
+      assert Spitfire.parse(code) ==
+               {:error, [1, 2, 3], [{[line: 1, column: 1], "missing closing bracket for list"}]}
     end
 
     test "missing closing tuple brace" do
@@ -2149,8 +2162,7 @@ defmodule SpitfireTest do
                       column: 1
                     ],
                     [
-                      {:+, [line: 1, column: 7],
-                       [1, {:__error__, [line: 1, column: 7], ["malformed right-hand side of + operator"]}]}
+                      {:+, [line: 1, column: 7], [1, {:__block__, [error: true, line: 1, column: 7], []}]}
                     ]},
                    {:bar,
                     [
@@ -2428,6 +2440,59 @@ defmodule SpitfireTest do
       '''
 
       assert Spitfire.parse(code) == {:error, :no_fuel_remaining}
+    end
+
+    test "doesn't drop the cursor node" do
+      code =
+        ~S'''
+        %{state |
+          foo: s
+        __cursor__()
+        ,
+          bar: Foo.Bar.load(state.foo, state.baz)}
+        '''
+
+      assert Spitfire.parse(code) ==
+               {:error,
+                {:__block__, [],
+                 [
+                   {:%{}, [closing: [line: 2, column: 8], line: 1, column: 1],
+                    [
+                      {:|, [newlines: 1, line: 1, column: 9],
+                       [
+                         {:state, [line: 1, column: 3], nil},
+                         [foo: {:s, [line: 2, column: 8], nil}]
+                       ]}
+                    ]},
+                   {:s, [end_of_expression: [newlines: 1, line: 3, column: 13], line: 2, column: 8],
+                    [{:__cursor__, [closing: [line: 3, column: 12], line: 3, column: 1], []}]},
+                   {:__block__, [error: true, line: 4, column: 1], []},
+                   {{:., [line: 5, column: 15],
+                     [
+                       {:__aliases__, [last: [line: 5, column: 12], line: 5, column: 8], [:Foo, :Bar]},
+                       :load
+                     ]}, [closing: [line: 5, column: 41], line: 5, column: 16],
+                    [
+                      {{:., [line: 5, column: 26], [{:state, [line: 5, column: 21], nil}, :foo]},
+                       [no_parens: true, line: 5, column: 27], []},
+                      {{:., [line: 5, column: 37], [{:state, [line: 5, column: 32], nil}, :baz]},
+                       [no_parens: true, line: 5, column: 38], []}
+                    ]},
+                   {:__block__, [error: true, line: 5, column: 41], []},
+                   {:__block__,
+                    [
+                      end_of_expression: [newlines: 1, line: 5, column: 43],
+                      error: true,
+                      line: 5,
+                      column: 42
+                    ], []}
+                 ]},
+                [
+                  {[line: 2, column: 8], "missing closing brace for map"},
+                  {[line: 4, column: 1], "unknown token: ,"},
+                  {[line: 5, column: 41], "unknown token: )"},
+                  {[line: 5, column: 42], "unknown token: }"}
+                ]}
     end
 
     test "example from github issue with list elements" do
