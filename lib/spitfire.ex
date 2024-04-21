@@ -182,7 +182,7 @@ defmodule Spitfire do
             match?({:__block__, [{:error, true} | _], _}, ast) ->
               next_token(parser)
 
-            peek_token(parser) in [:eol, :eof] and parser.tokens != :eot ->
+            peek_token(parser) in [:eol, :";", :eof] and parser.tokens != :eot ->
               next_token(parser)
 
             true ->
@@ -255,6 +255,7 @@ defmodule Spitfire do
         :"[" -> &parse_list_literal/1
         :"(" -> &parse_grouped_expression/1
         :"{" -> &parse_tuple_literal/1
+        :";" -> raise "semicolon"
         :%{} -> &parse_map_literal/1
         :% -> &parse_struct_literal/1
         :ellipsis_op -> &parse_ellipsis_op/1
@@ -664,7 +665,7 @@ defmodule Spitfire do
     meta = current_meta(parser)
     newlines = get_newlines(parser)
 
-    parser = eat_at(parser, :eol, 1)
+    parser = eat_at(parser, [:eol, :";"], 1)
 
     {exprs, parser} =
       while2 peek_token(parser) not in [:end, :")"] <- parser do
@@ -672,7 +673,7 @@ defmodule Spitfire do
         {ast, parser} = parse_expression(parser, @lowest, false, false, true)
         eoe = peek_eoe(parser)
 
-        parser = eat_at(parser, :eol, 1)
+        parser = eat_eol_at(parser, 1)
 
         ast = push_eoe(ast, eoe)
 
@@ -716,7 +717,7 @@ defmodule Spitfire do
         meta = current_meta(parser)
         newlines = get_newlines(parser)
 
-        parser = eat_at(parser, :eol, 1)
+        parser = eat_eol_at(parser, 1)
 
         old_nesting = parser.nesting
         parser = Map.put(parser, :nesting, 0)
@@ -730,7 +731,7 @@ defmodule Spitfire do
             if Map.get(parser, :stab_state) == nil do
               eoe = peek_eoe(parser)
               ast = push_eoe(ast, eoe)
-              parser = eat_at(parser, :eol, 1)
+              parser = eat_eol_at(parser, 1)
 
               {ast, eat_eol(parser)}
             else
@@ -1401,7 +1402,7 @@ defmodule Spitfire do
 
         case peek_token_eat_eol(parser) do
           :">>" ->
-            parser = eat_at(parser, :eol, 1)
+            parser = eat_eol_at(parser, 1)
             parser = next_token(parser)
             {{:<<>>, newlines ++ [{:closing, current_meta(parser)} | meta], pairs}, eat_eol(parser)}
 
@@ -1465,7 +1466,7 @@ defmodule Spitfire do
     else
       {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
 
-      parser = eat_at(parser, :eol, 1)
+      parser = eat_eol_at(parser, 1)
 
       parser =
         case peek_token(parser) do
@@ -1584,7 +1585,7 @@ defmodule Spitfire do
     else
       {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
 
-      parser = eat_at(parser, :eol, 1)
+      parser = eat_eol_at(parser, 1)
 
       parser =
         case peek_token(parser) do
@@ -1648,7 +1649,7 @@ defmodule Spitfire do
         {pairs, parser} =
           case peek_token_eat_eol(parser) do
             :"}" ->
-              parser = eat_at(parser, :eol, 1)
+              parser = eat_eol_at(parser, 1)
               {pairs, parser |> next_token() |> eat_eol()}
 
             _ ->
@@ -1735,11 +1736,11 @@ defmodule Spitfire do
         old_comma_list_parsers = Process.get(:comma_list_parsers)
         {pairs, parser} = parse_comma_list(parser, @list_comma, true, false)
 
-        # parser = eat_at(parser, :eol, 1)
+        # parser = eat_eol_at(parser, 1)
 
         case peek_token_eat_eol(parser) do
           :"]" ->
-            parser = eat_at(parser, :eol, 1)
+            parser = eat_eol_at(parser, 1)
             parser = Map.put(parser, :nesting, old_nesting)
             {encode_literal(parser, pairs, orig_meta), next_token(parser)}
 
@@ -1801,7 +1802,7 @@ defmodule Spitfire do
 
       parser = Map.put(parser, :nesting, old_nesting)
 
-      parser = eat_at(parser, :eol, 1)
+      parser = eat_eol_at(parser, 1)
 
       case peek_token(parser) do
         :")" ->
@@ -1934,7 +1935,7 @@ defmodule Spitfire do
         |> eat_eol()
         |> parse_comma_list()
 
-      parser = eat_at(parser, :eol, 1)
+      parser = eat_eol_at(parser, 1)
 
       parser =
         case peek_token(parser) do
@@ -2085,7 +2086,8 @@ defmodule Spitfire do
     parser
   end
 
-  defp eat(edible, %{tokens: [], current_token: {edible, _}, peek_token: nil} = parser) do
+  defp eat(edibles, %{tokens: [], current_token: {edible, _}, peek_token: nil} = parser)
+       when is_map(edibles) and is_map_key(edibles, edible) do
     %{
       parser
       | tokens: :eot,
@@ -2094,7 +2096,8 @@ defmodule Spitfire do
     }
   end
 
-  defp eat(edible, %{tokens: [], current_token: {edible, _}, peek_token: peek} = parser) do
+  defp eat(edibles, %{tokens: [], current_token: {edible, _}, peek_token: peek} = parser)
+       when is_map(edibles) and is_map_key(edibles, edible) do
     %{
       parser
       | tokens: :eot,
@@ -2103,7 +2106,8 @@ defmodule Spitfire do
     }
   end
 
-  defp eat(edible, %{tokens: [token | tokens], current_token: {edible, _}} = parser) do
+  defp eat(edibles, %{tokens: [token | tokens], current_token: {edible, _}} = parser)
+       when is_map(edibles) and is_map_key(edibles, edible) do
     %{
       parser
       | tokens: tokens,
@@ -2112,42 +2116,44 @@ defmodule Spitfire do
     }
   end
 
-  defp eat(_edible, parser) do
+  defp eat(_edibles, parser) do
     parser
   end
 
   defp eat_eol(parser) do
-    eat(:eol, parser)
+    eat(%{:eol => true, :";" => true}, parser)
   end
 
-  defp eat_at(parser, token, 0) do
-    eat(token, parser)
+  defp eat_eol_at(parser, idx) do
+    eat_at(parser, [:eol, :";"], idx)
   end
 
-  defp eat_at(%{peek_token: peek_token, tokens: [next | rest]} = parser, token, 1) do
-    case peek_token do
-      {^token, _} ->
-        %{parser | peek_token: next, tokens: rest}
+  defp eat_at(parser, token, 0) when is_atom(token) do
+    eat(%{token => true}, parser)
+  end
 
-      {^token, _, _} ->
-        %{parser | peek_token: next, tokens: rest}
+  defp eat_at(parser, token, idx) when is_atom(token) do
+    eat_at(parser, %{token => true}, idx)
+  end
 
-      _ ->
-        parser
+  defp eat_at(parser, tokens, idx) when is_list(tokens) do
+    eat_at(parser, Map.new(tokens, &{&1, true}), idx)
+  end
+
+  defp eat_at(%{tokens: [next | rest]} = parser, tokens, 1) do
+    if tokens[peek_token_type(parser)] do
+      %{parser | peek_token: next, tokens: rest}
+    else
+      parser
     end
   end
 
-  defp eat_at(%{tokens: tokens} = parser, token, idx) when is_list(tokens) do
+  defp eat_at(%{tokens: remaining_tokens} = parser, tokens, idx) when is_list(remaining_tokens) and is_map(tokens) do
     tokens =
-      case Enum.at(tokens, idx) do
-        {^token, _, _} ->
-          List.delete_at(tokens, idx)
-
-        {^token, _} ->
-          List.delete_at(tokens, idx)
-
-        _ ->
-          tokens
+      if tokens[Enum.at(remaining_tokens, idx)] do
+        List.delete_at(tokens, idx)
+      else
+        remaining_tokens
       end
 
     %{parser | tokens: tokens}
@@ -2346,15 +2352,16 @@ defmodule Spitfire do
     []
   end
 
-  defp current_eoe(%{current_token: {:eol, {line, col, newlines}}}) when is_integer(newlines) do
+  defp current_eoe(%{current_token: {token, {line, col, newlines}}})
+       when token in [:eol, :";"] and is_integer(newlines) do
     [newlines: newlines, line: line, column: col]
   end
 
-  defp current_eoe(%{current_token: {:eol, {line, col, _}, _}}) do
+  defp current_eoe(%{current_token: {token, {line, col, _}, _}}) when token in [:eol, :";"] do
     [line: line, column: col]
   end
 
-  defp current_eoe(%{current_token: {:eol, {line, col, _}}}) do
+  defp current_eoe(%{current_token: {token, {line, col, _}}}) when token in [:eol, :";"] do
     [line: line, column: col]
   end
 
@@ -2362,15 +2369,15 @@ defmodule Spitfire do
     nil
   end
 
-  defp peek_eoe(%{peek_token: {:eol, {line, col, newlines}}}) when is_integer(newlines) do
+  defp peek_eoe(%{peek_token: {token, {line, col, newlines}}}) when token in [:eol, :";"] and is_integer(newlines) do
     [newlines: newlines, line: line, column: col]
   end
 
-  defp peek_eoe(%{peek_token: {:eol, {line, col, _}, _}}) do
+  defp peek_eoe(%{peek_token: {token, {line, col, _}, _}}) when token in [:eol, :";"] do
     [line: line, column: col]
   end
 
-  defp peek_eoe(%{peek_token: {:eol, {line, col, _}}}) do
+  defp peek_eoe(%{peek_token: {token, {line, col, _}}}) when token in [:eol, :";"] do
     [line: line, column: col]
   end
 

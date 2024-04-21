@@ -4,6 +4,44 @@ defmodule SpitfireTest do
   doctest Spitfire
 
   describe "valid code" do
+    test "semicolons" do
+      code = "res = Foo.Bar.run(1, 2, 3); IO.inspect(res)"
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      res = Foo.Bar.run(1, 2, 3);
+      IO.inspect(res)
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      fn one -> IO.inspect(one); one end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      def foo, do: IO.inspect("bob"); "bob"
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      foo do: IO.inspect("bob"); "bob"
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      # FIXME: spitfire currently parses this successfully, which is wrong, it should be an error
+      # code = ~S'''
+      # foo, do: IO.inspect("bob"); "bob"
+      # '''
+
+      # assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "parses valid elixir" do
       code = """
       defmodule Foo do
