@@ -2002,6 +2002,7 @@ defmodule Spitfire do
                   %{
                     tokens: tokens ++ [:eof],
                     current_token: nil,
+                    errors: [],
                     peek_token: nil,
                     nesting: 0,
                     fuel: 150,
