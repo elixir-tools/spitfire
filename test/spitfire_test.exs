@@ -2641,6 +2641,85 @@ defmodule SpitfireTest do
     end
   end
 
+  describe "container_cursor_to_quoted/2" do
+    test "example from docs" do
+      # example from the docs
+      code = ~S'''
+      max(some_value,
+      '''
+
+      assert {:ok,
+              {:max, [closing: [line: 2, column: 13], line: 1, column: 1],
+               [
+                 {:some_value, [line: 1, column: 5], nil},
+                 {:__cursor__, [closing: [line: 2, column: 12], line: 2, column: 1], []}
+               ]}} = Spitfire.container_cursor_to_quoted(code)
+    end
+
+    test "more complex example" do
+      # example from the docs
+      code = ~S'''
+      defmodule Foo do
+        def foo() do
+      '''
+
+      assert {:ok,
+              {:defmodule, [do: [line: 1, column: 15], end: [line: 3, column: 16], line: 1, column: 1],
+               [
+                 {:__aliases__, [last: [line: 1, column: 11], line: 1, column: 11], [:Foo]},
+                 [
+                   do:
+                     {:def,
+                      [
+                        do: [line: 2, column: 13],
+                        end: [line: 3, column: 13],
+                        line: 2,
+                        column: 3
+                      ],
+                      [
+                        {:foo, [closing: [line: 2, column: 11], line: 2, column: 7], []},
+                        [
+                          do: {:__cursor__, [closing: [line: 3, column: 12], line: 3, column: 1], []}
+                        ]
+                      ]}
+                 ]
+               ]}} = Spitfire.container_cursor_to_quoted(code)
+    end
+
+    test "ending on kw list" do
+      # example from the docs
+      code = ~S'''
+      defmodule Foo do
+        def foo() do
+         [foo:
+      '''
+
+      assert {:ok,
+              {:defmodule, [do: [line: 1, column: 15], end: [line: 4, column: 17], line: 1, column: 1],
+               [
+                 {:__aliases__, [last: [line: 1, column: 11], line: 1, column: 11], [:Foo]},
+                 [
+                   do:
+                     {:def,
+                      [
+                        do: [line: 2, column: 13],
+                        end: [line: 4, column: 14],
+                        line: 2,
+                        column: 3
+                      ],
+                      [
+                        {:foo, [closing: [line: 2, column: 11], line: 2, column: 7], []},
+                        [
+                          do: [
+                            foo: {:__cursor__, [closing: [line: 4, column: 12], line: 4, column: 1], []}
+                          ]
+                        ]
+                      ]}
+                 ]
+               ]}} = Spitfire.container_cursor_to_quoted(code)
+    end
+  end
+
   defp s2q(code, opts \\ []) do
     Code.string_to_quoted(code, Keyword.merge([columns: true, token_metadata: true, emit_warnings: false], opts))
   end
