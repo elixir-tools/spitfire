@@ -172,6 +172,16 @@ defmodule Spitfire do
     Process.delete(:code_formatter_comments)
   end
 
+  def container_cursor_to_quoted(code, opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put(:cursor_completion, true)
+      |> Keyword.put(:warnings, false)
+      |> Keyword.put(:check_terminators, true)
+
+    Spitfire.parse(code, opts)
+  end
+
   defp parse_program(parser) do
     {exprs, parser} =
       while2 current_token(parser) != :eof <- parser do
@@ -1965,14 +1975,15 @@ defmodule Spitfire do
   end
 
   defp tokenize(code, opts) do
+    opts =
+      opts
+      |> Keyword.put_new(:cursor_completion, false)
+      |> Keyword.put_new(:check_terminators, false)
+
     tokens =
       case code
            |> String.to_charlist()
-           |> :spitfire_tokenizer.tokenize(
-             opts[:line] || 1,
-             opts[:column] || 1,
-             [{:check_terminators, false}, {:cursor_completion, false} | opts]
-           ) do
+           |> :spitfire_tokenizer.tokenize(opts[:line] || 1, opts[:column] || 1, opts) do
         {:ok, _, _, _, tokens} ->
           tokens
 
