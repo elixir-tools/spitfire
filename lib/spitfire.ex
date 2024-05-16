@@ -1987,6 +1987,9 @@ defmodule Spitfire do
         {:ok, _, _, _, tokens} ->
           tokens
 
+        {:ok, _, _, _, rev_tokens, rev_terminators} ->
+          :lists.reverse(rev_tokens, rev_terminators)
+
         {:error, _, _, [], tokens} ->
           Enum.reverse(tokens)
       end

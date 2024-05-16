@@ -52,9 +52,9 @@ extract([$#, ${ | Rest], Buffer, Output, Line, Column, Scope, true, Last) ->
       extract(NewRest, [], Output2, EndLine, EndColumn + 1, NewScope, true, Last);
     {error, Reason, _, _, _} ->
       {error, Reason};
-    {ok, EndLine, EndColumn, Warnings, Tokens} when Scope#spitfire_tokenizer.cursor_completion /= false ->
+    {ok, EndLine, EndColumn, Warnings, Tokens, Terminators} when Scope#spitfire_tokenizer.cursor_completion /= false ->
       NewScope = Scope#spitfire_tokenizer{warnings=Warnings, cursor_completion=noprune},
-      Output2 = build_interpol(Line, Column, EndLine, EndColumn, Tokens, Output1),
+      Output2 = build_interpol(Line, Column, EndLine, EndColumn, lists:reverse(Tokens, Terminators), Output1),
       extract([], [], Output2, EndLine, EndColumn, NewScope, true, Last);
     {ok, _, _, _, _} ->
       {error, {string, Line, Column, "missing interpolation terminator: \"}\"", []}}
