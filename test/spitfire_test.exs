@@ -2718,6 +2718,84 @@ defmodule SpitfireTest do
                  ]
                ]}} = Spitfire.container_cursor_to_quoted(code)
     end
+
+    test "ending inside a -> expression" do
+      # example from the docs
+      code = ~S'''
+      defmodule Foo do
+        def foo(items) do
+          Enum.map(items, fn i ->
+            case i do
+              :ok ->
+                :ok
+
+               error ->
+      '''
+
+      assert {:ok,
+              {
+                :defmodule,
+                [do: [line: 1, column: 15], end: [line: 9, column: 23], line: 1, column: 1],
+                [
+                  {:__aliases__, [last: [line: 1, column: 11], line: 1, column: 11], [:Foo]},
+                  [
+                    do: {
+                      :def,
+                      [do: [line: 2, column: 18], end: [line: 9, column: 20], line: 2, column: 3],
+                      [
+                        {:foo, [closing: [line: 2, column: 16], line: 2, column: 7],
+                         [{:items, [line: 2, column: 11], nil}]},
+                        [
+                          do: {
+                            {:., [line: 3, column: 9],
+                             [{:__aliases__, [last: [line: 3, column: 5], line: 3, column: 5], [:Enum]}, :map]},
+                            [closing: [line: 9, column: 19], line: 3, column: 10],
+                            [
+                              {:items, [line: 3, column: 14], nil},
+                              {
+                                :fn,
+                                [closing: [line: 9, column: 16], line: 3, column: 21],
+                                [
+                                  {
+                                    :->,
+                                    [newlines: 1, line: 3, column: 26],
+                                    [
+                                      [{:i, [line: 3, column: 24], nil}],
+                                      {
+                                        :case,
+                                        [
+                                          {:do, [line: 4, column: 14]},
+                                          {:end, [line: 9, column: 13]},
+                                          {:line, 4},
+                                          {:column, 7}
+                                        ],
+                                        [
+                                          {:i, [line: 4, column: 12], nil},
+                                          [
+                                            do: [
+                                              {:->, [newlines: 1, line: 5, column: 13], [[:ok], :ok]},
+                                              {:->, [newlines: 1, line: 8, column: 16],
+                                               [
+                                                 [{:error, [line: 8, column: 10], nil}],
+                                                 {:__cursor__, [closing: [line: 9, column: 12], line: 9, column: 1], []}
+                                               ]}
+                                            ]
+                                          ]
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }} = Spitfire.container_cursor_to_quoted(code)
+    end
   end
 
   defp s2q(code, opts \\ []) do
