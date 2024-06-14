@@ -1,20 +1,14 @@
 # Spitfire
 
-Spitfire is a new error tolerant parser for Elixir.
+Spitfire is a new error resilient parser for Elixir.
 
 The goal of the project is to make it easier for editor tooling to provide code intelligence for incomplete snippets of Elixir code.
 
 ## Progress
 
 - [x] Parse all Elixir Syntax into core compatible AST.
-- [ ] Error tolerance
-- [ ] Environment querying API
-
-## Scope
-
-It is not clear yet the scope of Spitfire, but at a minimum it will be an independent parser and library.
-
-For more information, please see [elixir-lang/elixir#12645](https://github.com/elixir-lang/elixir/issues/12645#issuecomment-1837629952).
+- [x] Error resilience
+- [x] Environment querying API
 
 ## Design
 
@@ -24,19 +18,7 @@ Pratt parsers are becoming very popular in the realm of error tolerant parsing. 
 
 ## Contributing
 
-Now that phase 1 (parse all Elixir syntax) entering the final lap, contributions should be easier.
-
-The goal is to test Spitfire against popular repos and see if there are any differences in the output.
-
-This can be easily accomplished by cloning the project and running the `bin/ci` script from the Spitfire repo.
-
-```shell
-bin/ci path/to/project
-```
-
-This will attempt to parse and test equivalence for each file in `lib/` of that project and print out any differences that it finds.
-
-Then you simply make a minimal unit test for that problem, fix it, open a PR!
+With the parser complete, the goal is now to improve error resilience, parsing speed, and improve the environment querying capabilities.
 
 ## Acknowledgements
 
