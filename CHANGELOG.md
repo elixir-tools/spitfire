@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/elixir-tools/spitfire/compare/v0.1.0...v0.1.1) (2024-06-14)
+
+
+### Bug Fixes
+
+* include src directory ([63b48a4](https://github.com/elixir-tools/spitfire/commit/63b48a410f6f0ee21847ec91ed4773a319ac6158))
+
 ## [0.1.0](https://github.com/elixir-tools/spitfire/compare/spitfire-v0.1.0...spitfire-v0.1.0) (2024-06-14)
 
 
