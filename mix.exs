@@ -41,7 +41,7 @@ defmodule Spitfire.MixProject do
         GitHub: @source_url,
         Sponsor: "https://github.com/sponsors/mhanberg"
       },
-      files: ~w(lib LICENSE mix.exs README.md .formatter.exs)
+      files: ~w(lib src LICENSE mix.exs README.md .formatter.exs)
     ]
   end
 end
