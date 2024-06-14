@@ -19,10 +19,6 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4.1
         id: release
-        with:
-          release-type: elixir
-          package-name: spitfire
-          bump-minor-pre-major: true
 
       - uses: actions/checkout@v3
         if: ${{ steps.release.outputs.release_created }}

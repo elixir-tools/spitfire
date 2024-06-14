@@ -4,8 +4,7 @@
     ".": {
       "package-name": "spitfire",
       "release-type": "elixir",
-      "bump-minor-pre-major": true,
-      "initial-version": "0.1.0"
+      "bump-minor-pre-major": true
     }
   }
 }
