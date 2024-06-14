@@ -49,6 +49,8 @@ defmodule Spitfire.Env do
       )
 
     {ast, state, env, cursor_env}
+  after
+    Process.delete(:cursor_env)
   end
 
   defp expand({:__cursor__, _meta, _} = node, state, env) do
