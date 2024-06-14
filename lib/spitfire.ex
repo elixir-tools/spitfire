@@ -142,6 +142,8 @@ defmodule Spitfire do
   rescue
     NoFuelRemaining ->
       {:error, :no_fuel_remaining}
+  after
+    Process.delete(:comma_list_parsers)
   end
 
   def parse!(code, opts \\ []) do
@@ -1379,6 +1381,8 @@ defmodule Spitfire do
     aliases = [alias | aliases]
 
     {{:__aliases__, [{:last, Process.get(:alias_last_meta)} | meta], aliases}, parser}
+  after
+    Process.delete(:alias_last_meta)
   end
 
   defp parse_bitstring(%{current_token: {:"<<", _}} = parser) do
