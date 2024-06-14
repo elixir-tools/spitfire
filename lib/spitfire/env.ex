@@ -1,5 +1,7 @@
 defmodule Spitfire.Env do
-  @moduledoc false
+  @moduledoc """
+  Environment querying
+  """
   @env %{
     Macro.Env.prune_compile_info(__ENV__)
     | line: 0,

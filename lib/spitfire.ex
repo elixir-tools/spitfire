@@ -1,5 +1,7 @@
 defmodule Spitfire do
-  @moduledoc false
+  @moduledoc """
+  Spitfire parser
+  """
   import Spitfire.While
   import Spitfire.While2
 
