@@ -12,6 +12,35 @@ defmodule Spitfire.Env do
   }
   defp env, do: @env
 
+  @typedoc "Alias for `Macro.t()`"
+  @type ast :: Macro.t()
+
+  @typedoc "A name/arity pair"
+  @type func :: {atom(), arity()}
+
+  @typedoc "A name/arity pair"
+  @type macro :: {atom(), arity()}
+
+  @typedoc "The expansion state. Contains a total listing of local functions, macros, and module attributes."
+  @type state :: %{
+          functions: [func()],
+          macros: [macro()],
+          attrs: [String.t()]
+        }
+  @typedoc "The environment"
+  @type env :: %{
+          functions: [{module(), [func()]}],
+          macros: [{module(), [macro()]}],
+          attrs: [String.t()],
+          variables: [atom()]
+        }
+
+  @typedoc "The environment at the cursor position"
+  @type cursor_env :: env()
+
+  @typedoc "The environment after expanding the entire syntax tree"
+  @type final_env :: env()
+
   @doc """
   Expands the environment of the given AST.
 
@@ -23,7 +52,7 @@ defmodule Spitfire.Env do
   Please see the tests for example usage.
   """
   @spec expand(Macro.t(), String.t()) ::
-          {ast :: Macro.t(), final_state :: map(), final_env :: Macro.Env.t(), cursor_env :: Macro.Env.t()}
+          {ast :: ast(), final_state :: state(), final_env :: final_env(), cursor_env :: cursor_env()}
   def expand(ast, file) do
     env = env()
 
