@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/elixir-tools/spitfire/compare/v0.1.1...v0.1.2) (2024-06-17)
+
+
+### Bug Fixes
+
+* typespec for Spitfire.Env ([#43](https://github.com/elixir-tools/spitfire/issues/43)) ([781c108](https://github.com/elixir-tools/spitfire/commit/781c108d2142a3cf0df31e9d6f46c05c54f461d0))
+
 ## [0.1.1](https://github.com/elixir-tools/spitfire/compare/v0.1.0...v0.1.1) (2024-06-14)
 
 
