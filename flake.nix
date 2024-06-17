@@ -17,29 +17,13 @@
         pkgs,
         system,
         ...
-      }: let
-        beamPackages = pkgs.beam_minimal.packages.erlang_27;
-        otp = (pkgs.beam.packagesWith beamPackages.erlang).extend (final: prev: {
-          elixir_1_17 = prev.elixir_1_16.override {
-            rev = "v1.17.0";
-            # You can discover this using Trust On First Use by filling in `lib.fakeHash`
-            sha256 = "sha256-RBylCfD+aCsvCqWUIvqXi3izNqqQoNfQNnQiZxz0Igg=";
-            version = "1.17.0";
-          };
-
-          elixir = final.elixir_1_17;
-          # This will get upstreamed into nix-beam-flakes at some point
-          rebar = prev.rebar.overrideAttrs (_old: {doCheck = false;});
-          rebar3 = prev.rebar3.overrideAttrs (_old: {doCheck = false;});
-        });
-        elixir = otp.elixir;
-      in {
+      }: {
         devShells = {
           default = pkgs.mkShell {
             # The Nix packages provided in the environment
-            packages = [
-              beamPackages.erlang
-              elixir
+            packages = with pkgs; [
+              beam.packages.erlang_27.erlang
+              beam.packages.erlang_27.elixir_1_17
             ];
           };
         };
