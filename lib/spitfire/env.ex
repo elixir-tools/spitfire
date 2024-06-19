@@ -318,6 +318,9 @@ defmodule Spitfire.Env do
 
       :error ->
         expand_local(meta, fun, args, state, env)
+
+      {:error, :not_found} ->
+        expand_local(meta, fun, args, state, env)
     end
   end
 
