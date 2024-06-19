@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/elixir-tools/spitfire/compare/v0.1.2...v0.1.3) (2024-06-19)
+
+
+### Bug Fixes
+
+* match error case from `Macro.Env.expand_import/5` ([#45](https://github.com/elixir-tools/spitfire/issues/45)) ([ebd5ba6](https://github.com/elixir-tools/spitfire/commit/ebd5ba6cb05b2df8df97e596e738f3f2b89e035d))
+
 ## [0.1.2](https://github.com/elixir-tools/spitfire/compare/v0.1.1...v0.1.2) (2024-06-17)
 
 
