@@ -2075,6 +2075,35 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == {:error, {:foo, :baz}, [{[line: 1, column: 7], "syntax error"}]}
     end
 
+    test "incomplete keyword list" do
+      code = "[foo: ]"
+
+      assert Spitfire.parse(code) ==
+               {:error, [{:foo, {:__block__, [error: true, line: 1, column: 7], []}}],
+                [{[line: 1, column: 7], "unknown token: ]"}, {[line: 1, column: 1], "missing closing bracket for list"}]}
+    end
+
+    # FIXME: https://github.com/elixir-tools/spitfire/issues/31
+    @tag :skip
+    test "incomplete keyword list with invalid tokeh" do
+      code = "[foo:]"
+
+      assert Spitfire.parse(code) ==
+               {:error, [{:foo, {:__block__, [error: true, line: 1, column: 7], []}}],
+                [{[line: 1, column: 7], "unknown token: ]"}, {[line: 1, column: 1], "missing closing bracket for list"}]}
+    end
+
+    test "keyword list in module attr" do
+      code = ~S'''
+      @tag foo: bar,
+        foo
+      '''
+
+      assert Spitfire.parse(code) ==
+               {:error, [{:foo, {:__block__, [error: true, line: 1, column: 7], []}}],
+                [{[line: 1, column: 7], "unknown token: ]"}, {[line: 1, column: 1], "missing closing bracket for list"}]}
+    end
+
     test "missing end in block" do
       code = ~S'''
       foo do

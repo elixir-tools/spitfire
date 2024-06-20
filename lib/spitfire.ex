@@ -520,7 +520,11 @@ defmodule Spitfire do
     token = encode_literal(parser, token, meta)
     parser = parser |> next_token() |> eat_eol()
 
+    dbg(parser)
     {expr, parser} = parse_expression(parser, @kw_identifier, false, false, false)
+
+    dbg(expr)
+    dbg(parser)
 
     {{token, expr}, parser}
   end
@@ -1726,6 +1730,9 @@ defmodule Spitfire do
     parser = parser |> next_token() |> eat_eol()
     old_nesting = parser.nesting
     parser = Map.put(parser, :nesting, 0)
+
+    dbg(orig_parser)
+    dbg(parser)
 
     cond do
       current_token(parser) == :"]" ->
