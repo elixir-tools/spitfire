@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/elixir-tools/spitfire/compare/v0.1.3...v0.1.4) (2024-12-20)
+
+
+### Bug Fixes
+
+* address warnings found by elixir 1.18 ([#50](https://github.com/elixir-tools/spitfire/issues/50)) ([434521e](https://github.com/elixir-tools/spitfire/commit/434521e5d4c7721d992c3ca67d8e9a877439cf1c))
+
 ## [0.1.3](https://github.com/elixir-tools/spitfire/compare/v0.1.2...v0.1.3) (2024-06-19)
 
 
