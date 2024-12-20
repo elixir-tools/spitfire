@@ -2575,17 +2575,8 @@ defmodule Spitfire do
   #       arg
   #     )
   # will have 1 newling due to the newline after the opening paren
-  defp get_newlines(parser, kind \\ :peek)
-
-  defp get_newlines(parser, :peek) do
+  defp get_newlines(parser) do
     case peek_newlines(parser) do
-      nil -> []
-      nl -> [newlines: nl]
-    end
-  end
-
-  defp get_newlines(parser, :current) do
-    case current_newlines(parser) do
       nil -> []
       nl -> [newlines: nl]
     end
