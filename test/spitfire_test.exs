@@ -2609,6 +2609,39 @@ defmodule SpitfireTest do
                [{[line: 6, column: 5], "missing closing bracket for list"}]
              }
     end
+
+    test "unclosed interpolation" do
+      code = """
+      defmodule MyModule do
+        import List
+        var = '\#{
+      end
+      """
+
+      assert {:error, _ast, _} = result = Spitfire.parse(code)
+
+      assert result == {
+               :error,
+               {:defmodule, [do: [line: 1, column: 20], end: [line: 1, column: 20], line: 1, column: 1],
+                [
+                  {:__aliases__, [last: [line: 1, column: 11], line: 1, column: 11], [:MyModule]},
+                  [
+                    do:
+                      {:__block__, [],
+                       [
+                         {:import, [end_of_expression: [newlines: 1, line: 2, column: 14], line: 2, column: 3],
+                          [{:__aliases__, [last: [line: 2, column: 10], line: 2, column: 10], [:List]}]},
+                         {:=, [line: 3, column: 7],
+                          [{:var, [line: 3, column: 3], nil}, {:__block__, [error: true, line: 3, column: 7], []}]}
+                       ]}
+                  ]
+                ]},
+               [
+                 {[line: 3, column: 7], "malformed right-hand side of = operator"},
+                 {[line: 1, column: 20], "missing `end` for do block"}
+               ]
+             }
+    end
   end
 
   describe "&parse_with_comments/2" do
