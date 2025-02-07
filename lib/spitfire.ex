@@ -230,6 +230,8 @@ defmodule Spitfire do
     precedence < power
   end
 
+  # TODO Is anything needed here? Removing all of these tokens does not break any tests
+  # TODO Should we add :";" to the list?
   @terminals MapSet.new([:eol, :eof, :"}", :")", :"]", :">>"])
   @terminals_with_comma MapSet.put(@terminals, :",")
   defp(parse_expression(parser, assoc \\ @lowest, is_list \\ false, is_map \\ false, is_top \\ false, is_stab \\ false))
@@ -308,9 +310,10 @@ defmodule Spitfire do
           else
             @terminals_with_comma
           end
-
+        
         {parser, is_valid} = validate_peek(parser, current_token_type(parser))
-
+        # TODO should we handle ; here?
+        # TODO removing peek_token(parser) != :eol does not break any tests
         if is_valid do
           while (is_nil(Map.get(parser, :stab_state)) and not MapSet.member?(terminals, peek_token(parser))) &&
                   (current_token(parser) != :do and peek_token(parser) != :eol) &&
