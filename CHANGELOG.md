@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/elixir-tools/spitfire/compare/v0.1.4...v0.1.5) (2025-02-07)
+
+
+### Bug Fixes
+
+* crash on tokenizer error ([#52](https://github.com/elixir-tools/spitfire/issues/52)) ([2d1bb63](https://github.com/elixir-tools/spitfire/commit/2d1bb63c064f2b2831dfb7d85643909b8d499b4a))
+
 ## [0.1.4](https://github.com/elixir-tools/spitfire/compare/v0.1.3...v0.1.4) (2024-12-20)
 
 
