@@ -2392,7 +2392,7 @@ defmodule Spitfire do
     :eof
   end
 
-  defp peek_token_eat_eol(%{peek_token: {:eol, _token}} = parser) do
+  defp peek_token_eat_eol(%{peek_token: {token, _token}} = parser) when token in [:eol, :";"] do
     peek_token_eat_eol(next_token(parser))
   end
 

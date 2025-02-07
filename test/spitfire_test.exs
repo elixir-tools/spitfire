@@ -1737,6 +1737,14 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
     end
 
+    test "default args semicolons" do
+      code = ~S'''
+      def foo(arg \\ :value) do; :ok; end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "literal encoder" do
       codes = [
         ~S'''
