@@ -42,6 +42,18 @@ defmodule SpitfireTest do
       # assert Spitfire.parse(code) == s2q(code)
     end
 
+    test "semicolon in block" do
+      code = """
+      defmodule MyModule do
+        import List
+
+        ;(__cursor__())
+      end
+      """
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "parses valid elixir" do
       code = """
       defmodule Foo do

@@ -2326,7 +2326,10 @@ defmodule Spitfire do
   end
 
   defp eat_eol(parser) do
-    eat(%{:eol => true, :";" => true}, parser)
+    case eat(%{:eol => true, :";" => true}, parser) do
+      %{current_token: {token, _}} = parser when token in [:eol, :";"] -> eat_eol(parser)
+      parser -> parser
+    end
   end
 
   defp eat_eol_at(parser, idx) do
