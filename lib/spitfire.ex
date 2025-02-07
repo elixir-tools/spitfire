@@ -1670,6 +1670,9 @@ defmodule Spitfire do
       else
         {left, parser} = prefix.(parser)
 
+        # TODO should we add ; here?
+        # TODO is anything needed? Removing all tokens does not break any tests
+        terminals = [:eol, :eof, :"}", :")", :"]", :">>"]
         terminals = [:eol, :eof, :"}", :")", :"]", :">>"]
 
         {parser, is_valid} = validate_peek(parser, current_token_type(parser))
