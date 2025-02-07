@@ -618,10 +618,15 @@ defmodule Spitfire do
 
       {kvs, parser} =
         while2 peek_token(parser) == :"," <- parser do
-          parser = parser |> next_token() |> next_token()
-          {pair, parser} = parse_kw_identifier(parser)
-
-          {pair, parser}
+          if kw_identifier?(current_token(parser)) do
+            parser = parser |> next_token() |> next_token()
+            {pair, parser} = parse_kw_identifier(parser)
+            {pair, parser}
+          else
+            parser = parser |> next_token() |> next_token()
+            {item, parser} = parse_expression(parser, @kw_identifier, true, false, false)
+            {item, parser}
+          end
         end
 
       {[{token, value} | kvs], parser}
@@ -645,15 +650,24 @@ defmodule Spitfire do
 
       {kvs, parser} =
         while2 peek_token(parser) == :"," <- parser do
-          parser = parser |> next_token() |> next_token()
-          {pair, parser} = parse_kw_identifier(parser)
-
-          {pair, parser}
+          if kw_identifier?(current_token(parser)) do
+            parser = parser |> next_token() |> next_token()
+            {pair, parser} = parse_kw_identifier(parser)
+            {pair, parser}
+          else
+            parser = parser |> next_token() |> next_token()
+            {item, parser} = parse_expression(parser, @kw_identifier, true, false, false)
+            {item, parser}
+          end
         end
 
       {[{atom, value} | kvs], parser}
     end
   end
+
+  defp kw_identifier?({:kw_identifier, _, _}), do: true
+  defp kw_identifier?({:kw_identifier_unsafe, _, _}), do: true
+  defp kw_identifier?(_), do: false
 
   defp parse_assoc_op(%{current_token: {:assoc_op, _, _token}} = parser, key) do
     trace "parse_assoc_op", trace_meta(parser) do
