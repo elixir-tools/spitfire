@@ -133,7 +133,7 @@ defmodule Spitfire do
 
     # eat all the beginning eol tokens in case the file starts with a comment
     parser =
-      while current_token(parser) == :eol <- parser do
+      while current_token(parser) in [:eol, :";"] <- parser do
         next_token(parser)
       end
 
