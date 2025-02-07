@@ -427,6 +427,9 @@ defmodule SpitfireTest do
           !false
         )
         ''',
+        ~S'''
+        (; !false;)
+        ''',
         "(not false)",
         ~S'''
         a do
@@ -1003,6 +1006,21 @@ defmodule SpitfireTest do
         max_line = closing_line(meta)
         Enum.any?(comments, fn %{line: line} -> line > min_line and line < max_line end)
       )
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      (
+        min_line = line(meta); max_line = closing_line(meta); Enum.any?(comments, fn %{line: line} -> line > min_line and line < max_line end)
+      )
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      (
+        min_line = line(meta); max_line = closing_line(meta); Enum.any?(comments, fn %{line: line} -> line > min_line and line < max_line end); )
       '''
 
       assert Spitfire.parse(code) == s2q(code)

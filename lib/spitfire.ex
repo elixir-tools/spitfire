@@ -310,7 +310,7 @@ defmodule Spitfire do
           else
             @terminals_with_comma
           end
-        
+
         {parser, is_valid} = validate_peek(parser, current_token_type(parser))
         # TODO should we handle ; here?
         # TODO removing peek_token(parser) != :eol does not break any tests
@@ -399,7 +399,7 @@ defmodule Spitfire do
 
         cond do
           # if the next token is the closing paren or if the next token is a newline and the next next token is the closing paren
-          peek_token(parser) == :")" || (peek_token(parser) == :eol && peek_token(next_token(parser)) == :")") ->
+          peek_token(parser) == :")" || (peek_token(parser) in [:eol, :";"] && peek_token(next_token(parser)) == :")") ->
             parser =
               parser
               |> Map.put(:nesting, old_nesting)
@@ -431,11 +431,11 @@ defmodule Spitfire do
             {ast, parser}
 
           # if the next token is a new line, but the next next token is not the closing paren (implied from previous clause)
-          peek_token(parser) == :eol or current_token(parser) == :-> ->
+          peek_token(parser) in [:eol, :";"] or current_token(parser) == :-> ->
             # second conditon checks of the next next token is a closing paren or another expression
             {exprs, parser} =
               while2 current_token(parser) == :-> ||
-                       (peek_token(parser) == :eol && parser |> next_token() |> peek_token() != :")") <- parser do
+                       (peek_token(parser) in [:eol, :";"] && parser |> next_token() |> peek_token() != :")") <- parser do
                 {ast, parser} =
                   case Map.get(parser, :stab_state) do
                     %{ast: lhs} ->
@@ -482,7 +482,7 @@ defmodule Spitfire do
 
             # handles if the closing paren is on a new line or the same line
             parser =
-              if peek_token(parser) == :eol do
+              if peek_token(parser) in [:eol, :";"] do
                 next_token(parser)
               else
                 parser
@@ -1673,7 +1673,6 @@ defmodule Spitfire do
         # TODO should we add ; here?
         # TODO is anything needed? Removing all tokens does not break any tests
         terminals = [:eol, :eof, :"}", :")", :"]", :">>"]
-        terminals = [:eol, :eof, :"}", :")", :"]", :">>"]
 
         {parser, is_valid} = validate_peek(parser, current_token_type(parser))
 
@@ -2331,6 +2330,7 @@ defmodule Spitfire do
     parser
   end
 
+  # TODO this may be too greedy. Probably the better option would be to have distinct eat_eol/1 and eat_eol_or_semicolon/1
   defp eat_eol(parser) do
     case eat(%{:eol => true, :";" => true}, parser) do
       %{current_token: {token, _}} = parser when token in [:eol, :";"] -> eat_eol(parser)
