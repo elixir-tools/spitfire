@@ -2604,6 +2604,7 @@ defmodule Spitfire do
     nil
   end
 
+  # NOTE no need to handle ; here as this function is used only for building metadata and counting newlines there
   defp peek_newlines(%{peek_token: {:eol, {_line, _col, newlines}}}) when is_integer(newlines) do
     newlines
   end
