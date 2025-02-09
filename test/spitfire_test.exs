@@ -1956,6 +1956,20 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code) == s2q(code)
     end
+
+    test "blocks inside an anon function as a parameter" do
+      code = ~S"""
+      M.m fn ->
+        what a do
+          :alice
+        else
+          :bob
+        end
+      end 
+      """
+
+      assert {:ok, _} = Spitfire.parse(code)
+    end
   end
 
   describe "code with errors" do

@@ -710,6 +710,8 @@ defmodule Spitfire do
       newlines = get_newlines(parser)
 
       parser = eat_at(parser, [:eol, :";"], 1)
+      old_nesting = parser.nesting
+      parser = Map.put(parser, :nesting, 0)
 
       {exprs, parser} =
         while2 peek_token(parser) not in [:end, :")"] <- parser do
@@ -730,6 +732,7 @@ defmodule Spitfire do
       ast =
         {token, newlines ++ meta, [[], rhs]}
 
+      parser = Map.put(parser, :nesting, old_nesting)
 
       {ast, parser}
     end
