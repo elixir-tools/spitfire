@@ -1968,7 +1968,27 @@ defmodule SpitfireTest do
       end 
       """
 
-      assert {:ok, _} = Spitfire.parse(code)
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
+    test "parens on a macro with a do block on the right side of a match operator" do
+      for code <- [
+            ~S"""
+            a =
+              b() do
+                :ok
+              end
+            """,
+            ~S"""
+            a =
+              b(foo) do
+                :ok
+              end
+            """
+          ] do
+        # code |> Spitfire.parse!() |> Macro.to_string() |> IO.puts()
+        assert Spitfire.parse(code) == s2q(code)
+      end
     end
   end
 

@@ -1912,7 +1912,14 @@ defmodule Spitfire do
       if peek_token(parser) == :")" do
         parser = next_token(parser)
         closing = current_meta(parser)
-        {{token, newlines ++ [{:closing, closing} | meta], []}, parser}
+        ast = {token, newlines ++ [{:closing, closing} | meta], []}
+
+        if peek_token(parser) == :do and parser.nesting == 0 do
+          parser = next_token(parser)
+          parse_do_block(parser, ast)
+        else
+          {ast, parser}
+        end
       else
         old_nesting = parser.nesting
         parser = Map.put(parser, :nesting, 0)
@@ -1932,7 +1939,14 @@ defmodule Spitfire do
             parser = next_token(parser)
             closing = current_meta(parser)
 
-            {{token, newlines ++ [{:closing, closing} | meta], List.wrap(pairs)}, parser}
+            ast = {token, newlines ++ [{:closing, closing} | meta], List.wrap(pairs)}
+
+            if peek_token(parser) == :do and parser.nesting == 0 do
+              parser = next_token(parser)
+              parse_do_block(parser, ast)
+            else
+              {ast, parser}
+            end
 
           _ ->
             parser = put_error(parser, {error_meta, "missing closing parentheses for function invocation"})
@@ -2498,7 +2512,7 @@ defmodule Spitfire do
 
   if @trace? do
     defp trace_meta(parser) do
-      [{:nesting, parser.nesting} | current_meta(parser)]
+      [{:token, "'#{current_token(parser)}'"}, {:nesting, parser.nesting} | current_meta(parser)]
     end
   end
 
