@@ -101,9 +101,9 @@ jobs:
       - name: Unit Tests
         run: nix develop --command bash -c "mix test"
 
-  formatter:
+  lint:
     runs-on: ubuntu-latest
-    name: Formatter
+    name: Lint
 
     steps:
       - uses: actions/checkout@v4
@@ -126,3 +126,6 @@ jobs:
 
       - name: Run Formatter
         run: nix develop --command bash -c "mix format --check-formatted"
+
+      - name: Credo
+        run: nix develop --command bash -c "mix credo"
