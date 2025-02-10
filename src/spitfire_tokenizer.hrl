@@ -1,3 +1,4 @@
+%% Vendored from elixir-lang/elixir, comes with the above copyright, only changed "elixir" to "spitfire" 
 %% Numbers
 -define(is_hex(S), (?is_digit(S) orelse (S >= $A andalso S =< $F) orelse (S >= $a andalso S =< $f))).
 -define(is_bin(S), (S >= $0 andalso S =< $1)).

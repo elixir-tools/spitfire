@@ -16,7 +16,7 @@
             # The Nix packages provided in the environment
             packages = with pkgs; [
               beam.packages.erlang_27.erlang
-              beam.packages.erlang_27.elixir_1_17
+              beam.packages.erlang_27.elixir_1_18
               act
             ];
           };

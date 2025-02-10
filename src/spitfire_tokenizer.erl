@@ -1,3 +1,8 @@
+%% SPDX-License-Identifier: Apache-2.0
+%% SPDX-FileCopyrightText: 2021 The Elixir Team
+%% SPDX-FileCopyrightText: 2012 Plataformatec
+%% Vendored from elixir-lang/elixir, comes with the above copyright, only changed "elixir" to "spitfire" 
+
 -module(spitfire_tokenizer).
 -include("spitfire.hrl").
 -include("spitfire_tokenizer.hrl").
@@ -115,9 +120,9 @@ tokenize(String, Line, Column, Opts) ->
   Scope =
     lists:foldl(fun
       ({check_terminators, false}, Acc) ->
-        Acc#spitfire_tokenizer{terminators=none};
-      ({cursor_completion, true}, Acc) ->
-        Acc#spitfire_tokenizer{cursor_completion=prune_and_cursor};
+        Acc#spitfire_tokenizer{cursor_completion=false, terminators=none};
+      ({check_terminators, {cursor, Terminators}}, Acc) ->
+        Acc#spitfire_tokenizer{cursor_completion=prune_and_cursor, terminators=Terminators};
       ({existing_atoms_only, ExistingAtomsOnly}, Acc) when is_boolean(ExistingAtomsOnly) ->
         Acc#spitfire_tokenizer{existing_atoms_only=ExistingAtomsOnly};
       ({static_atoms_encoder, StaticAtomsEncoder}, Acc) when is_function(StaticAtomsEncoder) ->
@@ -138,12 +143,11 @@ tokenize(String, Line, Opts) ->
 tokenize([], Line, Column, #spitfire_tokenizer{cursor_completion=Cursor} = Scope, Tokens) when Cursor /= false ->
   #spitfire_tokenizer{ascii_identifiers_only=Ascii, terminators=Terminators, warnings=Warnings} = Scope,
 
-  {CursorColumn, CursorTerminators, AccTokens} =
+  {CursorColumn, AccTerminators, AccTokens} =
     add_cursor(Line, Column, Cursor, Terminators, Tokens),
 
   AllWarnings = maybe_unicode_lint_warnings(Ascii, Tokens, Warnings),
-  {AccTerminators, _AccColumn} = cursor_complete(Line, CursorColumn, CursorTerminators),
-  {ok, Line, Column, AllWarnings, AccTokens, AccTerminators};
+  {ok, Line, CursorColumn, AllWarnings, AccTokens, AccTerminators};
 
 tokenize([], EndLine, EndColumn, #spitfire_tokenizer{terminators=[{Start, {StartLine, StartColumn, _}, _} | _]} = Scope, Tokens) ->
   End = terminator(Start),
@@ -163,7 +167,7 @@ tokenize([], EndLine, EndColumn, #spitfire_tokenizer{terminators=[{Start, {Start
 tokenize([], Line, Column, #spitfire_tokenizer{} = Scope, Tokens) ->
   #spitfire_tokenizer{ascii_identifiers_only=Ascii, warnings=Warnings} = Scope,
   AllWarnings = maybe_unicode_lint_warnings(Ascii, Tokens, Warnings),
-  {ok, Line, Column, AllWarnings, lists:reverse(Tokens)};
+  {ok, Line, Column, AllWarnings, Tokens, []};
 
 % VC merge conflict
 
@@ -267,8 +271,7 @@ tokenize([$" | T], Line, Column, Scope, Tokens) ->
 
 %% TODO: Remove me in Elixir v2.0
 tokenize([$' | T], Line, Column, Scope, Tokens) ->
-  NewScope = prepend_warning(Line, Column, "single-quoted strings represent charlists. Use ~c\"\" if you indeed want a charlist or use \"\" instead", Scope),
-  handle_strings(T, Line, Column + 1, $', NewScope, Tokens);
+  handle_strings(T, Line, Column + 1, $', Scope, Tokens);
 
 % Operator atoms
 
@@ -486,7 +489,15 @@ tokenize([T | Rest], Line, Column, Scope, Tokens) when ?pipe_op(T) ->
 
 % Non-operator Atoms
 
-tokenize([$:, H | T] = Original, Line, Column, Scope, Tokens) when ?is_quote(H) ->
+tokenize([$:, H | T] = Original, Line, Column, BaseScope, Tokens) when ?is_quote(H) ->
+  Scope = case H == $' of
+    true ->
+      prepend_warning(Line, Column, "single quotes around atoms are deprecated. Use double quotes instead", BaseScope);
+
+    false ->
+      BaseScope
+  end,
+
   case spitfire_interpolation:extract(Line, Column + 2, Scope, true, T, H) of
     {NewLine, NewColumn, Parts, Rest, InterScope} ->
       NewScope = case is_unnecessary_quote(Parts, InterScope) of
@@ -508,7 +519,7 @@ tokenize([$:, H | T] = Original, Line, Column, Scope, Tokens) when ?is_quote(H) 
         {ok, [Part]} when is_binary(Part) ->
           case unsafe_to_atom(Part, Line, Column, Scope) of
             {ok, Atom} ->
-              Token = {atom_quoted, {Line, Column, nil}, Atom},
+              Token = {atom_quoted, {Line, Column, H}, Atom},
               tokenize(Rest, NewLine, NewColumn, NewScope, [Token | Tokens]);
 
             {error, Reason} ->
@@ -520,7 +531,7 @@ tokenize([$:, H | T] = Original, Line, Column, Scope, Tokens) when ?is_quote(H) 
             true  -> atom_safe;
             false -> atom_unsafe
           end,
-          Token = {Key, {Line, Column, nil}, Unescaped},
+          Token = {Key, {Line, Column, H}, Unescaped},
           tokenize(Rest, NewLine, NewColumn, NewScope, [Token | Tokens]);
 
         {error, Reason} ->
@@ -629,7 +640,8 @@ tokenize([$%, $[ | Rest], Line, Column, Scope, Tokens) ->
   error(Reason, Rest, Scope, Tokens);
 
 tokenize([$%, ${ | T], Line, Column, Scope, Tokens) ->
-  tokenize([${ | T], Line, Column + 1, Scope, [{'%{}', {Line, Column, nil}} | Tokens]);
+  Token = {'{', {Line, Column, nil}},
+  handle_terminator(T, Line, Column + 2, Scope, Token, [{'%{}', {Line, Column, nil}} | Tokens]);
 
 tokenize([$% | T], Line, Column, Scope, Tokens) ->
   tokenize(T, Line, Column + 1, Scope, [{'%', {Line, Column, nil}} | Tokens]);
@@ -783,7 +795,11 @@ handle_strings(T, Line, Column, H, Scope, Tokens) ->
             "number do not require quotes",
             [hd(Parts)]
           ),
-          prepend_warning(Line, Column, WarnMsg, InterScope);
+          prepend_warning(Line, Column-1, WarnMsg, InterScope);
+
+        false when H =:= $' ->
+          WarnMsg = "single quotes around keywords are deprecated. Use double quotes instead",
+          prepend_warning(Line, Column-1, WarnMsg, InterScope);
 
         false ->
           InterScope
@@ -793,7 +809,7 @@ handle_strings(T, Line, Column, H, Scope, Tokens) ->
         {ok, [Part]} when is_binary(Part) ->
           case unsafe_to_atom(Part, Line, Column - 1, Scope) of
             {ok, Atom} ->
-              Token = {kw_identifier, {Line, Column - 1, nil}, Atom},
+              Token = {kw_identifier, {Line, Column - 1, H}, Atom},
               tokenize(Rest, NewLine, NewColumn + 1, NewScope, [Token | Tokens]);
             {error, Reason} ->
               error(Reason, Rest, NewScope, Tokens)
@@ -804,14 +820,27 @@ handle_strings(T, Line, Column, H, Scope, Tokens) ->
             true  -> kw_identifier_safe;
             false -> kw_identifier_unsafe
           end,
-          Token = {Key, {Line, Column - 1, nil}, Unescaped},
+          Token = {Key, {Line, Column - 1, H}, Unescaped},
           tokenize(Rest, NewLine, NewColumn + 1, NewScope, [Token | Tokens]);
 
         {error, Reason} ->
           error(Reason, Rest, NewScope, Tokens)
       end;
 
-    {NewLine, NewColumn, Parts, Rest, NewScope} ->
+    {NewLine, NewColumn, Parts, Rest, InterScope} ->
+      NewScope =
+        case H of
+          $' ->
+            Message = "using single-quoted strings to represent charlists is deprecated.\n"
+              "Use ~c\"\" if you indeed want a charlist or use \"\" instead.\n"
+              "You may run \"mix format --migrate\" to change all single-quoted\n"
+              "strings to use the ~c sigil and fix this warning.",
+            prepend_warning(Line, Column-1, Message, InterScope);
+
+          _ ->
+            InterScope
+        end,
+
       case unescape_tokens(Parts, Line, Column, NewScope) of
         {ok, Unescaped} ->
           Token = {string_type(H), {Line, Column - 1, nil}, Unescaped},
@@ -893,7 +922,15 @@ handle_dot([$., $( | Rest], Line, Column, DotInfo, Scope, Tokens) ->
   TokensSoFar = add_token_with_eol({dot_call_op, DotInfo, '.'}, Tokens),
   tokenize([$( | Rest], Line, Column, Scope, TokensSoFar);
 
-handle_dot([$., H | T] = Original, Line, Column, DotInfo, Scope, Tokens) when ?is_quote(H) ->
+handle_dot([$., H | T] = Original, Line, Column, DotInfo, BaseScope, Tokens) when ?is_quote(H) ->
+  Scope = case H == $' of
+    true ->
+      prepend_warning(Line, Column, "single quotes around calls are deprecated. Use double quotes instead", BaseScope);
+
+    false ->
+      BaseScope
+  end,
+
   case spitfire_interpolation:extract(Line, Column + 1, Scope, true, T, H) of
     {NewLine, NewColumn, [Part], Rest, InterScope} when is_list(Part) ->
       NewScope = case is_unnecessary_quote([Part], InterScope) of
@@ -910,9 +947,11 @@ handle_dot([$., H | T] = Original, Line, Column, DotInfo, Scope, Tokens) when ?i
           InterScope
       end,
 
-      case unsafe_to_atom(Part, Line, Column, NewScope) of
+      {ok, [UnescapedPart]} = unescape_tokens([Part], Line, Column, NewScope),
+
+      case unsafe_to_atom(UnescapedPart, Line, Column, NewScope) of
         {ok, Atom} ->
-          Token = check_call_identifier(Line, Column, Part, Atom, Rest),
+          Token = check_call_identifier(Line, Column, H, Atom, Rest),
           TokensSoFar = add_token_with_eol({'.', DotInfo}, Tokens),
           tokenize(Rest, NewLine, NewColumn, NewScope, [Token | TokensSoFar]);
 
@@ -936,17 +975,18 @@ handle_call_identifier(Rest, Line, Column, DotInfo, Length, UnencodedOp, Scope, 
   tokenize(Rest, Line, Column + Length, Scope, [Token | TokensSoFar]).
 
 % ## Ambiguous unary/binary operators tokens
-handle_space_sensitive_tokens([Sign, NotMarker | T], Line, Column, Scope, [{Identifier, _, _} = H | Tokens]) when
-    ?dual_op(Sign),
-    not(?is_space(NotMarker)),
-    NotMarker =/= $(, NotMarker =/= $[, NotMarker =/= $<, NotMarker =/= ${,                   %% containers
-    NotMarker =/= $%, NotMarker =/= $+, NotMarker =/= $-, NotMarker =/= $/, NotMarker =/= $>, %% operators
-    NotMarker =/= $:, %% keywords
-    Identifier == identifier ->
+% Keywords are not ambiguous operators
+handle_space_sensitive_tokens([Sign, $:, Space | _] = String, Line, Column, Scope, Tokens) when ?dual_op(Sign), ?is_space(Space) ->
+  tokenize(String, Line, Column, Scope, Tokens);
+
+% But everything else, except other operators, are
+handle_space_sensitive_tokens([Sign, NotMarker | T], Line, Column, Scope, [{identifier, _, _} = H | Tokens]) when
+    ?dual_op(Sign), not(?is_space(NotMarker)), NotMarker =/= Sign, NotMarker =/= $/, NotMarker =/= $> ->
   Rest = [NotMarker | T],
   DualOpToken = {dual_op, {Line, Column, nil}, list_to_atom([Sign])},
   tokenize(Rest, Line, Column + 1, Scope, [DualOpToken, setelement(1, H, op_identifier) | Tokens]);
 
+% Handle cursor completion
 handle_space_sensitive_tokens([], Line, Column,
                               #spitfire_tokenizer{cursor_completion=Cursor} = Scope,
                               [{identifier, Info, Identifier} | Tokens]) when Cursor /= false ->
@@ -1238,7 +1278,7 @@ tokenize_identifier(String, Line, Column, Scope, MaybeKeyword) ->
           Error
       end;
 
-    {error, {not_highly_restrictive, Wrong, {Prefix, Suffix}}} ->
+    {error, {mixed_script, Wrong, {Prefix, Suffix}}} ->
       WrongColumn = Column + length(Wrong) - 1,
       case suggest_simpler_unexpected_token_in_error(Wrong, Line, WrongColumn, Scope) of
         no_suggestion ->
@@ -1323,12 +1363,12 @@ tokenize_alias(Rest, Line, Column, Unencoded, Atom, Length, Ascii, Special, Scop
 
 %% Check if it is a call identifier (paren | bracket | do)
 
-check_call_identifier(Line, Column, Unencoded, Atom, [$( | _]) ->
-  {paren_identifier, {Line, Column, Unencoded}, Atom};
-check_call_identifier(Line, Column, Unencoded, Atom, [$[ | _]) ->
-  {bracket_identifier, {Line, Column, Unencoded}, Atom};
-check_call_identifier(Line, Column, Unencoded, Atom, _Rest) ->
-  {identifier, {Line, Column, Unencoded}, Atom}.
+check_call_identifier(Line, Column, Info, Atom, [$( | _]) ->
+  {paren_identifier, {Line, Column, Info}, Atom};
+check_call_identifier(Line, Column, Info, Atom, [$[ | _]) ->
+  {bracket_identifier, {Line, Column, Info}, Atom};
+check_call_identifier(Line, Column, Info, Atom, _Rest) ->
+  {identifier, {Line, Column, Info}, Atom}.
 
 add_token_with_eol({unary_op, _, _} = Left, T) -> [Left | T];
 add_token_with_eol(Left, [{eol, _} | T]) -> [Left | T];
@@ -1359,7 +1399,7 @@ interpolation_format({_, _, _} = Reason, _Extension, _Args, _Line, _Column, _Ope
 
 %% Terminators
 
-handle_terminator(Rest, _, _, Scope, {'(', {Line, Column, _}}, [{alias, _, Alias} | Tokens]) ->
+handle_terminator(Rest, _, _, Scope, {'(', {Line, Column, _}}, [{alias, _, Alias} | Tokens]) when is_atom(Alias) ->
   Reason =
     io_lib:format(
       "unexpected ( after alias ~ts. Function names and identifiers in Elixir "
@@ -1443,7 +1483,7 @@ check_terminator({End, {EndLine, EndColumn, _}}, [{Start, {StartLine, StartColum
 check_terminator({'end', {Line, Column, _}}, [], #spitfire_tokenizer{mismatch_hints=Hints}) ->
   Suffix =
     case lists:keyfind('end', 1, Hints) of
-      {'end', HintLine, _Identation} ->
+      {'end', HintLine, _Indentation} ->
         io_lib:format("\n~ts the \"end\" on line ~B may not have a matching \"do\" "
                       "defined before it (based on indentation)", [elixir_errors:prefix(hint), HintLine]);
       false ->
@@ -1558,19 +1598,32 @@ tokenize_sigil([$~ | T], Line, Column, Scope, Tokens) ->
   end.
 
 % A one-letter sigil is ok both as upcase as well as downcase.
-tokenize_sigil_name([S | T], [], Line, Column, Scope, Tokens) when ?is_upcase(S) orelse ?is_downcase(S) ->
-  tokenize_sigil_name(T, [S], Line, Column + 1, Scope, Tokens);
-% If we have an uppercase letter, we keep tokenizing the name.
-tokenize_sigil_name([S | T], NameAcc, Line, Column, Scope, Tokens) when ?is_upcase(S) ->
-  tokenize_sigil_name(T, [S | NameAcc], Line, Column + 1, Scope, Tokens);
-% With a lowercase letter and a non-empty NameAcc we return an error.
-tokenize_sigil_name([S | _T] = Original, [_ | _] = NameAcc, _Line, _Column, _Scope, _Tokens) when ?is_downcase(S) ->
-  Message = "invalid sigil name, it should be either a one-letter lowercase letter or a" ++
-            " sequence of uppercase letters only, got: ",
-  {error, Message, [$~] ++ lists:reverse(NameAcc) ++ Original};
-% We finished the letters, so the name is over.
-tokenize_sigil_name(T, NameAcc, Line, Column, Scope, Tokens) ->
+tokenize_sigil_name([S | T], [], Line, Column, Scope, Tokens) when ?is_downcase(S) ->
+  tokenize_lower_sigil_name(T, [S], Line, Column + 1, Scope, Tokens);
+tokenize_sigil_name([S | T], [], Line, Column, Scope, Tokens) when ?is_upcase(S) ->
+    tokenize_upper_sigil_name(T, [S], Line, Column + 1, Scope, Tokens).
+
+tokenize_lower_sigil_name([S | _T] = Original, [_ | _] = NameAcc, _Line, _Column, _Scope, _Tokens) when ?is_downcase(S) ->
+  SigilName = lists:reverse(NameAcc) ++ Original,
+  {error, sigil_name_error(), [$~] ++ SigilName};
+tokenize_lower_sigil_name(T, NameAcc, Line, Column, Scope, Tokens) ->
   {ok, lists:reverse(NameAcc), T, Line, Column, Scope, Tokens}.
+
+% If we have an uppercase letter, we keep tokenizing the name.
+% A digit is allowed but an uppercase letter or digit must proceed it.
+tokenize_upper_sigil_name([S | T], NameAcc, Line, Column, Scope, Tokens) when ?is_upcase(S); ?is_digit(S) ->
+  tokenize_upper_sigil_name(T, [S | NameAcc], Line, Column + 1, Scope, Tokens);
+% With a lowercase letter and a non-empty NameAcc we return an error.
+tokenize_upper_sigil_name([S | _T] = Original, [_ | _] = NameAcc, _Line, _Column, _Scope, _Tokens) when ?is_downcase(S) ->
+  SigilName = lists:reverse(NameAcc) ++ Original,
+  {error,  sigil_name_error(), [$~] ++ SigilName};
+% We finished the letters, so the name is over.
+tokenize_upper_sigil_name(T, NameAcc, Line, Column, Scope, Tokens) ->
+  {ok, lists:reverse(NameAcc), T, Line, Column, Scope, Tokens}.
+
+sigil_name_error() ->
+  "invalid sigil name, it should be either a one-letter lowercase letter or an " ++
+  "uppercase letter optionally followed by uppercase letters and digits, got: ".
 
 tokenize_sigil_contents([H, H, H | T] = Original, [S | _] = SigilName, Line, Column, Scope, Tokens)
     when ?is_quote(H) ->
@@ -1727,98 +1780,86 @@ error(Reason, Rest, #spitfire_tokenizer{warnings=Warnings}, Tokens) ->
 
 %% Cursor handling
 
-cursor_complete(Line, Column, Terminators) ->
-  lists:mapfoldl(
-    fun({Start, _, _}, AccColumn) ->
-      End = terminator(Start),
-      {{End, {Line, AccColumn, nil}}, AccColumn + length(erlang:atom_to_list(End))}
-    end,
-    Column,
-    Terminators
-  ).
-
 add_cursor(_Line, Column, noprune, Terminators, Tokens) ->
   {Column, Terminators, Tokens};
 add_cursor(Line, Column, prune_and_cursor, Terminators, Tokens) ->
   PrePrunedTokens = prune_identifier(Tokens),
-  {PrunedTokens, PrunedTerminators} = prune_tokens(PrePrunedTokens, [], Terminators),
+  PrunedTokens = prune_tokens(PrePrunedTokens, []),
   CursorTokens = [
     {')', {Line, Column + 11, nil}},
     {'(', {Line, Column + 10, nil}},
     {paren_identifier, {Line, Column, nil}, '__cursor__'}
     | PrunedTokens
   ],
-  {Column + 12, PrunedTerminators, CursorTokens}.
+  {Column + 12, Terminators, CursorTokens}.
 
 prune_identifier([{identifier, _, _} | Tokens]) -> Tokens;
 prune_identifier(Tokens) -> Tokens.
 
 %%% Any terminator needs to be closed
-prune_tokens([{'end', _} | Tokens], Opener, Terminators) ->
-  prune_tokens(Tokens, ['end' | Opener], Terminators);
-prune_tokens([{')', _} | Tokens], Opener, Terminators) ->
-  prune_tokens(Tokens, [')' | Opener], Terminators);
-prune_tokens([{']', _} | Tokens], Opener, Terminators) ->
-  prune_tokens(Tokens, [']' | Opener], Terminators);
-prune_tokens([{'}', _} | Tokens], Opener, Terminators) ->
-  prune_tokens(Tokens, ['}' | Opener], Terminators);
-prune_tokens([{'>>', _} | Tokens], Opener, Terminators) ->
-  prune_tokens(Tokens, ['>>' | Opener], Terminators);
+prune_tokens([{'end', _} | Tokens], Opener) ->
+  prune_tokens(Tokens, ['end' | Opener]);
+prune_tokens([{')', _} | Tokens], Opener) ->
+  prune_tokens(Tokens, [')' | Opener]);
+prune_tokens([{']', _} | Tokens], Opener) ->
+  prune_tokens(Tokens, [']' | Opener]);
+prune_tokens([{'}', _} | Tokens], Opener) ->
+  prune_tokens(Tokens, ['}' | Opener]);
+prune_tokens([{'>>', _} | Tokens], Opener) ->
+  prune_tokens(Tokens, ['>>' | Opener]);
 %%% Close opened terminators
-prune_tokens([{'fn', _} | Tokens], ['end' | Opener], Terminators) ->
-  prune_tokens(Tokens, Opener, Terminators);
-prune_tokens([{'do', _} | Tokens], ['end' | Opener], Terminators) ->
-  prune_tokens(Tokens, Opener, Terminators);
-prune_tokens([{'(', _} | Tokens], [')' | Opener], Terminators) ->
-  prune_tokens(Tokens, Opener, Terminators);
-prune_tokens([{'[', _} | Tokens], [']' | Opener], Terminators) ->
-  prune_tokens(Tokens, Opener, Terminators);
-prune_tokens([{'{', _} | Tokens], ['}' | Opener], Terminators) ->
-  prune_tokens(Tokens, Opener, Terminators);
-prune_tokens([{'<<', _} | Tokens], ['>>' | Opener], Terminators) ->
-  prune_tokens(Tokens, Opener, Terminators);
-%%% Handle anonymous functions
-prune_tokens([{'(', _}, {capture_op, _, _} | Tokens], [], [{'(', _, _} | Terminators]) ->
-  prune_tokens(Tokens, [], Terminators);
+prune_tokens([{'fn', _} | Tokens], ['end' | Opener]) ->
+  prune_tokens(Tokens, Opener);
+prune_tokens([{'do', _} | Tokens], ['end' | Opener]) ->
+  prune_tokens(Tokens, Opener);
+prune_tokens([{'(', _} | Tokens], [')' | Opener]) ->
+  prune_tokens(Tokens, Opener);
+prune_tokens([{'[', _} | Tokens], [']' | Opener]) ->
+  prune_tokens(Tokens, Opener);
+prune_tokens([{'{', _} | Tokens], ['}' | Opener]) ->
+  prune_tokens(Tokens, Opener);
+prune_tokens([{'<<', _} | Tokens], ['>>' | Opener]) ->
+  prune_tokens(Tokens, Opener);
 %%% or it is time to stop...
-prune_tokens([{';', _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{'eol', _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{',', _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{'fn', _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{'do', _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{'(', _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{'[', _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{'{', _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{'<<', _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{identifier, _, _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{block_identifier, _, _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{kw_identifier, _, _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{kw_identifier_safe, _, _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{kw_identifier_unsafe, _, _} | _] = Tokens, [], Terminators) ->
-  {Tokens, Terminators};
-prune_tokens([{OpType, _, _} | _] = Tokens, [], Terminators)
+prune_tokens([{';', _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{'eol', _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{',', _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{'fn', _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{'do', _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{'(', _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{'[', _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{'{', _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{'<<', _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{identifier, _, _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{block_identifier, _, _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{kw_identifier, _, _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{kw_identifier_safe, _, _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{kw_identifier_unsafe, _, _} | _] = Tokens, []) ->
+  Tokens;
+prune_tokens([{OpType, _, _} | _] = Tokens, [])
   when OpType =:= comp_op; OpType =:= at_op; OpType =:= unary_op; OpType =:= and_op;
        OpType =:= or_op; OpType =:= arrow_op; OpType =:= match_op; OpType =:= in_op;
        OpType =:= in_match_op; OpType =:= type_op; OpType =:= dual_op; OpType =:= mult_op;
        OpType =:= power_op; OpType =:= concat_op; OpType =:= range_op; OpType =:= xor_op;
        OpType =:= pipe_op; OpType =:= stab_op; OpType =:= when_op; OpType =:= assoc_op;
        OpType =:= rel_op; OpType =:= ternary_op; OpType =:= capture_op; OpType =:= ellipsis_op ->
-  {Tokens, Terminators};
+  Tokens;
 %%% or we traverse until the end.
-prune_tokens([_ | Tokens], Opener, Terminators) ->
-  prune_tokens(Tokens, Opener, Terminators);
-prune_tokens([], [], Terminators) ->
-  {[], Terminators}.
+prune_tokens([_ | Tokens], Opener) ->
+  prune_tokens(Tokens, Opener);
+prune_tokens([], _Opener) ->
+  [].
+
