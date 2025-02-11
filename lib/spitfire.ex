@@ -183,8 +183,8 @@ defmodule Spitfire do
     opts =
       opts
       |> Keyword.put(:cursor_completion, true)
-      |> Keyword.put(:warnings, false)
-      |> Keyword.put(:check_terminators, true)
+      |> Keyword.put(:emit_warnings, false)
+      |> Keyword.put(:check_terminators, {:cursor, []})
 
     Spitfire.parse(code, opts)
   end
@@ -312,7 +312,7 @@ defmodule Spitfire do
         {parser, is_valid} = validate_peek(parser, current_token_type(parser))
 
         if is_valid do
-          while is_nil(Map.get(parser, :stab_state)) and not MapSet.member?(terminals, peek_token(parser)) &&
+          while (is_nil(Map.get(parser, :stab_state)) and not MapSet.member?(terminals, peek_token(parser))) &&
                   (current_token(parser) != :do and peek_token(parser) != :eol) &&
                   calc_prec(parser, associativity, precedence) <- {left, parser} do
             parser = consume_fuel(parser)
@@ -377,9 +377,12 @@ defmodule Spitfire do
 
   defp parse_grouped_expression(parser) do
     trace "parse_grouped_expression", trace_meta(parser) do
+      opening_paren_meta = current_meta(parser)
+
       if peek_token(parser) == :")" do
         parser = parser |> next_token() |> eat_eol()
-        {{:__block__, [], []}, parser}
+        closing_paren_meta = current_meta(parser)
+        {{:__block__, [parens: opening_paren_meta ++ [closing: closing_paren_meta]], []}, parser}
       else
         orig_meta = current_meta(parser)
         parser = parser |> next_token() |> eat_eol()
@@ -400,6 +403,8 @@ defmodule Spitfire do
               |> next_token()
               |> eat_eol()
 
+            closing_paren_meta = current_meta(parser)
+
             ast =
               case expression do
                 # unquote splicing is special cased, if it has one expression as an arg, its wrapped in a block
@@ -413,7 +418,10 @@ defmodule Spitfire do
                 {:->, _, _} ->
                   [expression]
 
-                _ ->
+                {f, meta, a} ->
+                  {f, [parens: opening_paren_meta ++ [closing: closing_paren_meta]] ++ meta, a}
+
+                expression ->
                   expression
               end
 
@@ -548,7 +556,8 @@ defmodule Spitfire do
       atom =
         case atom do
           {t, meta, args} ->
-            meta = meta |> Keyword.delete(:delimiter) |> Keyword.put(:format, :keyword)
+            {delimiter, meta} = Keyword.pop(meta, :delimiter)
+            meta = meta |> Keyword.put(:format, :keyword) |> Keyword.put(:delimiter, delimiter)
             {t, meta, args}
         end
 
@@ -583,7 +592,8 @@ defmodule Spitfire do
       atom =
         case atom do
           {t, meta, args} ->
-            meta = meta |> Keyword.delete(:delimiter) |> Keyword.put(:format, :keyword)
+            {delimiter, meta} = Keyword.pop(meta, :delimiter)
+            meta = meta |> Keyword.put(:format, :keyword) |> Keyword.put(:delimiter, delimiter)
             {t, meta, args}
         end
 
@@ -603,8 +613,18 @@ defmodule Spitfire do
 
   defp parse_assoc_op(%{current_token: {:assoc_op, _, _token}} = parser, key) do
     trace "parse_assoc_op", trace_meta(parser) do
+      assoc_meta = current_meta(parser)
       parser = parser |> next_token() |> eat_eol()
       {value, parser} = parse_expression(parser, @assoc_op, false, false, false)
+
+      key =
+        case key do
+          {f, meta, args} ->
+            {f, [{:assoc, assoc_meta} | meta], args}
+
+          _ ->
+            key
+        end
 
       {{key, value}, parser}
     end
@@ -792,9 +812,18 @@ defmodule Spitfire do
 
           rhs = build_block_nr(exprs)
 
+          meta =
+            case lhs do
+              {type, [{:parens, _parens} = paren_meta | _], _} when type in [:__block__, :comma] ->
+                [paren_meta | meta]
+
+              _ ->
+                meta
+            end
+
           lhs =
             case lhs do
-              {:__block__, [], []} -> []
+              {:__block__, _, []} -> []
               {:comma, _, lhs} -> lhs
               lhs -> [lhs]
             end
@@ -815,7 +844,6 @@ defmodule Spitfire do
     trace "parse_comma", trace_meta(parser) do
       parser = parser |> next_token() |> eat_eol()
       {exprs, parser} = parse_comma_list(parser, @comma)
-      # {exprs, _} = Enum.unzip(exprs)
 
       {{:comma, [], [lhs | exprs]}, eat_eol(parser)}
     end
@@ -938,7 +966,7 @@ defmodule Spitfire do
         parser = parser |> next_token() |> next_token()
         {rrhs, parser} = parse_expression(parser, precedence, false, false, false)
 
-        {{:"..//", meta, [lhs, rhs, rrhs]}, eat_eol(parser)}
+        {{:..//, meta, [lhs, rhs, rrhs]}, eat_eol(parser)}
       else
         {{token, meta, [lhs, rhs]}, eat_eol(parser)}
       end
@@ -1902,9 +1930,13 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_paren_identifier(%{current_token: {:paren_identifier, _, token}} = parser) do
+  defp parse_paren_identifier(%{current_token: {:paren_identifier, token_meta, token}} = parser) do
     trace "parse_paren_identifier", trace_meta(parser) do
-      meta = current_meta(parser)
+      meta =
+        parser
+        |> current_meta()
+        |> push_delimiter(token_meta)
+
       parser = next_token(parser)
       newlines = get_newlines(parser)
       error_meta = current_meta(parser)
@@ -2099,9 +2131,13 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_lone_identifier(%{current_token: {_type, _, token}} = parser) do
+  defp parse_lone_identifier(%{current_token: {_type, token_meta, token}} = parser) do
     trace "parse_lone_identifier", trace_meta(parser) do
-      meta = current_meta(parser)
+      meta =
+        parser
+        |> current_meta()
+        |> push_delimiter(token_meta)
+
       {{token, meta, nil}, parser}
     end
   end
@@ -2128,8 +2164,19 @@ defmodule Spitfire do
         {:ok, _, _, _, tokens} ->
           tokens
 
-        {:ok, _, _, _, rev_tokens, rev_terminators} ->
-          :lists.reverse(rev_tokens, rev_terminators)
+        {:ok, line, column, _, rev_tokens, rev_terminators} ->
+          # vendored from elixir-lang/elixir, license: Apache2
+          {rev_tokens, rev_terminators} =
+            with [close, open, {_, _, :__cursor__} = cursor | rev_tokens] <- rev_tokens,
+                 {_, [_ | after_fn]} <- Enum.split_while(rev_terminators, &(elem(&1, 0) != :fn)),
+                 true <- maybe_missing_stab?(rev_tokens, false),
+                 [_ | rev_tokens] <- Enum.drop_while(rev_tokens, &(elem(&1, 0) != :fn)) do
+              {[close, open, cursor | rev_tokens], after_fn}
+            else
+              _ -> {rev_tokens, rev_terminators}
+            end
+
+          reverse_tokens(line, column, rev_tokens, rev_terminators)
 
         {:error, _, _, _, tokens} ->
           Enum.reverse(tokens)
@@ -2783,4 +2830,35 @@ defmodule Spitfire do
 
   defp previous_eol_count([]), do: 1
   defp previous_eol_count(_), do: 0
+
+  # vendored from elixir-lang/elixir, license: Apache2
+  defp maybe_missing_stab?([{:after, _} | _], _stab_choice?), do: true
+  defp maybe_missing_stab?([{:do, _} | _], _stab_choice?), do: true
+  defp maybe_missing_stab?([{:fn, _} | _], _stab_choice?), do: true
+  defp maybe_missing_stab?([{:else, _} | _], _stab_choice?), do: true
+  defp maybe_missing_stab?([{:catch, _} | _], _stab_choice?), do: true
+  defp maybe_missing_stab?([{:rescue, _} | _], _stab_choice?), do: true
+  defp maybe_missing_stab?([{:stab_op, _, :->} | _], stab_choice?), do: stab_choice?
+  defp maybe_missing_stab?([_ | tail], stab_choice?), do: maybe_missing_stab?(tail, stab_choice?)
+  defp maybe_missing_stab?([], _stab_choice?), do: false
+
+  # vendored from elixir-lang/elixir, license: Apache2
+  defp reverse_tokens(line, column, tokens, terminators) do
+    {terminators, _} =
+      Enum.map_reduce(terminators, column, fn {start, _, _}, column ->
+        atom = :spitfire_tokenizer.terminator(start)
+
+        {{atom, {line, column, nil}}, column + length(Atom.to_charlist(atom))}
+      end)
+
+    Enum.reverse(tokens, terminators)
+  end
+
+  defp push_delimiter(meta, {_, _, delimiter}) when is_integer(delimiter) do
+    [{:delimiter, "#{[delimiter]}"} | meta]
+  end
+
+  defp push_delimiter(meta, _token_meta) do
+    meta
+  end
 end

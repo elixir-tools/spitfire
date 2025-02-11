@@ -1,3 +1,4 @@
+%% Vendored from elixir-lang/elixir, comes with the above copyright, only changed "elixir" to "spitfire" 
 -define(key(M, K), maps:get(K, M)).
 -define(ann(Meta), elixir_erl:get_ann(Meta)).
 -define(line(Meta), elixir_utils:get_line(Meta)).

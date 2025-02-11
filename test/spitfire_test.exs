@@ -1,5 +1,5 @@
 defmodule SpitfireTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   doctest Spitfire
 
@@ -1171,6 +1171,9 @@ defmodule SpitfireTest do
         fn -> :ok end
         ''',
         ~s'''
+        fn () -> :ok end
+        ''',
+        ~s'''
         fn ->
           :ok
         end
@@ -1221,6 +1224,12 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
 
       code = "true"
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
+    test "parses right stab argument with parens" do
+      code = "if true do (x, y) -> x end"
+
       assert Spitfire.parse(code) == s2q(code)
     end
 
@@ -1558,6 +1567,18 @@ defmodule SpitfireTest do
 
             {ast, eat_eol(parser)}
         end
+      end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
+    test "lonely parens" do
+      code = ~S'''
+      ()
+      (())
+      foo do
+        ()
       end
       '''
 
@@ -1987,6 +2008,31 @@ defmodule SpitfireTest do
             """
           ] do
         # code |> Spitfire.parse!() |> Macro.to_string() |> IO.puts()
+        assert Spitfire.parse(code) == s2q(code)
+      end
+    end
+
+    test "emoji as identifiers" do
+      for code <- [
+            ~S|:"▶️"|,
+            ~S|:'➡️'|,
+            ~S|["➡️": x]|,
+            ~S|['➡️': x]|,
+            ~S|foo.'➡️'|
+          ] do
+        assert Spitfire.parse(code) == s2q(code)
+      end
+    end
+
+    test "quoted dot call identifier" do
+      for code <- [
+            ~S"""
+            :erlang."=<"(left, right)
+            """,
+            ~S"""
+            :erlang.'=<'(left, right)
+            """
+          ] do
         assert Spitfire.parse(code) == s2q(code)
       end
     end
