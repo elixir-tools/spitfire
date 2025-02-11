@@ -2355,7 +2355,7 @@ defmodule Spitfire do
   defp eat_at(%{tokens: remaining_tokens} = parser, tokens, idx) when is_list(remaining_tokens) and is_map(tokens) do
     tokens =
       if tokens[Enum.at(remaining_tokens, idx)] do
-        List.delete_at(tokens, idx)
+        List.delete_at(remaining_tokens, idx)
       else
         remaining_tokens
       end
