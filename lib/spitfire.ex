@@ -2160,9 +2160,6 @@ defmodule Spitfire do
       case code
            |> String.to_charlist()
            |> :spitfire_tokenizer.tokenize(opts[:line] || 1, opts[:column] || 1, opts) do
-        {:ok, _, _, _, tokens} ->
-          tokens
-
         {:ok, line, column, _, rev_tokens, rev_terminators} ->
           # vendored from elixir-lang/elixir, license: Apache2
           {rev_tokens, rev_terminators} =
