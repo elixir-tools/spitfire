@@ -12,7 +12,12 @@ defmodule Spitfire.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       docs: [main: "Spitfire"],
-      package: package()
+      package: package(),
+      dialyzer: [
+        plt_core_path: "priv/plts",
+        plt_local_path: "priv/plts",
+        ignore_warnings: ".dialyzer_ignore.exs"
+      ]
     ]
   end
 
@@ -28,7 +33,9 @@ defmodule Spitfire.MixProject do
     [
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:styler, "~> 0.11", only: :dev},
-      {:credo, "~> 1.7", only: :dev}
+      {:credo, "~> 1.7", only: :dev},
+      {:dialyxir, "~> 1.0", only: :dev}
+
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
