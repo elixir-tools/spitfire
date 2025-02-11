@@ -634,7 +634,6 @@ defmodule Spitfire do
 
   defp parse_comma_list(parser, precedence, is_list, is_map) do
     trace "parse_comma_list", trace_meta(parser) do
-      precedence = precedence || @list_comma
       {front, parser} = parse_expression(parser, precedence, is_list, is_map, false)
       # we zip together the expression and parser state so that we can potentially 
       # backtrack later
