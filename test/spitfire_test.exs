@@ -2911,6 +2911,78 @@ defmodule SpitfireTest do
     end
   end
 
+  describe "safe atoms" do
+    test "parses quoted atoms" do
+      code = """
+      :"abc#{Enum.random(1..10_000)}"
+      """
+
+      # tokenizer returns error
+      assert Spitfire.parse(code, existing_atoms_only: true) == {:ok, {:__block__, [], []}}
+
+      code = """
+      :"abc\#{foo}"
+      """
+
+      # tokenizer returns atom_safe token
+      assert Spitfire.parse(code, existing_atoms_only: true) == s2q(code, existing_atoms_only: true)
+    end
+
+    test "parses quoted kw identifiers" do
+      # TODO this code crashes the parser
+      # ** (FunctionClauseError) no function clause matching in Spitfire.peek_token/1
+
+      # The following arguments were given to Spitfire.peek_token/1:
+
+      #     # 1
+      #     %{tokens: [nil | :eot], literal_encoder: nil, errors: [{[line: 1, column: 1], "missing closing bracket for list"}, {[], "unknown token: eot"}], current_token: {:"]", nil}, fuel: 150, peek_token: nil, nesting: 0}
+
+      # Attempted function clauses (showing 7 out of 7):
+
+      #     defp peek_token(%{peek_token: {:stab_op, _, token}})
+      #     defp peek_token(%{peek_token: {type, _, _, _}}) when type === :list_heredoc or type === :bin_heredoc
+      #     defp peek_token(%{peek_token: {token, _, _}})
+      #     defp peek_token(%{peek_token: {token, _}})
+      #     defp peek_token(%{peek_token: {token, _, _, _, _, _, _}})
+      #     defp peek_token(%{peek_token: :eof})
+      #     defp peek_token(%{tokens: :eot})
+
+      # code: assert Spitfire.parse(code, existing_atoms_only: true) == {:ok, {:__block__, [], []}}
+      # stacktrace:
+      #   (spitfire 0.1.5) lib/spitfire.ex:2386: Spitfire.peek_token/1
+      #   (spitfire 0.1.5) lib/spitfire.ex:318: anonymous fn/7 in Spitfire.parse_expression/6
+      #   (spitfire 0.1.5) lib/spitfire/while.ex:49: Spitfire.While.do_while/2
+      #   (spitfire 0.1.5) lib/spitfire.ex:196: anonymous fn/1 in Spitfire.parse_program/1
+      #   (spitfire 0.1.5) lib/spitfire/while.ex:5: Spitfire.While2.recurse/3
+      #   (spitfire 0.1.5) lib/spitfire.ex:195: Spitfire.parse_program/1
+      #   (spitfire 0.1.5) lib/spitfire.ex:140: Spitfire.parse/2
+      #   test/spitfire_test.exs:2936: (test)
+      # code = "[\"abc#{Enum.random(1..10000)}\": 1]"
+
+      # # tokenizer return error
+      # assert Spitfire.parse(code, existing_atoms_only: true) == {:ok, {:__block__, [], []}}
+
+      # TODO this code errors with a wrong message
+      # {
+      #   :error,
+      #   {:%{}, [{:closing, []}, {:line, 1}, {:column, 1}], [{:__block__, [error: true], []}]},
+      #   [{[], "unknown token: eot"}, {[], "missing closing brace for map"}]
+      # }
+
+      # code = "%{\"abc#{Enum.random(1..10000)}\": 1}"
+
+      # # tokenizer return error
+      # assert Spitfire.parse(code, existing_atoms_only: true) == {:ok, {:__block__, [], []}}
+
+      code = """
+      ["abc\#{foo}": 1]
+      """
+
+      # tokenizer returns kw_identifier_safe token
+      assert Spitfire.parse(code, existing_atoms_only: true) == s2q(code, existing_atoms_only: true)
+    end
+  end
+
   defp s2q(code, opts \\ []) do
     Code.string_to_quoted(code, Keyword.merge([columns: true, token_metadata: true, emit_warnings: false], opts))
   end
