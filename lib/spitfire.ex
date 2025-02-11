@@ -133,7 +133,7 @@ defmodule Spitfire do
 
     # eat all the beginning eol tokens in case the file starts with a comment
     parser =
-      while current_token(parser) == :eol <- parser do
+      while current_token(parser) in [:eol, :";"] <- parser do
         next_token(parser)
       end
 
@@ -230,6 +230,8 @@ defmodule Spitfire do
     precedence < power
   end
 
+  # TODO Is anything needed here? Removing all of these tokens does not break any tests
+  # TODO Should we add :";" to the list?
   @terminals MapSet.new([:eol, :eof, :"}", :")", :"]", :">>"])
   @terminals_with_comma MapSet.put(@terminals, :",")
   defp(parse_expression(parser, assoc \\ @lowest, is_list \\ false, is_map \\ false, is_top \\ false, is_stab \\ false))
@@ -310,7 +312,8 @@ defmodule Spitfire do
           end
 
         {parser, is_valid} = validate_peek(parser, current_token_type(parser))
-
+        # TODO should we handle ; here?
+        # TODO removing peek_token(parser) != :eol does not break any tests
         if is_valid do
           while (is_nil(Map.get(parser, :stab_state)) and not MapSet.member?(terminals, peek_token(parser))) &&
                   (current_token(parser) != :do and peek_token(parser) != :eol) &&
@@ -396,7 +399,7 @@ defmodule Spitfire do
 
         cond do
           # if the next token is the closing paren or if the next token is a newline and the next next token is the closing paren
-          peek_token(parser) == :")" || (peek_token(parser) == :eol && peek_token(next_token(parser)) == :")") ->
+          peek_token(parser) == :")" || (peek_token(parser) in [:eol, :";"] && peek_token(next_token(parser)) == :")") ->
             parser =
               parser
               |> Map.put(:nesting, old_nesting)
@@ -428,11 +431,11 @@ defmodule Spitfire do
             {ast, parser}
 
           # if the next token is a new line, but the next next token is not the closing paren (implied from previous clause)
-          peek_token(parser) == :eol or current_token(parser) == :-> ->
+          peek_token(parser) in [:eol, :";"] or current_token(parser) == :-> ->
             # second conditon checks of the next next token is a closing paren or another expression
             {exprs, parser} =
               while2 current_token(parser) == :-> ||
-                       (peek_token(parser) == :eol && parser |> next_token() |> peek_token() != :")") <- parser do
+                       (peek_token(parser) in [:eol, :";"] && parser |> next_token() |> peek_token() != :")") <- parser do
                 {ast, parser} =
                   case Map.get(parser, :stab_state) do
                     %{ast: lhs} ->
@@ -479,7 +482,7 @@ defmodule Spitfire do
 
             # handles if the closing paren is on a new line or the same line
             parser =
-              if peek_token(parser) == :eol do
+              if peek_token(parser) in [:eol, :";"] do
                 next_token(parser)
               else
                 parser
@@ -1666,6 +1669,8 @@ defmodule Spitfire do
       else
         {left, parser} = prefix.(parser)
 
+        # TODO should we add ; here?
+        # TODO is anything needed? Removing all tokens does not break any tests
         terminals = [:eol, :eof, :"}", :")", :"]", :">>"]
 
         {parser, is_valid} = validate_peek(parser, current_token_type(parser))
@@ -2324,8 +2329,12 @@ defmodule Spitfire do
     parser
   end
 
+  # TODO this may be too greedy. Probably the better option would be to have distinct eat_eol/1 and eat_eol_or_semicolon/1
   defp eat_eol(parser) do
-    eat(%{:eol => true, :";" => true}, parser)
+    case eat(%{:eol => true, :";" => true}, parser) do
+      %{current_token: {token, _}} = parser when token in [:eol, :";"] -> eat_eol(parser)
+      parser -> parser
+    end
   end
 
   defp eat_eol_at(parser, idx) do
@@ -2380,7 +2389,7 @@ defmodule Spitfire do
     :eof
   end
 
-  defp peek_token_eat_eol(%{peek_token: {:eol, _token}} = parser) do
+  defp peek_token_eat_eol(%{peek_token: {token, _token}} = parser) when token in [:eol, :";"] do
     peek_token_eat_eol(next_token(parser))
   end
 
@@ -2592,6 +2601,7 @@ defmodule Spitfire do
     nil
   end
 
+  # NOTE no need to handle ; here as this function is used only for building metadata and counting newlines there
   defp peek_newlines(%{peek_token: {:eol, {_line, _col, newlines}}}) when is_integer(newlines) do
     newlines
   end
