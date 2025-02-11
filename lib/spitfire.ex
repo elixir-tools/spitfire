@@ -2332,14 +2332,6 @@ defmodule Spitfire do
     eat_at(parser, [:eol, :";"], idx)
   end
 
-  defp eat_at(parser, token, 0) when is_atom(token) do
-    eat(%{token => true}, parser)
-  end
-
-  defp eat_at(parser, token, idx) when is_atom(token) do
-    eat_at(parser, %{token => true}, idx)
-  end
-
   defp eat_at(parser, tokens, idx) when is_list(tokens) do
     eat_at(parser, Map.new(tokens, &{&1, true}), idx)
   end
