@@ -634,7 +634,6 @@ defmodule Spitfire do
 
   defp parse_comma_list(parser, precedence, is_list, is_map) do
     trace "parse_comma_list", trace_meta(parser) do
-      precedence = precedence || @list_comma
       {front, parser} = parse_expression(parser, precedence, is_list, is_map, false)
       # we zip together the expression and parser state so that we can potentially 
       # backtrack later
@@ -2161,8 +2160,8 @@ defmodule Spitfire do
       case code
            |> String.to_charlist()
            |> :spitfire_tokenizer.tokenize(opts[:line] || 1, opts[:column] || 1, opts) do
-        {:ok, _, _, _, tokens} ->
-          tokens
+        {:ok, _, _, _, tokens, []} ->
+          Enum.reverse(tokens)
 
         {:ok, line, column, _, rev_tokens, rev_terminators} ->
           # vendored from elixir-lang/elixir, license: Apache2
@@ -2331,14 +2330,6 @@ defmodule Spitfire do
 
   defp eat_eol_at(parser, idx) do
     eat_at(parser, [:eol, :";"], idx)
-  end
-
-  defp eat_at(parser, token, 0) when is_atom(token) do
-    eat(%{token => true}, parser)
-  end
-
-  defp eat_at(parser, token, idx) when is_atom(token) do
-    eat_at(parser, %{token => true}, idx)
   end
 
   defp eat_at(parser, tokens, idx) when is_list(tokens) do

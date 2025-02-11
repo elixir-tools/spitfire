@@ -26,3 +26,4 @@ spitfire-*.tar
 /tmp/
 benchmarks
 *.bggg
+priv/plts/*
