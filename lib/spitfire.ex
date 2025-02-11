@@ -1930,9 +1930,13 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_paren_identifier(%{current_token: {:paren_identifier, _, token}} = parser) do
+  defp parse_paren_identifier(%{current_token: {:paren_identifier, token_meta, token}} = parser) do
     trace "parse_paren_identifier", trace_meta(parser) do
-      meta = current_meta(parser)
+      meta =
+        parser
+        |> current_meta()
+        |> push_delimiter(token_meta)
+
       parser = next_token(parser)
       newlines = get_newlines(parser)
       error_meta = current_meta(parser)
@@ -2127,16 +2131,12 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_lone_identifier(%{current_token: {_type, _meta, token}} = parser) do
+  defp parse_lone_identifier(%{current_token: {_type, token_meta, token}} = parser) do
     trace "parse_lone_identifier", trace_meta(parser) do
-      meta = current_meta(parser)
-
       meta =
-        if Macro.classify_atom(token) == :quoted do
-          [{:delimiter, "'"} | meta]
-        else
-          meta
-        end
+        parser
+        |> current_meta()
+        |> push_delimiter(token_meta)
 
       {{token, meta, nil}, parser}
     end
@@ -2852,5 +2852,13 @@ defmodule Spitfire do
       end)
 
     Enum.reverse(tokens, terminators)
+  end
+
+  defp push_delimiter(meta, {_, _, delimiter}) when is_integer(delimiter) do
+    [{:delimiter, "#{[delimiter]}"} | meta]
+  end
+
+  defp push_delimiter(meta, _token_meta) do
+    meta
   end
 end

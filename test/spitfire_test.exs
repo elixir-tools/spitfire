@@ -2023,6 +2023,19 @@ defmodule SpitfireTest do
         assert Spitfire.parse(code) == s2q(code)
       end
     end
+
+    test "quoted dot call identifier" do
+      for code <- [
+            ~S"""
+            :erlang."=<"(left, right)
+            """,
+            ~S"""
+            :erlang.'=<'(left, right)
+            """
+          ] do
+        assert Spitfire.parse(code) == s2q(code)
+      end
+    end
   end
 
   describe "code with errors" do
