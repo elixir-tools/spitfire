@@ -39,7 +39,7 @@ jobs:
           - ash-project/ash
           - nerves-hub/nerves_hub_web
           - nerves-hub/nerves_hub_link
-          - mishka-group/mishka_developer_tools
+          - mishka-group/guarded_struct
           - absinthe-graphql/absinthe
           - elixir-wallaby/wallaby
           - livebook-dev/livebook
