@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/elixir-tools/spitfire/compare/v0.1.5...v0.2.0) (2025-03-07)
+
+
+### Features
+
+* support 1.18+ metadata ([#58](https://github.com/elixir-tools/spitfire/issues/58)) ([30047e1](https://github.com/elixir-tools/spitfire/commit/30047e1252a210305b197fdd786827efae008f1e)), closes [#49](https://github.com/elixir-tools/spitfire/issues/49)
+
+
+### Bug Fixes
+
+* correctly match on successful tokenize ([f937a7a](https://github.com/elixir-tools/spitfire/commit/f937a7ab7baa275d3b5b66b25f09ce604a1d10f9))
+* parse do blocks after paren_identifiers ([2320bd4](https://github.com/elixir-tools/spitfire/commit/2320bd49b3ec1f8caaa7daa2de078776ba2da5a1))
+* reset nesting inside parameterless right stab expressions ([1bf80bc](https://github.com/elixir-tools/spitfire/commit/1bf80bc71c3ed8fadcf833e6ebc04c9c4f1e3614))
+
 ## [0.1.5](https://github.com/elixir-tools/spitfire/compare/v0.1.4...v0.1.5) (2025-02-07)
 
 
