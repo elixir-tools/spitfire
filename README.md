@@ -1,5 +1,8 @@
 # Spitfire
 
+[![Hex.pm](https://img.shields.io/hexpm/v/spitfire)](https://hex.pm/packages/spitfire)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/spitfire/)
+
 Spitfire is a new error resilient parser for Elixir.
 
 The goal of the project is to make it easier for editor tooling to provide code intelligence for incomplete snippets of Elixir code.
