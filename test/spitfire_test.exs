@@ -534,6 +534,24 @@ defmodule SpitfireTest do
       end
     end
 
+    test "unfinished keyword list" do
+      code = ~S'''
+      defmodule MyModule do
+        IO.inspect(
+          :stderr,
+          label: "label",
+          (__cursor__())
+        )
+      end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'foo(a, "#{field}": value, (__cursor__()))'
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "another thing" do
       code = ~S'''
       case foo do
@@ -2908,6 +2926,31 @@ defmodule SpitfireTest do
                   ]
                 ]
               }} = Spitfire.container_cursor_to_quoted(code)
+    end
+
+    test "incomplete keyword list" do
+      code = "[foo: ]"
+
+      assert Spitfire.parse(code) ==
+               {:error, [{:foo, {:__block__, [error: true, line: 1, column: 7], []}}],
+                [{[line: 1, column: 7], "unknown token: ]"}, {[line: 1, column: 1], "missing closing bracket for list"}]}
+    end
+
+    test "incomplete keyword list in module attr" do
+      code = """
+      @tag foo: bar,
+        foo
+      """
+
+      assert Spitfire.parse(code) ==
+               {
+                 :ok,
+                 {:@, [end_of_expression: [newlines: 1, line: 2, column: 6], line: 1, column: 1],
+                  [
+                    {:tag, [line: 1, column: 2],
+                     [[{:foo, {:bar, [line: 1, column: 11], nil}}, {:foo, [line: 2, column: 3], nil}]]}
+                  ]}
+               }
     end
   end
 
