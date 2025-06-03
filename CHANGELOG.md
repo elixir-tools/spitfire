@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/elixir-tools/spitfire/compare/v0.2.0...v0.2.1) (2025-06-03)
+
+
+### Bug Fixes
+
+* make spitfire compile on elixir 1.13 ([#62](https://github.com/elixir-tools/spitfire/issues/62)) ([5eda84e](https://github.com/elixir-tools/spitfire/commit/5eda84ee8cae1b82c6a0717a54677585f12adfa8))
+
 ## [0.2.0](https://github.com/elixir-tools/spitfire/compare/v0.1.5...v0.2.0) (2025-03-07)
 
 
