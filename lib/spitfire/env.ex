@@ -2,14 +2,26 @@ defmodule Spitfire.Env do
   @moduledoc """
   Environment querying
   """
-  @env %{
-    Macro.Env.prune_compile_info(__ENV__)
-    | line: 0,
-      file: "nofile",
-      module: nil,
-      function: nil,
-      context_modules: []
-  }
+  @env (if function_exported?(Macro.Env, :prune_compile_info, 1) do
+          %{
+            Macro.Env.prune_compile_info(__ENV__)
+            | line: 0,
+              file: "nofile",
+              module: nil,
+              function: nil,
+              context_modules: []
+          }
+        else
+          %{
+            __ENV__
+            | line: 0,
+              file: "nofile",
+              module: nil,
+              function: nil,
+              context_modules: []
+          }
+        end)
+
   defp env, do: @env
 
   @typedoc "Alias for `Macro.t()`"
