@@ -42,6 +42,18 @@ defmodule SpitfireTest do
       # assert Spitfire.parse(code) == s2q(code)
     end
 
+    test "semicolon in block" do
+      code = """
+      defmodule MyModule do
+        import List
+
+        ;(__cursor__())
+      end
+      """
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "parses valid elixir" do
       code = """
       defmodule Foo do
@@ -414,6 +426,9 @@ defmodule SpitfireTest do
         (
           !false
         )
+        ''',
+        ~S'''
+        (; !false;)
         ''',
         "(not false)",
         ~S'''
@@ -991,6 +1006,21 @@ defmodule SpitfireTest do
         max_line = closing_line(meta)
         Enum.any?(comments, fn %{line: line} -> line > min_line and line < max_line end)
       )
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      (
+        min_line = line(meta); max_line = closing_line(meta); Enum.any?(comments, fn %{line: line} -> line > min_line and line < max_line end)
+      )
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      (
+        min_line = line(meta); max_line = closing_line(meta); Enum.any?(comments, fn %{line: line} -> line > min_line and line < max_line end); )
       '''
 
       assert Spitfire.parse(code) == s2q(code)
@@ -1715,11 +1745,28 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
     end
 
+    test "starts with a semicolon" do
+      code = """
+      ;
+      some_code = :foo
+      """
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "default args" do
       code = ~S'''
       def foo(arg \\ :value) do
         :ok
       end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
+    test "default args semicolons" do
+      code = ~S'''
+      def foo(arg \\ :value) do; :ok; end
       '''
 
       assert Spitfire.parse(code) == s2q(code)
