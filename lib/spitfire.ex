@@ -23,14 +23,14 @@ defmodule Spitfire do
   # precedences
 
   # pratt parsers are top down operator precedence recursive descent parsers
-  # 
+  #
   # operators have precedence (also known as binding power in some literature) and have a direction, left or right
-  # 
+  #
   # precedences increment by 2s to account for the left and right binding power. when doing the calculation (as seen in parse_expression/2)
   # if an operator has a right binding power, then you subtract 1 before comparing.
 
   # an example to differentiate the two binding powers are to compare the plus and concat operators.
-  # 
+  #
   # the implicit parentheses in the following two expressions makes this concept clearer
   #
   # one + two + three => ((one + two) + three)
@@ -240,137 +240,181 @@ defmodule Spitfire do
 
       prefix =
         case current_token_type(parser) do
-          :identifier -> &parse_identifier/1
-          :do_identifier -> &parse_do_identifier/1
-          :paren_identifier -> &parse_paren_identifier/1
-          :bracket_identifier -> &parse_lone_identifier/1
-          :op_identifier -> &parse_identifier/1
-          :alias -> &parse_alias/1
-          :"<<" -> &parse_bitstring/1
-          :kw_identifier when is_list or is_map -> &parse_kw_identifier/1
-          :kw_identifier_unsafe when is_list or is_map -> &parse_kw_identifier/1
-          :kw_identifier when not is_list and not is_map -> &parse_bracketless_kw_list/1
-          :kw_identifier_unsafe when not is_list and not is_map -> &parse_bracketless_kw_list/1
-          :int -> &parse_int/1
-          :flt -> &parse_float/1
-          :atom -> &parse_atom/1
-          :atom_quoted -> &parse_atom/1
-          :atom_unsafe -> &parse_atom/1
-          true -> &parse_boolean/1
-          false -> &parse_boolean/1
-          :bin_string -> &parse_string/1
-          :bin_heredoc -> &parse_string/1
-          :list_string -> &parse_string/1
-          :list_heredoc -> &parse_string/1
-          :char -> &parse_char/1
-          :sigil -> &parse_sigil/1
-          :fn -> &parse_anon_function/1
-          :at_op -> &parse_prefix_expression/1
-          :unary_op -> &parse_prefix_expression/1
-          :capture_op -> &parse_prefix_expression/1
-          :dual_op -> &parse_prefix_expression/1
-          :capture_int -> &parse_capture_int/1
-          :stab_op -> &parse_stab_expression/1
-          :range_op -> &parse_range_expression/1
-          :"[" -> &parse_list_literal/1
-          :"(" -> &parse_grouped_expression/1
-          :"{" -> &parse_tuple_literal/1
+          :identifier -> parse_identifier(parser)
+          :do_identifier -> parse_do_identifier(parser)
+          :paren_identifier -> parse_paren_identifier(parser)
+          :bracket_identifier -> parse_lone_identifier(parser)
+          :op_identifier -> parse_identifier(parser)
+          :alias -> parse_alias(parser)
+          :"<<" -> parse_bitstring(parser)
+          :kw_identifier when is_list or is_map -> parse_kw_identifier(parser)
+          :kw_identifier_unsafe when is_list or is_map -> parse_kw_identifier(parser)
+          :kw_identifier when not is_list and not is_map -> parse_bracketless_kw_list(parser)
+          :kw_identifier_unsafe when not is_list and not is_map -> parse_bracketless_kw_list(parser)
+          :int -> parse_int(parser)
+          :flt -> parse_float(parser)
+          :atom -> parse_atom(parser)
+          :atom_quoted -> parse_atom(parser)
+          :atom_unsafe -> parse_atom(parser)
+          true -> parse_boolean(parser)
+          false -> parse_boolean(parser)
+          :bin_string -> parse_string(parser)
+          :bin_heredoc -> parse_string(parser)
+          :list_string -> parse_string(parser)
+          :list_heredoc -> parse_string(parser)
+          :char -> parse_char(parser)
+          :sigil -> parse_sigil(parser)
+          :fn -> parse_anon_function(parser)
+          :at_op -> parse_prefix_expression(parser)
+          :unary_op -> parse_prefix_expression(parser)
+          :capture_op -> parse_prefix_expression(parser)
+          :dual_op -> parse_prefix_expression(parser)
+          :capture_int -> parse_capture_int(parser)
+          :stab_op -> parse_stab_expression(parser)
+          :range_op -> parse_range_expression(parser)
+          :"[" -> parse_list_literal(parser)
+          :"(" -> parse_grouped_expression(parser)
+          :"{" -> parse_tuple_literal(parser)
           :";" -> raise "semicolon"
-          :%{} -> &parse_map_literal/1
-          :% -> &parse_struct_literal/1
-          :ellipsis_op -> &parse_ellipsis_op/1
-          nil -> &parse_nil_literal/1
+          :%{} -> parse_map_literal(parser)
+          :% -> parse_struct_literal(parser)
+          :ellipsis_op -> parse_ellipsis_op(parser)
+          nil -> parse_nil_literal(parser)
           _ -> nil
         end
 
-      if prefix == nil do
-        meta = current_meta(parser)
-        ctype = current_token_type(parser)
-        parser = put_error(parser, {meta, "unknown token: #{ctype}"})
-
-        parser =
-          case ctype do
-            :")" -> parser
-            :"]" -> parser
-            :"}" -> parser
-            :">>" -> parser
-            :end -> parser
-            _ -> next_token(parser)
-          end
-
-        {{:__block__, [{:error, true} | meta], []}, parser}
-      else
-        {left, parser} = prefix.(parser)
-
-        terminals =
-          if is_top do
-            @terminals
-          else
-            @terminals_with_comma
-          end
-
-        {parser, is_valid} = validate_peek(parser, current_token_type(parser))
-
-        if is_valid do
-          while (is_nil(Map.get(parser, :stab_state)) and not MapSet.member?(terminals, peek_token(parser))) &&
-                  (current_token(parser) != :do and peek_token(parser) != :eol) &&
-                  calc_prec(parser, associativity, precedence) <- {left, parser} do
-            parser = consume_fuel(parser)
-            peek_token_type = peek_token_type(parser)
-
-            infix =
-              case peek_token_type do
-                :match_op -> &parse_infix_expression/2
-                :when_op -> &parse_infix_expression/2
-                :pipe_op when is_map -> &parse_pipe_op/2
-                :pipe_op -> &parse_infix_expression/2
-                :type_op -> &parse_infix_expression/2
-                :dual_op -> &parse_infix_expression/2
-                :mult_op -> &parse_infix_expression/2
-                :power_op -> &parse_infix_expression/2
-                :"[" -> &parse_access_expression/2
-                :concat_op -> &parse_infix_expression/2
-                :assoc_op -> &parse_assoc_op/2
-                :arrow_op -> &parse_infix_expression/2
-                :ternary_op -> &parse_infix_expression/2
-                :or_op -> &parse_infix_expression/2
-                :and_op -> &parse_infix_expression/2
-                :comp_op -> &parse_infix_expression/2
-                :rel_op -> &parse_infix_expression/2
-                :in_op -> &parse_infix_expression/2
-                :xor_op -> &parse_infix_expression/2
-                :in_match_op -> &parse_infix_expression/2
-                :range_op -> &parse_range_expression/2
-                :stab_op when not is_stab -> &parse_stab_expression/2
-                :do -> &parse_do_block/2
-                :dot_call_op -> &parse_dot_call_expression/2
-                :"(" -> &parse_call_expression/2
-                :. -> &parse_dot_expression/2
-                :"," when is_top -> &parse_comma/2
-                _ -> nil
-              end
-
-            do_block = &parse_do_block/2
-
-            case infix do
-              nil when is_stab and peek_token_type == :stab_op ->
-                parser = Map.put(parser, :stab_state, %{ast: left})
-                # this will be ignored on the return
-                {left, parser}
-
-              nil ->
-                {left, parser}
-
-              ^do_block when parser.nesting != 0 ->
-                {left, next_token(parser)}
-
-              _ ->
-                infix.(next_token(parser), left)
+      case prefix do
+        {left, parser} ->
+          terminals =
+            if is_top do
+              @terminals
+            else
+              @terminals_with_comma
             end
+
+          {parser, is_valid} = validate_peek(parser, current_token_type(parser))
+
+          if is_valid do
+            while (is_nil(Map.get(parser, :stab_state)) and not MapSet.member?(terminals, peek_token(parser))) &&
+                    (current_token(parser) != :do and peek_token(parser) != :eol) &&
+                    calc_prec(parser, associativity, precedence) <- {left, parser} do
+              parser = consume_fuel(parser)
+              peek_token_type = peek_token_type(parser)
+
+              case peek_token_type do
+                :match_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :when_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :pipe_op when is_map ->
+                  parse_pipe_op(next_token(parser), left)
+
+                :pipe_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :type_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :dual_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :mult_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :power_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :"[" ->
+                  parse_access_expression(next_token(parser), left)
+
+                :concat_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :assoc_op ->
+                  parse_assoc_op(next_token(parser), left)
+
+                :arrow_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :ternary_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :or_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :and_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :comp_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :rel_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :in_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :xor_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :in_match_op ->
+                  parse_infix_expression(next_token(parser), left)
+
+                :range_op ->
+                  parse_range_expression(next_token(parser), left)
+
+                :stab_op when not is_stab ->
+                  parse_stab_expression(next_token(parser), left)
+
+                :dot_call_op ->
+                  parse_dot_call_expression(next_token(parser), left)
+
+                :"(" ->
+                  parse_call_expression(next_token(parser), left)
+
+                :. ->
+                  parse_dot_expression(next_token(parser), left)
+
+                :"," when is_top ->
+                  parse_comma(next_token(parser), left)
+
+                :do when parser.nesting != 0 ->
+                  {left, next_token(parser)}
+
+                :do ->
+                  parse_do_block(next_token(parser), left)
+
+                _ when is_stab and peek_token_type == :stab_op ->
+                  parser = Map.put(parser, :stab_state, %{ast: left})
+                  # this will be ignored on the return
+                  {left, parser}
+
+                _ ->
+                  {left, parser}
+              end
+            end
+          else
+            {left, parser}
           end
-        else
-          {left, parser}
-        end
+
+        nil ->
+          meta = current_meta(parser)
+          ctype = current_token_type(parser)
+          parser = put_error(parser, {meta, "unknown token: #{ctype}"})
+
+          parser =
+            case ctype do
+              :")" -> parser
+              :"]" -> parser
+              :"}" -> parser
+              :">>" -> parser
+              :end -> parser
+              _ -> next_token(parser)
+            end
+
+          {{:__block__, [{:error, true} | meta], []}, parser}
       end
     end
   end
@@ -635,7 +679,7 @@ defmodule Spitfire do
   defp parse_comma_list(parser, precedence, is_list, is_map) do
     trace "parse_comma_list", trace_meta(parser) do
       {front, parser} = parse_expression(parser, precedence, is_list, is_map, false)
-      # we zip together the expression and parser state so that we can potentially 
+      # we zip together the expression and parser state so that we can potentially
       # backtrack later
       Process.put(:comma_list_parsers, [parser])
 
@@ -981,7 +1025,7 @@ defmodule Spitfire do
   #
   # - beginning of parse function, current_token = :do
   # - encode `:do` literal in case of literal_encoder
-  # - save the old nesting level and insert a 0 
+  # - save the old nesting level and insert a 0
   # - enter outer loop
   #   - the job of the outer loop is to collect the expressions for each do+block_identifier
   #     (from now on just referred to as block_identifier)
@@ -995,11 +1039,11 @@ defmodule Spitfire do
   #       - increment the token, and eat the eol token
   #       - if stab_state
   #         - we are in the body of a stab expression, don't increment and parse the stab
-  #       - else 
+  #       - else
   #         - parse expression
   #         - push eoe of the next token, but don't actually increment the parser
   #     - end inner loop
-  #   - encode block_identifier and save as {type, expressions} 
+  #   - encode block_identifier and save as {type, expressions}
   #   - end outer loop
   # - if current token is block_identifier, that means the last section was empty. encode the token
   #   and create an empty list of expressions
@@ -1581,7 +1625,7 @@ defmodule Spitfire do
     trace "parse_map_literal", trace_meta(parser) do
       meta = current_meta(parser)
       parser = next_token(parser)
-      # we use a then to create lexical scoping to 
+      # we use a then to create lexical scoping to
       # hide manipulating incrementing the parser
       newlines = peek_newlines(parser)
 
@@ -1639,56 +1683,47 @@ defmodule Spitfire do
 
       prefix =
         case current_token_type(parser) do
-          :identifier -> &parse_lone_identifier/1
-          :paren_identifier -> &parse_paren_identifier/1
-          :alias -> &parse_alias/1
-          :at_op -> &parse_lone_module_attr/1
-          :unary_op -> &parse_prefix_lone_identifer/1
+          :identifier -> parse_lone_identifier(parser)
+          :paren_identifier -> parse_paren_identifier(parser)
+          :alias -> parse_alias(parser)
+          :at_op -> parse_lone_module_attr(parser)
+          :unary_op -> parse_prefix_lone_identifer(parser)
           _ -> nil
         end
 
-      if prefix == nil do
-        meta = current_meta(parser)
-        ctype = current_token_type(parser)
-        parser = put_error(parser, {meta, "unknown token: #{ctype}"})
+      case prefix do
+        {left, parser} ->
+          terminals = [:eol, :eof, :"}", :")", :"]", :">>"]
 
-        parser =
-          case ctype do
-            :")" -> parser
-            :"]" -> parser
-            :"}" -> parser
-            :">>" -> parser
-            :end -> parser
-            _ -> next_token(parser)
-          end
+          {parser, is_valid} = validate_peek(parser, current_token_type(parser))
 
-        {{:__block__, [], []}, parser}
-      else
-        {left, parser} = prefix.(parser)
-
-        terminals = [:eol, :eof, :"}", :")", :"]", :">>"]
-
-        {parser, is_valid} = validate_peek(parser, current_token_type(parser))
-
-        if is_valid do
-          while peek_token(parser) not in terminals && calc_prec(parser, associativity, precedence) <- {left, parser} do
-            infix =
+          if is_valid do
+            while peek_token(parser) not in terminals && calc_prec(parser, associativity, precedence) <- {left, parser} do
               case peek_token_type(parser) do
-                :. -> &parse_dot_expression/2
-                _ -> nil
+                :. -> parse_dot_expression(next_token(parser), left)
+                _ -> {left, parser}
               end
-
-            case infix do
-              nil ->
-                {left, parser}
-
-              _ ->
-                infix.(next_token(parser), left)
             end
+          else
+            {left, parser}
           end
-        else
-          {left, parser}
-        end
+
+        nil ->
+          meta = current_meta(parser)
+          ctype = current_token_type(parser)
+          parser = put_error(parser, {meta, "unknown token: #{ctype}"})
+
+          parser =
+            case ctype do
+              :")" -> parser
+              :"]" -> parser
+              :"}" -> parser
+              :">>" -> parser
+              :end -> parser
+              _ -> next_token(parser)
+            end
+
+          {{:__block__, [], []}, parser}
       end
     end
   end
