@@ -1740,11 +1740,9 @@ defmodule Spitfire do
           {parser, is_valid} = validate_peek(parser, current_token_type(parser))
 
           if is_valid do
-            while peek_token(parser) not in terminals && calc_prec(parser, associativity, precedence) <- {left, parser} do
-              case peek_token_type(parser) do
-                :. -> parse_dot_expression(next_token(parser), left)
-                _ -> {left, parser}
-              end
+            while peek_token(parser) not in terminals && peek_token(parser) == :. &&
+                    calc_prec(parser, associativity, precedence) <- {left, parser} do
+              parse_dot_expression(next_token(parser), left)
             end
           else
             {left, parser}
