@@ -32,7 +32,7 @@ defmodule Spitfire.MixProject do
   defp deps do
     [
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:styler, "~> 0.11", only: :dev},
+      {:styler, "~> 0.11", only: [:dev, :test]},
       {:credo, "~> 1.7", only: :dev},
       {:dialyxir, "~> 1.0", only: :dev}
 
