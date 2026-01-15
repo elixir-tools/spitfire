@@ -2058,9 +2058,15 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) ==
                {:error,
                 {:<<>>,
-                 [{:end_of_expression, [newlines: 1, line: 2, column: 4]}, {:closing, []}, {:line, 1}, {:column, 1}],
-                 [{:"::", [newlines: 1, line: 1, column: 6], [{:one, [line: 1, column: 3], nil}, :ok]}]},
-                [{[line: 1, column: 1], "missing closing brackets for bitstring"}]}
+                 [
+                   {:end_of_expression, [newlines: 1, line: 2, column: 4]},
+                   {:closing, []},
+                   {:line, 1},
+                   {:column, 1}
+                 ],
+                 [
+                   {:"::", [newlines: 1, line: 1, column: 6], [{:one, [line: 1, column: 3], nil}, :ok]}
+                 ]}, [{[line: 1, column: 1], "missing closing brackets for bitstring"}]}
     end
 
     test "missing closing parentheses" do
@@ -2117,7 +2123,13 @@ defmodule SpitfireTest do
                {:error,
                 {:__block__, [],
                  [
-                   {:{}, [end_of_expression: [newlines: 1, line: 1, column: 3], closing: [], line: 1, column: 1], [1]},
+                   {:{},
+                    [
+                      end_of_expression: [newlines: 1, line: 1, column: 3],
+                      closing: [],
+                      line: 1,
+                      column: 1
+                    ], [1]},
                    :ok
                  ]}, [{[line: 1, column: 1], "missing closing brace for tuple"}]}
     end
@@ -2135,7 +2147,8 @@ defmodule SpitfireTest do
     test "missing comma in list" do
       code = ~S'[:foo :bar, :baz]'
 
-      assert Spitfire.parse(code) == {:error, [:foo, :baz], [{[line: 1, column: 7], "syntax error"}]}
+      assert Spitfire.parse(code) ==
+               {:error, [:foo, :baz], [{[line: 1, column: 7], "syntax error"}]}
     end
 
     test "missing comma in map" do
@@ -2152,7 +2165,8 @@ defmodule SpitfireTest do
     test "missing comma in tuple" do
       code = ~S'{:foo :bar, :baz}'
 
-      assert Spitfire.parse(code) == {:error, {:foo, :baz}, [{[line: 1, column: 7], "syntax error"}]}
+      assert Spitfire.parse(code) ==
+               {:error, {:foo, :baz}, [{[line: 1, column: 7], "syntax error"}]}
     end
 
     test "missing end in block" do
@@ -2183,7 +2197,10 @@ defmodule SpitfireTest do
                            {
                              :.,
                              [line: 2, column: 7],
-                             [{:__aliases__, [{:last, [line: 2, column: 3]}, {:line, 2}, {:column, 3}], [:Some]}, :thing]
+                             [
+                               {:__aliases__, [{:last, [line: 2, column: 3]}, {:line, 2}, {:column, 3}], [:Some]},
+                               :thing
+                             ]
                            },
                            [
                              {:end_of_expression, [newlines: 1, line: 2, column: 15]},
@@ -2240,7 +2257,10 @@ defmodule SpitfireTest do
                              {:__block__, [],
                               [
                                 {{:., [line: 3, column: 9],
-                                  [{:__aliases__, [last: [line: 3, column: 5], line: 3, column: 5], [:Some]}, :thing]},
+                                  [
+                                    {:__aliases__, [last: [line: 3, column: 5], line: 3, column: 5], [:Some]},
+                                    :thing
+                                  ]},
                                  [
                                    end_of_expression: [newlines: 1, line: 3, column: 17],
                                    closing: [line: 3, column: 16],
@@ -2334,7 +2354,10 @@ defmodule SpitfireTest do
                    {:new_list, [line: 1, column: 1], nil},
                    {
                      {:., [line: 2, column: 7],
-                      [{:__aliases__, [last: [line: 2, column: 3], line: 2, column: 3], [:Enum]}, :map]},
+                      [
+                        {:__aliases__, [last: [line: 2, column: 3], line: 2, column: 3], [:Enum]},
+                        :map
+                      ]},
                      [line: 2, column: 8],
                      [
                        {:some_list, [line: 2, column: 12], nil},
@@ -2353,7 +2376,11 @@ defmodule SpitfireTest do
                                   {:closing, [line: 5, column: 19]},
                                   {:line, 5},
                                   {:column, 1}
-                                ], [{:pid, [line: 5, column: 6], nil}, {:new_list, [line: 5, column: 11], nil}]}
+                                ],
+                                [
+                                  {:pid, [line: 5, column: 6], nil},
+                                  {:new_list, [line: 5, column: 11], nil}
+                                ]}
                              ]
                            }
                          ]
@@ -2406,8 +2433,15 @@ defmodule SpitfireTest do
                          :__block__,
                          [],
                          [
-                           {:import, [end_of_expression: [newlines: 2, line: 2, column: 13], line: 2, column: 3],
-                            [{:__aliases__, [last: [line: 2, column: 10], line: 2, column: 10], [:Baz]}]},
+                           {:import,
+                            [
+                              end_of_expression: [newlines: 2, line: 2, column: 13],
+                              line: 2,
+                              column: 3
+                            ],
+                            [
+                              {:__aliases__, [last: [line: 2, column: 10], line: 2, column: 10], [:Baz]}
+                            ]},
                            {
                              :def,
                              [
@@ -2423,8 +2457,12 @@ defmodule SpitfireTest do
                                  do:
                                    {:__block__, [],
                                     [
-                                      {:=, [end_of_expression: [newlines: 1, line: 5, column: 14], line: 5, column: 9],
-                                       [{:var, [line: 5, column: 5], nil}, 123]},
+                                      {:=,
+                                       [
+                                         end_of_expression: [newlines: 1, line: 5, column: 14],
+                                         line: 5,
+                                         column: 9
+                                       ], [{:var, [line: 5, column: 5], nil}, 123]},
                                       {:{},
                                        [
                                          {:end_of_expression, [newlines: 1, line: 6, column: 6]},
@@ -2442,7 +2480,11 @@ defmodule SpitfireTest do
                               {:end, [line: 11, column: 3]},
                               {:line, 9},
                               {:column, 3}
-                            ], [{:local_function, [line: 9, column: 7], nil}, [do: {:__block__, [], []}]]}
+                            ],
+                            [
+                              {:local_function, [line: 9, column: 7], nil},
+                              [do: {:__block__, [], []}]
+                            ]}
                          ]
                        }
                      ]
@@ -2489,8 +2531,15 @@ defmodule SpitfireTest do
                          :__block__,
                          [],
                          [
-                           {:import, [end_of_expression: [newlines: 2, line: 2, column: 13], line: 2, column: 3],
-                            [{:__aliases__, [last: [line: 2, column: 10], line: 2, column: 10], [:Baz]}]},
+                           {:import,
+                            [
+                              end_of_expression: [newlines: 2, line: 2, column: 13],
+                              line: 2,
+                              column: 3
+                            ],
+                            [
+                              {:__aliases__, [last: [line: 2, column: 10], line: 2, column: 10], [:Baz]}
+                            ]},
                            {
                              :def,
                              [
@@ -2506,8 +2555,12 @@ defmodule SpitfireTest do
                                  do:
                                    {:__block__, [],
                                     [
-                                      {:=, [end_of_expression: [newlines: 1, line: 5, column: 14], line: 5, column: 9],
-                                       [{:var, [line: 5, column: 5], nil}, 123]},
+                                      {:=,
+                                       [
+                                         end_of_expression: [newlines: 1, line: 5, column: 14],
+                                         line: 5,
+                                         column: 9
+                                       ], [{:var, [line: 5, column: 5], nil}, 123]},
                                       {:{}, [closing: [], line: 6, column: 5], [{:var, [line: 6, column: 6], nil}]}
                                     ]}
                                ]
@@ -2520,7 +2573,11 @@ defmodule SpitfireTest do
                               {:end, [line: 11, column: 3]},
                               {:line, 9},
                               {:column, 3}
-                            ], [{:local_function, [line: 9, column: 7], nil}, [do: {:__block__, [], []}]]}
+                            ],
+                            [
+                              {:local_function, [line: 9, column: 7], nil},
+                              [do: {:__block__, [], []}]
+                            ]}
                          ]
                        }
                      ]
@@ -2649,8 +2706,15 @@ defmodule SpitfireTest do
                        :__block__,
                        [],
                        [
-                         {:import, [end_of_expression: [newlines: 2, line: 2, column: 13], line: 2, column: 3],
-                          [{:__aliases__, [last: [line: 2, column: 10], line: 2, column: 10], [:Baz]}]},
+                         {:import,
+                          [
+                            end_of_expression: [newlines: 2, line: 2, column: 13],
+                            line: 2,
+                            column: 3
+                          ],
+                          [
+                            {:__aliases__, [last: [line: 2, column: 10], line: 2, column: 10], [:Baz]}
+                          ]},
                          {
                            :def,
                            [
@@ -2666,8 +2730,12 @@ defmodule SpitfireTest do
                                do:
                                  {:__block__, [],
                                   [
-                                    {:=, [end_of_expression: [newlines: 1, line: 5, column: 14], line: 5, column: 9],
-                                     [{:var, [line: 5, column: 5], nil}, 123]},
+                                    {:=,
+                                     [
+                                       end_of_expression: [newlines: 1, line: 5, column: 14],
+                                       line: 5,
+                                       column: 9
+                                     ], [{:var, [line: 5, column: 5], nil}, 123]},
                                     [{:var, [line: 6, column: 6], nil}]
                                   ]}
                              ]
@@ -2680,7 +2748,11 @@ defmodule SpitfireTest do
                             {:end, [line: 11, column: 3]},
                             {:line, 9},
                             {:column, 3}
-                          ], [{:local_function, [line: 9, column: 7], nil}, [do: {:__block__, [], []}]]}
+                          ],
+                          [
+                            {:local_function, [line: 9, column: 7], nil},
+                            [do: {:__block__, [], []}]
+                          ]}
                        ]
                      }
                    ]
@@ -2709,10 +2781,20 @@ defmodule SpitfireTest do
                     do:
                       {:__block__, [],
                        [
-                         {:import, [end_of_expression: [newlines: 1, line: 2, column: 14], line: 2, column: 3],
-                          [{:__aliases__, [last: [line: 2, column: 10], line: 2, column: 10], [:List]}]},
+                         {:import,
+                          [
+                            end_of_expression: [newlines: 1, line: 2, column: 14],
+                            line: 2,
+                            column: 3
+                          ],
+                          [
+                            {:__aliases__, [last: [line: 2, column: 10], line: 2, column: 10], [:List]}
+                          ]},
                          {:=, [line: 3, column: 7],
-                          [{:var, [line: 3, column: 3], nil}, {:__block__, [error: true, line: 3, column: 7], []}]}
+                          [
+                            {:var, [line: 3, column: 3], nil},
+                            {:__block__, [error: true, line: 3, column: 7], []}
+                          ]}
                        ]}
                   ]
                 ]},
@@ -2721,6 +2803,46 @@ defmodule SpitfireTest do
                  {[line: 1, column: 20], "missing `end` for do block"}
                ]
              }
+    end
+
+    test "weird characters" do
+      code = """
+      [«]
+      """
+
+      assert {:error, _ast, [{[line: 1, column: 1], "missing closing bracket for list"}]} = Spitfire.parse(code)
+
+      code = """
+      {«}
+      """
+
+      assert {:error, _ast, [{[line: 1, column: 1], "missing closing brace for tuple"}]} = Spitfire.parse(code)
+
+      code = """
+      %{«}
+      """
+
+      assert {:error, _ast, [{[line: 1, column: 1], "missing closing brace for map"}]} = Spitfire.parse(code)
+
+      code = """
+      («)
+      """
+
+      assert {:error, _ast, [{[line: 1, column: 1], "missing closing parentheses"}]} = Spitfire.parse(code)
+
+      code = """
+      defp foo(«) do
+        :ok
+      end
+      """
+
+      assert {:error, _ast, [{[line: 1, column: 9], "missing closing parentheses"}]} = Spitfire.parse(code)
+
+      code = """
+      foo(«)
+      """
+
+      assert {:error, _ast, [{[line: 1, column: 4], "missing closing parentheses"}]} = Spitfire.parse(code)
     end
   end
 
@@ -2861,7 +2983,10 @@ defmodule SpitfireTest do
                         [
                           do: {
                             {:., [line: 3, column: 9],
-                             [{:__aliases__, [last: [line: 3, column: 5], line: 3, column: 5], [:Enum]}, :map]},
+                             [
+                               {:__aliases__, [last: [line: 3, column: 5], line: 3, column: 5], [:Enum]},
+                               :map
+                             ]},
                             [closing: [line: 9, column: 19], line: 3, column: 10],
                             [
                               {:items, [line: 3, column: 14], nil},
@@ -2890,7 +3015,12 @@ defmodule SpitfireTest do
                                               {:->, [newlines: 1, line: 8, column: 16],
                                                [
                                                  [{:error, [line: 8, column: 10], nil}],
-                                                 {:__cursor__, [closing: [line: 9, column: 12], line: 9, column: 1], []}
+                                                 {:__cursor__,
+                                                  [
+                                                    closing: [line: 9, column: 12],
+                                                    line: 9,
+                                                    column: 1
+                                                  ], []}
                                                ]}
                                             ]
                                           ]
@@ -2912,7 +3042,10 @@ defmodule SpitfireTest do
   end
 
   defp s2q(code, opts \\ []) do
-    Code.string_to_quoted(code, Keyword.merge([columns: true, token_metadata: true, emit_warnings: false], opts))
+    Code.string_to_quoted(
+      code,
+      Keyword.merge([columns: true, token_metadata: true, emit_warnings: false], opts)
+    )
   end
 
   defp s2qwc(code, opts \\ []) do
