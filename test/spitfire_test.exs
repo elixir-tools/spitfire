@@ -2607,7 +2607,7 @@ defmodule SpitfireTest do
       <% end %>
       '''
 
-      assert Spitfire.parse(code) == {:error, :no_fuel_remaining}
+      assert {:error, _ast, _errors} = Spitfire.parse(code)
     end
 
     test "doesn't drop the cursor node" do
@@ -2882,6 +2882,202 @@ defmodule SpitfireTest do
       """
 
       assert {:error, _ast, [{[line: 1, column: 4], "missing closing parentheses"}]} = Spitfire.parse(code)
+    end
+
+    test "missing braces for struct" do
+      assert {:error,
+              {:=, [line: 1, column: 6],
+               [
+                 {:%, [line: 1, column: 1],
+                  [
+                    {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Foo]},
+                    {:%{}, [], []}
+                  ]},
+                 {:x, [line: 1, column: 8], nil}
+               ]},
+              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} =
+               Spitfire.parse("%Foo = x")
+
+      assert {:error,
+              {:%, [line: 1, column: 1],
+               [
+                 {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Foo]},
+                 {:%{}, [], []}
+               ]},
+              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} =
+               Spitfire.parse("%Foo")
+
+      assert {:error,
+              {:=, [line: 1, column: 10],
+               [
+                 {:%, [line: 1, column: 1],
+                  [
+                    {:__aliases__, [last: [line: 1, column: 6], line: 1, column: 2], [:Foo, :Bar]},
+                    {:%{}, [], []}
+                  ]},
+                 {:x, [line: 1, column: 12], nil}
+               ]},
+              [{[line: 1, column: 6], "missing opening brace for struct %Foo.Bar"}]} =
+               Spitfire.parse("%Foo.Bar = x")
+
+      assert {:error,
+              {:=, [line: 1, column: 13],
+               [
+                 {:%, [line: 1, column: 1],
+                  [
+                    {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Foo]},
+                    {:%{}, [closing: [line: 1, column: 11], line: 1, column: 6], [a: 42]}
+                  ]},
+                 {:x, [line: 1, column: 15], nil}
+               ]},
+              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} =
+               Spitfire.parse("%Foo a: 42} = x")
+
+      assert {:error,
+              {:%, [line: 1, column: 1],
+               [
+                 {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Foo]},
+                 {:%{}, [line: 1, column: 6], [a: 1]}
+               ]},
+              [
+                {[line: 1, column: 2], "missing opening brace for struct %Foo"},
+                {[line: 1, column: 9], "missing closing brace for struct %Foo"}
+              ]} = Spitfire.parse("%Foo a: 1")
+
+      assert {:error,
+              {:%, [line: 1, column: 1],
+               [
+                 {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Foo]},
+                 {:%{}, [closing: [line: 1, column: 16], line: 1, column: 6], [a: 1, b: 2]}
+               ]},
+              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} =
+               Spitfire.parse("%Foo a: 1, b: 2}")
+
+      assert {:error,
+              {:%, [line: 1, column: 1],
+               [
+                 {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Foo]},
+                 {:%{}, [closing: [line: 1, column: 14], line: 1, column: 6],
+                  [{:|, [line: 1, column: 8], [{:x, [line: 1, column: 6], nil}, [a: 1]]}]}
+               ]},
+              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} =
+               Spitfire.parse("%Foo x | a: 1}")
+
+      assert {:error,
+              {:%, [line: 1, column: 1],
+               [
+                 {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Foo]},
+                 {:%{}, [line: 1, column: 6], [{:|, [line: 1, column: 8], [{:x, [line: 1, column: 6], nil}, [a: 1]]}]}
+               ]},
+              [
+                {[line: 1, column: 2], "missing opening brace for struct %Foo"},
+                {[line: 1, column: 13], "missing closing brace for struct %Foo"}
+              ]} = Spitfire.parse("%Foo x | a: 1")
+
+      assert {:error,
+              {:foo, [closing: [line: 1, column: 15], line: 1, column: 1],
+               [
+                 {:%, [line: 1, column: 5],
+                  [
+                    {:__aliases__, [last: [line: 1, column: 6], line: 1, column: 6], [:Bar]},
+                    {:%{}, [closing: [line: 1, column: 14], line: 1, column: 10], [a: 1]}
+                  ]}
+               ]},
+              [{[line: 1, column: 6], "missing opening brace for struct %Bar"}]} =
+               Spitfire.parse("foo(%Bar a: 1})")
+
+      assert {:error,
+              {:|>, [line: 1, column: 3],
+               [
+                 {:x, [line: 1, column: 1], nil},
+                 {:%, [line: 1, column: 6],
+                  [
+                    {:__aliases__, [last: [line: 1, column: 7], line: 1, column: 7], [:Foo]},
+                    {:%{}, [closing: [line: 1, column: 15], line: 1, column: 11], [a: 1]}
+                  ]}
+               ]},
+              [{[line: 1, column: 7], "missing opening brace for struct %Foo"}]} =
+               Spitfire.parse("x |> %Foo a: 1}")
+
+      # Nested structs
+      assert {:error,
+              {:%, [line: 1, column: 1],
+               [
+                 {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Outer]},
+                 {:%{}, [closing: [line: 1, column: 26], line: 1, column: 7],
+                  [
+                    inner:
+                      {:%, [line: 1, column: 15],
+                       [
+                         {:__aliases__, [last: [line: 1, column: 16], line: 1, column: 16], [:Inner]},
+                         {:%{}, [closing: [line: 1, column: 26], line: 1, column: 22], [a: 1]}
+                       ]}
+                  ]}
+               ]},
+              [
+                {[line: 1, column: 16], "missing opening brace for struct %Inner"},
+                {[line: 1, column: 26], "missing closing brace for struct %Outer"}
+              ]} = Spitfire.parse("%Outer{inner: %Inner a: 1}")
+
+      assert {:error,
+              {:%, [line: 1, column: 1],
+               [
+                 {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Outer]},
+                 {:%{}, [closing: [line: 1, column: 27], line: 1, column: 8],
+                  [
+                    inner:
+                      {:%, [line: 1, column: 15],
+                       [
+                         {:__aliases__, [last: [line: 1, column: 16], line: 1, column: 16], [:Inner]},
+                         {:%{}, [closing: [line: 1, column: 26], line: 1, column: 21], [a: 1]}
+                       ]}
+                  ]}
+               ]},
+              [{[line: 1, column: 2], "missing opening brace for struct %Outer"}]} =
+               Spitfire.parse("%Outer inner: %Inner{a: 1}}")
+
+      assert {:error,
+              {:%, [line: 1, column: 1],
+               [
+                 {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Outer]},
+                 {:%{}, [closing: [line: 1, column: 27], line: 1, column: 8],
+                  [
+                    inner:
+                      {:%, [line: 1, column: 15],
+                       [
+                         {:__aliases__, [last: [line: 1, column: 16], line: 1, column: 16], [:Inner]},
+                         {:%{}, [closing: [line: 1, column: 26], line: 1, column: 22], [a: 1]}
+                       ]}
+                  ]}
+               ]},
+              [
+                {[line: 1, column: 2], "missing opening brace for struct %Outer"},
+                {[line: 1, column: 16], "missing opening brace for struct %Inner"}
+              ]} = Spitfire.parse("%Outer inner: %Inner a: 1}}")
+
+      # Module attribute struct
+      assert {:error,
+              {:%, [line: 1, column: 1],
+               [
+                 {:@, [line: 1, column: 2], [{:foo, [line: 1, column: 3], nil}]},
+                 {:%{}, [line: 1, column: 7], [a: 1]}
+               ]},
+              [
+                {[line: 1, column: 3], "missing opening brace for struct %@foo"},
+                {[line: 1, column: 10], "missing closing brace for struct %@foo"}
+              ]} = Spitfire.parse("%@foo a: 1")
+
+      # __MODULE__ struct
+      assert {:error,
+              {:%, [line: 1, column: 1],
+               [
+                 {:__MODULE__, [line: 1, column: 2], nil},
+                 {:%{}, [line: 1, column: 13], [a: 1]}
+               ]},
+              [
+                {[line: 1, column: 2], "missing opening brace for struct %__MODULE__"},
+                {[line: 1, column: 16], "missing closing brace for struct %__MODULE__"}
+              ]} = Spitfire.parse("%__MODULE__ a: 1")
     end
   end
 
