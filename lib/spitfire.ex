@@ -212,6 +212,12 @@ defmodule Spitfire do
               peek_token(parser) in [:eol, :";", :eof] and parser.tokens != :eot ->
                 next_token(parser)
 
+              current_token(parser) in [:")", :"]", :"}", :">>"] ->
+                next_token(parser)
+
+              peek_token(parser) in [:")", :"]", :"}", :">>"] ->
+                next_token(parser)
+
               true ->
                 parser
             end
