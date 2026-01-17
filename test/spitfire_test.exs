@@ -33,13 +33,6 @@ defmodule SpitfireTest do
       '''
 
       assert Spitfire.parse(code) == s2q(code)
-
-      # FIXME: spitfire currently parses this successfully, which is wrong, it should be an error
-      # code = ~S'''
-      # foo, do: IO.inspect("bob"); "bob"
-      # '''
-
-      # assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses valid elixir" do
@@ -2803,6 +2796,57 @@ defmodule SpitfireTest do
                  {[line: 1, column: 20], "missing `end` for do block"}
                ]
              }
+    end
+
+    test "orphan comma" do
+      code = ~S'''
+      foo, do: IO.inspect("bob"); "bob"
+      '''
+
+      assert {:error, _ast, errors} = Spitfire.parse(code)
+      assert Enum.any?(errors, fn {_, msg} -> String.contains?(msg, ",") end)
+    end
+
+    test "unexpected semicolon" do
+      code = ~S"""
+      defmodule MyModule do
+        import List
+      ; (__cursor__())
+      end
+      """
+
+      assert {:error, _ast, errors} = Spitfire.parse(code)
+      assert Enum.any?(errors, fn {_, msg} -> String.contains?(msg, ";") end)
+
+      code = ~S"""
+      defmodule MyModule do
+        foo
+
+        ; bar
+      end
+      """
+
+      assert {:error, _ast, errors} = Spitfire.parse(code)
+      assert Enum.any?(errors, fn {_, msg} -> String.contains?(msg, ";") end)
+    end
+
+    test "semicolon in list/tuple/map" do
+      assert {:error, _, errors} = Spitfire.parse("[;]")
+      assert Enum.any?(errors, fn {_, msg} -> msg == "unexpected token: ;" end)
+
+      assert {:error, _, errors} = Spitfire.parse("{;}")
+      assert Enum.any?(errors, fn {_, msg} -> msg == "unexpected token: ;" end)
+
+      assert {:error, _, errors} = Spitfire.parse("%{;}")
+      assert Enum.any?(errors, fn {_, msg} -> msg == "unexpected token: ;" end)
+    end
+
+    test "semicolon in parentheses is valid empty block" do
+      assert {:ok, {:__block__, _, []}} = Spitfire.parse("(;)")
+    end
+
+    test "leading semicolon is skipped" do
+      assert {:ok, {:foo, _, nil}} = Spitfire.parse("; foo")
     end
 
     test "weird characters" do

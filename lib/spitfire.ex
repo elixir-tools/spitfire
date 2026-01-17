@@ -131,9 +131,8 @@ defmodule Spitfire do
   def parse(code, opts \\ []) do
     parser = code |> new(opts) |> next_token() |> next_token()
 
-    # eat all the beginning eol tokens in case the file starts with a comment
     parser =
-      while current_token(parser) == :eol <- parser do
+      while current_token(parser) in [:eol, :";"] <- parser do
         next_token(parser)
       end
 
@@ -194,6 +193,16 @@ defmodule Spitfire do
       {exprs, parser} =
         while2 current_token(parser) != :eof <- parser do
           {ast, parser} = parse_expression(parser, @lowest, false, false, true)
+
+          {ast, parser} =
+            case ast do
+              {:comma, meta, _} ->
+                parser = put_error(parser, {meta, "unexpected token: ,"})
+                {{:__block__, [{:error, true} | meta], []}, parser}
+
+              _ ->
+                {ast, parser}
+            end
 
           parser =
             cond do
@@ -275,7 +284,7 @@ defmodule Spitfire do
           :"[" -> parse_list_literal(parser)
           :"(" -> parse_grouped_expression(parser)
           :"{" -> parse_tuple_literal(parser)
-          :";" -> raise "semicolon"
+          :";" -> parse_unexpected_semicolon(parser)
           :%{} -> parse_map_literal(parser)
           :% -> parse_struct_literal(parser)
           :ellipsis_op -> parse_ellipsis_op(parser)
@@ -443,120 +452,136 @@ defmodule Spitfire do
 
           parser = Map.put(parser, :nesting, 0)
 
-          {expression, parser} = parse_expression(parser, @lowest, false, false, true)
+          if current_token(parser) == :")" do
+            closing_paren_meta = current_meta(parser)
+            parser = Map.put(parser, :nesting, old_nesting)
+            {{:__block__, [parens: opening_paren_meta ++ [closing: closing_paren_meta]], []}, parser}
+          else
+            {expression, parser} = parse_expression(parser, @lowest, false, false, true)
 
-          expression = push_eoe(expression, peek_eoe(parser))
+            expression = push_eoe(expression, peek_eoe(parser))
 
-          cond do
-            # if the next token is the closing paren or if the next token is a newline and the next next token is the closing paren
-            peek_token(parser) == :")" || (peek_token(parser) == :eol && peek_token(next_token(parser)) == :")") ->
-              parser =
-                parser
-                |> Map.put(:nesting, old_nesting)
-                |> next_token()
-                |> eat_eol()
-
-              closing_paren_meta = current_meta(parser)
-
-              ast =
-                case expression do
-                  # unquote splicing is special cased, if it has one expression as an arg, its wrapped in a block
-                  {:unquote_splicing, _, [_]} ->
-                    {:__block__, [{:closing, current_meta(parser)} | orig_meta], [expression]}
-
-                  # not and ! are special cased, if it has one expression as an arg, its wrapped in a block
-                  {op, _, [_]} when op in [:not, :!] ->
-                    {:__block__, [], [expression]}
-
-                  {:->, _, _} ->
-                    [expression]
-
-                  {f, meta, a} ->
-                    {f, [parens: opening_paren_meta ++ [closing: closing_paren_meta]] ++ meta, a}
-
-                  expression ->
-                    expression
-                end
-
-              {ast, parser}
-
-            # if the next token is a new line, but the next next token is not the closing paren (implied from previous clause)
-            peek_token(parser) == :eol or current_token(parser) == :-> ->
-              # second conditon checks of the next next token is a closing paren or another expression
-              {exprs, parser} =
-                while2 current_token(parser) == :-> ||
-                         (peek_token(parser) == :eol && parser |> next_token() |> peek_token() != :")") <- parser do
-                  {ast, parser} =
-                    case Map.get(parser, :stab_state) do
-                      %{ast: lhs} ->
-                        {ast, parser} = parse_stab_expression(Map.delete(parser, :stab_state), lhs)
-
-                        {ast, parser} =
-                          if current_token(parser) == :-> do
-                            {ast, parser}
-                          else
-                            if peek_token(parser) == :")" do
-                              {ast, parser}
-                            else
-                              eoe = current_eoe(parser)
-                              ast = push_eoe(ast, eoe)
-                              {ast, next_token(parser)}
-                            end
-                          end
-
-                        {ast, parser}
-
-                      nil ->
-                        parser = parser |> next_token() |> eat_eol()
-                        {ast, parser} = parse_expression(parser, @lowest, false, false, true)
-
-                        {ast, parser} =
-                          cond do
-                            current_token(parser) == :-> ->
-                              {ast, parser}
-
-                            peek_token(parser) == :")" ->
-                              {ast, parser}
-
-                            true ->
-                              eoe = peek_eoe(parser)
-                              ast = push_eoe(ast, eoe)
-                              {ast, parser}
-                          end
-
-                        {ast, parser}
-                    end
-
-                  {ast, parser}
-                end
-
-              # handles if the closing paren is on a new line or the same line
-              parser =
-                if peek_token(parser) == :eol do
-                  next_token(parser)
-                else
-                  parser
-                end
-
-              if peek_token(parser) == :")" do
+            cond do
+              # if the next token is the closing paren or if the next token is a newline and the next next token is the closing paren
+              peek_token(parser) == :")" || (peek_token(parser) == :eol && peek_token(next_token(parser)) == :")") ->
                 parser =
                   parser
                   |> Map.put(:nesting, old_nesting)
                   |> next_token()
+                  |> eat_eol()
 
-                exprs = [expression | exprs]
+                closing_paren_meta = current_meta(parser)
 
                 ast =
-                  case exprs do
-                    [{:->, _, _} | _] ->
-                      exprs
+                  case expression do
+                    # unquote splicing is special cased, if it has one expression as an arg, its wrapped in a block
+                    {:unquote_splicing, _, [_]} ->
+                      {:__block__, [{:closing, current_meta(parser)} | orig_meta], [expression]}
 
-                    _ ->
-                      {:__block__, [{:closing, current_meta(parser)} | orig_meta], exprs}
+                    # not and ! are special cased, if it has one expression as an arg, its wrapped in a block
+                    {op, _, [_]} when op in [:not, :!] ->
+                      {:__block__, [], [expression]}
+
+                    {:->, _, _} ->
+                      [expression]
+
+                    {f, meta, a} ->
+                      {f, [parens: opening_paren_meta ++ [closing: closing_paren_meta]] ++ meta, a}
+
+                    expression ->
+                      expression
                   end
 
                 {ast, parser}
-              else
+
+              peek_token(parser) in [:eol, :";"] or current_token(parser) == :-> ->
+                # second conditon checks of the next next token is a closing paren or another expression
+                {exprs, parser} =
+                  while2 current_token(parser) == :-> ||
+                           (peek_token(parser) in [:eol, :";"] && parser |> next_token() |> peek_token() != :")") <-
+                           parser do
+                    {ast, parser} =
+                      case Map.get(parser, :stab_state) do
+                        %{ast: lhs} ->
+                          {ast, parser} = parse_stab_expression(Map.delete(parser, :stab_state), lhs)
+
+                          {ast, parser} =
+                            if current_token(parser) == :-> do
+                              {ast, parser}
+                            else
+                              if peek_token(parser) == :")" do
+                                {ast, parser}
+                              else
+                                eoe = current_eoe(parser)
+                                ast = push_eoe(ast, eoe)
+                                {ast, next_token(parser)}
+                              end
+                            end
+
+                          {ast, parser}
+
+                        nil ->
+                          parser = parser |> next_token() |> eat_eol()
+                          {ast, parser} = parse_expression(parser, @lowest, false, false, true)
+
+                          {ast, parser} =
+                            cond do
+                              current_token(parser) == :-> ->
+                                {ast, parser}
+
+                              peek_token(parser) == :")" ->
+                                {ast, parser}
+
+                              true ->
+                                eoe = peek_eoe(parser)
+                                ast = push_eoe(ast, eoe)
+                                {ast, parser}
+                            end
+
+                          {ast, parser}
+                      end
+
+                    {ast, parser}
+                  end
+
+                # handles if the closing paren is on a new line or the same line
+                parser =
+                  if peek_token(parser) == :eol do
+                    next_token(parser)
+                  else
+                    parser
+                  end
+
+                if peek_token(parser) == :")" do
+                  parser =
+                    parser
+                    |> Map.put(:nesting, old_nesting)
+                    |> next_token()
+
+                  exprs = [expression | exprs]
+
+                  ast =
+                    case exprs do
+                      [{:->, _, _} | _] ->
+                        exprs
+
+                      _ ->
+                        {:__block__, [{:closing, current_meta(parser)} | orig_meta], exprs}
+                    end
+
+                  {ast, parser}
+                else
+                  meta = current_meta(parser)
+
+                  parser =
+                    parser
+                    |> put_error({meta, "missing closing parentheses"})
+                    |> Map.put(:nesting, old_nesting)
+
+                  {{:__block__, [{:error, true} | meta], []}, next_token(parser)}
+                end
+
+              true ->
                 meta = current_meta(parser)
 
                 parser =
@@ -565,19 +590,24 @@ defmodule Spitfire do
                   |> Map.put(:nesting, old_nesting)
 
                 {{:__block__, [{:error, true} | meta], []}, next_token(parser)}
-              end
-
-            true ->
-              meta = current_meta(parser)
-
-              parser =
-                parser
-                |> put_error({meta, "missing closing parentheses"})
-                |> Map.put(:nesting, old_nesting)
-
-              {{:__block__, [{:error, true} | meta], []}, next_token(parser)}
+            end
           end
       end
+    end
+  end
+
+  defp parse_unexpected_semicolon(parser) do
+    meta = current_meta(parser)
+    parser = put_error(parser, {meta, "unexpected token: ;"})
+    parser = parser |> next_token() |> eat_eol_only()
+
+    case current_token_type(parser) do
+      type when type in [:eof, :end, :block_identifier, :")", :"]", :"}", :">>"] ->
+        {{:__block__, [{:error, true} | meta], []}, parser}
+
+      _ ->
+        {expr, parser} = parse_expression(parser, @lowest, false, false, true)
+        {{:__block__, [{:error, true} | meta], [expr]}, parser}
     end
   end
 
@@ -977,7 +1007,8 @@ defmodule Spitfire do
   defp parse_access_expression(parser, lhs) do
     trace "parse_access_expression", trace_meta(parser) do
       meta = current_meta(parser)
-      parser = parser |> next_token() |> eat_eol()
+      parser = parser |> next_token() |> eat_eol_only()
+
       {rhs, parser} = parse_expression(parser, @lowest, false, false, false)
 
       extra_meta = [from_brackets: true]
@@ -988,7 +1019,7 @@ defmodule Spitfire do
           nl -> [newlines: nl]
         end
 
-      parser = parser |> next_token() |> eat_eol()
+      parser = parser |> next_token() |> eat_eol_only()
       closing = current_meta(parser)
       meta = extra_meta ++ newlines ++ [{:closing, closing} | meta]
 
@@ -1564,7 +1595,7 @@ defmodule Spitfire do
       meta = current_meta(parser)
       orig_parser = parser
       newlines = get_newlines(parser)
-      parser = parser |> next_token() |> eat_eol()
+      parser = parser |> next_token() |> eat_eol_only()
 
       cond do
         current_token(parser) == :">>" ->
@@ -1591,9 +1622,9 @@ defmodule Spitfire do
 
           case peek_token_eat_eol(parser) do
             :">>" ->
-              parser = eat_eol_at(parser, 1)
+              parser = eat_eol_only_at(parser, 1)
               parser = next_token(parser)
-              {{:<<>>, newlines ++ [{:closing, current_meta(parser)} | meta], pairs}, eat_eol(parser)}
+              {{:<<>>, newlines ++ [{:closing, current_meta(parser)} | meta], pairs}, eat_eol_only(parser)}
 
             _ ->
               all_pairs = pairs |> Enum.reverse() |> Enum.zip(Process.get(:comma_list_parsers))
@@ -1636,7 +1667,7 @@ defmodule Spitfire do
       parser = next_token(parser)
       newlines = peek_newlines(parser)
 
-      parser = parser |> next_token() |> eat_eol()
+      parser = parser |> next_token() |> eat_eol_only()
       old_nesting = parser.nesting
       parser = Map.put(parser, :nesting, 0)
 
@@ -1661,7 +1692,7 @@ defmodule Spitfire do
         true ->
           {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
 
-          parser = eat_eol_at(parser, 1)
+          parser = eat_eol_only_at(parser, 1)
 
           parser =
             case peek_token(parser) do
@@ -1764,7 +1795,7 @@ defmodule Spitfire do
           nl -> [newlines: nl]
         end
 
-      parser = eat_eol(parser)
+      parser = eat_eol_only(parser)
 
       old_nesting = parser.nesting
       parser = Map.put(parser, :nesting, 0)
@@ -1777,7 +1808,7 @@ defmodule Spitfire do
       else
         {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
 
-        parser = eat_eol_at(parser, 1)
+        parser = eat_eol_only_at(parser, 1)
 
         parser =
           case peek_token(parser) do
@@ -1802,7 +1833,7 @@ defmodule Spitfire do
       orig_parser = parser
       newlines = peek_newlines(parser)
 
-      parser = parser |> next_token() |> eat_eol()
+      parser = parser |> next_token() |> eat_eol_only()
       old_nesting = parser.nesting
       parser = Map.put(parser, :nesting, 0)
 
@@ -1843,8 +1874,8 @@ defmodule Spitfire do
           {pairs, parser} =
             case peek_token_eat_eol(parser) do
               :"}" ->
-                parser = eat_eol_at(parser, 1)
-                {pairs, parser |> next_token() |> eat_eol()}
+                parser = eat_eol_only_at(parser, 1)
+                {pairs, parser |> next_token() |> eat_eol_only()}
 
               _ ->
                 all_pairs = pairs |> Enum.reverse() |> Enum.zip(Process.get(:comma_list_parsers))
@@ -1903,7 +1934,7 @@ defmodule Spitfire do
     trace "parse_list_literal", trace_meta(parser) do
       meta = current_meta(parser)
       orig_parser = parser
-      parser = parser |> next_token() |> eat_eol()
+      parser = parser |> next_token() |> eat_eol_only()
       old_nesting = parser.nesting
       parser = Map.put(parser, :nesting, 0)
 
@@ -1936,7 +1967,7 @@ defmodule Spitfire do
 
           case peek_token_eat_eol(parser) do
             :"]" ->
-              parser = eat_eol_at(parser, 1)
+              parser = eat_eol_only_at(parser, 1)
               parser = Map.put(parser, :nesting, old_nesting)
               {encode_literal(parser, pairs, orig_meta), next_token(parser)}
 
@@ -2013,12 +2044,12 @@ defmodule Spitfire do
           {pairs, parser} =
             parser
             |> next_token()
-            |> eat_eol()
+            |> eat_eol_only()
             |> parse_comma_list()
 
           parser = Map.put(parser, :nesting, old_nesting)
 
-          parser = eat_eol_at(parser, 1)
+          parser = eat_eol_only_at(parser, 1)
 
           case peek_token(parser) do
             :")" ->
@@ -2390,8 +2421,16 @@ defmodule Spitfire do
     eat(%{:eol => true, :";" => true}, parser)
   end
 
+  defp eat_eol_only(parser) do
+    eat(%{:eol => true}, parser)
+  end
+
   defp eat_eol_at(parser, idx) do
     eat_at(parser, [:eol, :";"], idx)
+  end
+
+  defp eat_eol_only_at(parser, idx) do
+    eat_at(parser, [:eol], idx)
   end
 
   defp eat_at(parser, tokens, idx) when is_list(tokens) do
