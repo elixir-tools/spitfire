@@ -2844,6 +2844,31 @@ defmodule SpitfireTest do
       assert {:ok, _} = Spitfire.parse(code)
     end
 
+    test "unexpected expression after keyword list" do
+      assert {:error, _ast, errors} = Spitfire.parse(~S|foo(a: 1, b)|)
+
+      assert Enum.any?(errors, fn {_, msg} ->
+               String.contains?(msg, "unexpected expression after keyword list")
+             end)
+
+      assert {:error, _ast, errors} = Spitfire.parse(~S|foo(a: 1, :bar)|)
+
+      assert Enum.any?(errors, fn {_, msg} ->
+               String.contains?(msg, "unexpected expression after keyword list")
+             end)
+
+      assert {:error, _ast, errors} = Spitfire.parse(~S|@tag foo: bar, baz|)
+
+      assert Enum.any?(errors, fn {_, msg} ->
+               String.contains?(msg, "unexpected expression after keyword list")
+             end)
+    end
+
+    test "__cursor__ after keyword list does not crash" do
+      code = ~S|foo(a: 1, __cursor__())|
+      assert {:ok, {:foo, _, [[{:a, 1}, {:__cursor__, _, []}]]}} = Spitfire.parse(code)
+    end
+
     test "weird characters" do
       code = """
       [«]
