@@ -42,7 +42,7 @@ defmodule SpitfireTest do
           some: :option
 
         def run(arg) do
-          bar() 
+          bar()
           :ok
         end
       end
@@ -157,7 +157,7 @@ defmodule SpitfireTest do
 
     test "parses strings" do
       code = ~s'''
-      "foobar" 
+      "foobar"
       '''
 
       assert Spitfire.parse(code) == s2q(code)
@@ -173,7 +173,7 @@ defmodule SpitfireTest do
 
     test "parses charlists" do
       code = ~s'''
-      'foobar' 
+      'foobar'
       '''
 
       assert Spitfire.parse(code) == s2q(code)
@@ -187,7 +187,7 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
 
       code = ~S'''
-      'foo#{alice}bar' 
+      'foo#{alice}bar'
       '''
 
       assert Spitfire.parse(code) == s2q(code)
@@ -195,7 +195,7 @@ defmodule SpitfireTest do
       code = ~S'''
       'foo#{
         alice
-      }bar' 
+      }bar'
       '''
 
       assert Spitfire.parse(code) == s2q(code)
@@ -940,7 +940,7 @@ defmodule SpitfireTest do
         ''',
         ~S'''
         if group_id do
-          [~S( data-group-id="), group_id, ~S(")] 
+          [~S( data-group-id="), group_id, ~S(")]
         else
           []
         end
@@ -1039,10 +1039,10 @@ defmodule SpitfireTest do
         case infix do
           nil ->
             {left, parser}
-                                                  
+
           ^do_block when parser.nestings != [] ->
             {left, next_token(parser)}
-                                                  
+
           _ ->
             infix.(next_token(parser), left)
         end
@@ -1979,7 +1979,7 @@ defmodule SpitfireTest do
         else
           :bob
         end
-      end 
+      end
       """
 
       assert Spitfire.parse(code) == s2q(code)
@@ -2310,7 +2310,7 @@ defmodule SpitfireTest do
 
     test "missing end parentheses in function call" do
       code = ~S'''
-      foo(1 + 
+      foo(1 +
 
       bar(two)
       '''
@@ -2331,7 +2331,7 @@ defmodule SpitfireTest do
 
     test "missing closing end to anon function and paren" do
       code = ~S'''
-      new_list = 
+      new_list =
         Enum.map(some_list, fn item ->
 
 
@@ -2807,29 +2807,6 @@ defmodule SpitfireTest do
       assert Enum.any?(errors, fn {_, msg} -> String.contains?(msg, ",") end)
     end
 
-    test "unexpected semicolon" do
-      code = ~S"""
-      defmodule MyModule do
-        import List
-      ; (__cursor__())
-      end
-      """
-
-      assert {:error, _ast, errors} = Spitfire.parse(code)
-      assert Enum.any?(errors, fn {_, msg} -> String.contains?(msg, ";") end)
-
-      code = ~S"""
-      defmodule MyModule do
-        foo
-
-        ; bar
-      end
-      """
-
-      assert {:error, _ast, errors} = Spitfire.parse(code)
-      assert Enum.any?(errors, fn {_, msg} -> String.contains?(msg, ";") end)
-    end
-
     test "semicolon in list/tuple/map" do
       assert {:error, _, errors} = Spitfire.parse("[;]")
       assert Enum.any?(errors, fn {_, msg} -> msg == "unexpected token: ;" end)
@@ -2847,6 +2824,24 @@ defmodule SpitfireTest do
 
     test "leading semicolon is skipped" do
       assert {:ok, {:foo, _, nil}} = Spitfire.parse("; foo")
+    end
+
+    test "semicolon as statement separator is valid" do
+      assert {:ok, _} = Spitfire.parse("foo\n; bar")
+      assert {:ok, _} = Spitfire.parse("foo\n\n; bar")
+
+      assert {:ok, 1} = Spitfire.parse("(1;)")
+      assert {:ok, 1} = Spitfire.parse("(1;\n)")
+      assert {:ok, 1} = Spitfire.parse("(1\n;)")
+
+      code = ~S"""
+      defmodule MyModule do
+        foo
+        ; bar
+      end
+      """
+
+      assert {:ok, _} = Spitfire.parse(code)
     end
 
     test "weird characters" do
