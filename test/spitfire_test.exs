@@ -3352,6 +3352,51 @@ defmodule SpitfireTest do
     end
   end
 
+  # The Elixir tokenizer emits atom_safe/kw_identifier_safe tokens when
+  # existing_atoms_only: true is passed. Spitfire parses these to AST
+  # using :erlang.binary_to_existing_atom instead of :binary_to_atom.
+  describe "existing_atoms_only option" do
+    test "atom_safe token is parsed to :binary_to_existing_atom" do
+      code = ~S|:"abc#{foo}"|
+
+      # atom_unsafe -> :binary_to_atom
+      assert {:ok, {{:., _, [:erlang, :binary_to_atom]}, _, _}} = Spitfire.parse(code)
+
+      # atom_safe -> :binary_to_existing_atom
+      assert {:ok, {{:., _, [:erlang, :binary_to_existing_atom]}, _, _}} =
+               Spitfire.parse(code, existing_atoms_only: true)
+    end
+
+    test "kw_identifier_safe token is parsed to :binary_to_existing_atom" do
+      # in list
+      code = ~S|["abc#{foo}": 1]|
+      assert {:ok, [{{{:., _, [:erlang, :binary_to_atom]}, _, _}, 1}]} = Spitfire.parse(code)
+
+      assert {:ok, [{{{:., _, [:erlang, :binary_to_existing_atom]}, _, _}, 1}]} =
+               Spitfire.parse(code, existing_atoms_only: true)
+
+      # in map
+      code = ~S|%{"abc#{foo}": 1}|
+      assert {:ok, {:%{}, _, [{{{:., _, [:erlang, :binary_to_atom]}, _, _}, 1}]}} = Spitfire.parse(code)
+
+      assert {:ok, {:%{}, _, [{{{:., _, [:erlang, :binary_to_existing_atom]}, _, _}, 1}]}} =
+               Spitfire.parse(code, existing_atoms_only: true)
+
+      # multiple items in bracketless kw list
+      code = ~S|foo("a#{b}": 1, "c#{d}": 2)|
+
+      assert {:ok,
+              {:foo, _,
+               [
+                 [
+                   {{{:., _, [:erlang, :binary_to_existing_atom]}, _, _}, 1},
+                   {{{:., _, [:erlang, :binary_to_existing_atom]}, _, _}, 2}
+                 ]
+               ]}} =
+               Spitfire.parse(code, existing_atoms_only: true)
+    end
+  end
+
   defp s2q(code, opts \\ []) do
     Code.string_to_quoted(
       code,

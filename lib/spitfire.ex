@@ -263,13 +263,16 @@ defmodule Spitfire do
           :alias -> parse_alias(parser)
           :"<<" -> parse_bitstring(parser)
           :kw_identifier when is_list or is_map -> parse_kw_identifier(parser)
+          :kw_identifier_safe when is_list or is_map -> parse_kw_identifier(parser)
           :kw_identifier_unsafe when is_list or is_map -> parse_kw_identifier(parser)
           :kw_identifier when not is_list and not is_map -> parse_bracketless_kw_list(parser)
+          :kw_identifier_safe when not is_list and not is_map -> parse_bracketless_kw_list(parser)
           :kw_identifier_unsafe when not is_list and not is_map -> parse_bracketless_kw_list(parser)
           :int -> parse_int(parser)
           :flt -> parse_float(parser)
           :atom -> parse_atom(parser)
           :atom_quoted -> parse_atom(parser)
+          :atom_safe -> parse_atom(parser)
           :atom_unsafe -> parse_atom(parser)
           true -> parse_boolean(parser)
           false -> parse_boolean(parser)
@@ -622,6 +625,9 @@ defmodule Spitfire do
     end
   end
 
+  defp map_kw_identifier_to_atom_token(:kw_identifier_safe), do: :atom_safe
+  defp map_kw_identifier_to_atom_token(:kw_identifier_unsafe), do: :atom_unsafe
+
   defp parse_kw_identifier(%{current_token: {:kw_identifier, meta, token}} = parser) do
     trace "parse_kw_identifier", trace_meta(parser) do
       token = encode_literal(parser, token, meta)
@@ -633,9 +639,10 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_kw_identifier(%{current_token: {:kw_identifier_unsafe, meta, tokens}} = parser) do
-    trace "parse_kw_identifier (unsafe)", trace_meta(parser) do
-      {atom, parser} = parse_atom(%{parser | current_token: {:atom_unsafe, meta, tokens}})
+  defp parse_kw_identifier(%{current_token: {type, meta, tokens}} = parser)
+       when type in [:kw_identifier_safe, :kw_identifier_unsafe] do
+    trace "parse_kw_identifier (#{type})", trace_meta(parser) do
+      {atom, parser} = parse_atom(%{parser | current_token: {map_kw_identifier_to_atom_token(type), meta, tokens}})
       parser = parser |> next_token() |> eat_eoe()
 
       {expr, parser} = parse_expression(parser, @kw_identifier, false, false, false)
@@ -665,9 +672,10 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_bracketless_kw_list(%{current_token: {:kw_identifier_unsafe, meta, tokens}} = parser) do
-    trace "parse_bracketless_kw_list (unsafe)", trace_meta(parser) do
-      {atom, parser} = parse_atom(%{parser | current_token: {:atom_unsafe, meta, tokens}})
+  defp parse_bracketless_kw_list(%{current_token: {type, meta, tokens}} = parser)
+       when type in [:kw_identifier_safe, :kw_identifier_unsafe] do
+    trace "parse_bracketless_kw_list (#{type})", trace_meta(parser) do
+      {atom, parser} = parse_atom(%{parser | current_token: {map_kw_identifier_to_atom_token(type), meta, tokens}})
       parser = parser |> next_token() |> eat_eoe()
 
       atom =
@@ -691,7 +699,7 @@ defmodule Spitfire do
       parser = parser |> next_token() |> next_token()
 
       case current_token_type(parser) do
-        type when type in [:kw_identifier, :kw_identifier_unsafe] ->
+        type when type in [:kw_identifier, :kw_identifier_safe, :kw_identifier_unsafe] ->
           parse_kw_identifier(parser)
 
         _ ->
@@ -1376,11 +1384,18 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_atom(%{current_token: {:atom_unsafe, _, tokens}} = parser) do
-    trace "parse_atom (unsafe)", trace_meta(parser) do
+  defp parse_atom(%{current_token: {type, _, tokens}} = parser) when type in [:atom_safe, :atom_unsafe] do
+    trace "parse_atom (#{type})", trace_meta(parser) do
       meta = current_meta(parser)
       {args, parser} = parse_interpolation(parser, tokens)
-      {{{:., meta, [:erlang, :binary_to_atom]}, [{:delimiter, ~S'"'} | meta], [{:<<>>, meta, args}, :utf8]}, parser}
+
+      binary_to_atom_op =
+        case type do
+          :atom_safe -> :binary_to_existing_atom
+          :atom_unsafe -> :binary_to_atom
+        end
+
+      {{{:., meta, [:erlang, binary_to_atom_op]}, [{:delimiter, ~S'"'} | meta], [{:<<>>, meta, args}, :utf8]}, parser}
     end
   end
 
@@ -1853,7 +1868,7 @@ defmodule Spitfire do
             {ast, parser}
           end
 
-        token when token in [:kw_identifier, :kw_identifier_unsafe, :identifier] and valid_type? ->
+        token when token in [:kw_identifier, :kw_identifier_safe, :kw_identifier_unsafe, :identifier] and valid_type? ->
           parser = put_error(parser, {current_meta(parser), "missing opening brace for struct %#{struct_name}"})
           parser = next_token(parser)
           brace_meta = current_meta(parser)
