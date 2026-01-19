@@ -3121,6 +3121,20 @@ defmodule SpitfireTest do
 
       assert {:error, _ast, [{[line: 1, column: 3], "unknown token: ]"}, {[line: 1, column: 5], "unknown token: }"}]} =
                Spitfire.parse("x ] }")
+
+      code = """
+      x]
+
+      foo = Foo.bar(42)
+      """
+
+      assert {:error,
+              {:__block__, [],
+               [
+                 {:x, _, nil},
+                 {:__block__, [end_of_expression: _, error: true, line: 1, column: 2], []},
+                 {:=, _, [{:foo, _, nil}, {{:., _, [{:__aliases__, _, [:Foo]}, :bar]}, _, [42]}]}
+               ]}, [{[line: 1, column: 2], "unknown token: ]"}]} = Spitfire.parse(code)
     end
 
     test "stray closing delimiter after complete expression" do
