@@ -2646,7 +2646,6 @@ defmodule SpitfireTest do
                       {{:., [line: 5, column: 37], [{:state, [line: 5, column: 32], nil}, :baz]},
                        [no_parens: true, line: 5, column: 38], []}
                     ]},
-                   {:__block__, [error: true, line: 5, column: 41], []},
                    {:__block__,
                     [
                       end_of_expression: [newlines: 1, line: 5, column: 43],
@@ -2658,7 +2657,6 @@ defmodule SpitfireTest do
                 [
                   {[line: 2, column: 8], "missing closing brace for map"},
                   {[line: 4, column: 1], "unknown token: ,"},
-                  {[line: 5, column: 41], "unknown token: )"},
                   {[line: 5, column: 42], "unknown token: }"}
                 ]}
     end
@@ -3103,6 +3101,59 @@ defmodule SpitfireTest do
                 {[line: 1, column: 2], "missing opening brace for struct %__MODULE__"},
                 {[line: 1, column: 16], "missing closing brace for struct %__MODULE__"}
               ]} == Spitfire.parse("%__MODULE__ a: 1")
+    end
+
+    test "stray closing delimiter after identifier" do
+      assert {:error, {:__block__, [], [{:x, _, nil}, {:__block__, [error: true, line: 1, column: 3], []}]},
+              [{[line: 1, column: 3], "unknown token: ]"}]} = Spitfire.parse("x ]")
+
+      assert {:error, {:__block__, [], [{:x, _, nil}, {:__block__, [error: true, line: 1, column: 3], []}]},
+              [{[line: 1, column: 3], "unknown token: }"}]} = Spitfire.parse("x }")
+
+      assert {:error, {:__block__, [], [{:x, _, nil}, {:__block__, [error: true, line: 1, column: 3], []}]},
+              [{[line: 1, column: 3], "unknown token: )"}]} = Spitfire.parse("x )")
+
+      assert {:error, {:__block__, [], [{:@, _, [{:x, _, nil}]}, {:__block__, [error: true, line: 1, column: 4], []}]},
+              [{[line: 1, column: 4], "unknown token: ]"}]} = Spitfire.parse("@x ]")
+
+      assert {:error, {:__block__, [], [1, {:__block__, [error: true, line: 1, column: 3], []}]},
+              [{[line: 1, column: 3], "unknown token: ]"}]} = Spitfire.parse("1 ]")
+
+      assert {:error, _ast, [{[line: 1, column: 3], "unknown token: ]"}, {[line: 1, column: 5], "unknown token: }"}]} =
+               Spitfire.parse("x ] }")
+
+      code = """
+      x]
+
+      foo = Foo.bar(42)
+      """
+
+      assert {:error,
+              {:__block__, [],
+               [
+                 {:x, _, nil},
+                 {:__block__, [end_of_expression: _, error: true, line: 1, column: 2], []},
+                 {:=, _, [{:foo, _, nil}, {{:., _, [{:__aliases__, _, [:Foo]}, :bar]}, _, [42]}]}
+               ]}, [{[line: 1, column: 2], "unknown token: ]"}]} = Spitfire.parse(code)
+    end
+
+    test "stray closing delimiter after complete expression" do
+      assert {:error,
+              {:__block__, [],
+               [
+                 {:foo, [closing: [line: 1, column: 5], line: 1, column: 1], []},
+                 {:__block__, [error: true, line: 1, column: 6], []}
+               ]}, [{[line: 1, column: 6], "unknown token: }"}]} = Spitfire.parse("foo()}")
+
+      assert {:error, {:__block__, [], [[1, 2], {:__block__, [error: true, line: 1, column: 7], []}]},
+              [{[line: 1, column: 7], "unknown token: }"}]} = Spitfire.parse("[1, 2]}")
+
+      assert {:error,
+              {:__block__, [],
+               [
+                 {:%{}, [closing: [line: 1, column: 7], line: 1, column: 1], [a: 1]},
+                 {:__block__, [error: true, line: 1, column: 8], []}
+               ]}, [{[line: 1, column: 8], "unknown token: )"}]} = Spitfire.parse("%{a: 1})")
     end
   end
 
