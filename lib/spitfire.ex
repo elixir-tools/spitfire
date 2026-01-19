@@ -653,13 +653,7 @@ defmodule Spitfire do
 
       {value, parser} = parse_expression(parser, @kw_identifier, false, false, false)
 
-      {kvs, parser} =
-        while2 peek_token(parser) == :"," <- parser do
-          parser = parser |> next_token() |> next_token()
-          {pair, parser} = parse_kw_identifier(parser)
-
-          {pair, parser}
-        end
+      {kvs, parser} = parse_kw_list_continuation(parser)
 
       {[{token, value} | kvs], parser}
     end
@@ -680,15 +674,36 @@ defmodule Spitfire do
 
       {value, parser} = parse_expression(parser, @kw_identifier, false, false, false)
 
-      {kvs, parser} =
-        while2 peek_token(parser) == :"," <- parser do
-          parser = parser |> next_token() |> next_token()
-          {pair, parser} = parse_kw_identifier(parser)
-
-          {pair, parser}
-        end
+      {kvs, parser} = parse_kw_list_continuation(parser)
 
       {[{atom, value} | kvs], parser}
+    end
+  end
+
+  defp parse_kw_list_continuation(parser) do
+    while2 peek_token(parser) == :"," <- parser do
+      parser = parser |> next_token() |> next_token()
+
+      case current_token_type(parser) do
+        type when type in [:kw_identifier, :kw_identifier_unsafe] ->
+          parse_kw_identifier(parser)
+
+        _ ->
+          parser =
+            if match?({:paren_identifier, _, :__cursor__}, parser.current_token) do
+              parser
+            else
+              put_error(
+                parser,
+                {current_meta(parser),
+                 "unexpected expression after keyword list. Keyword lists must always come as the last argument. " <>
+                   "Therefore, this is not allowed:\n\n    function_call(1, some: :option, 2)\n\n" <>
+                   "Instead, wrap the keyword in brackets:\n\n    function_call(1, [some: :option], 2)"}
+              )
+            end
+
+          parse_expression(parser, @kw_identifier, true, false, false)
+      end
     end
   end
 
