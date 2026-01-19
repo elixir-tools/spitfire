@@ -2895,7 +2895,7 @@ defmodule SpitfireTest do
                   ]},
                  {:x, [line: 1, column: 8], nil}
                ]},
-              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} =
+              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} ==
                Spitfire.parse("%Foo = x")
 
       assert {:error,
@@ -2904,7 +2904,7 @@ defmodule SpitfireTest do
                  {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Foo]},
                  {:%{}, [], []}
                ]},
-              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} =
+              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} ==
                Spitfire.parse("%Foo")
 
       assert {:error,
@@ -2917,7 +2917,7 @@ defmodule SpitfireTest do
                   ]},
                  {:x, [line: 1, column: 12], nil}
                ]},
-              [{[line: 1, column: 6], "missing opening brace for struct %Foo.Bar"}]} =
+              [{[line: 1, column: 6], "missing opening brace for struct %Foo.Bar"}]} ==
                Spitfire.parse("%Foo.Bar = x")
 
       assert {:error,
@@ -2930,7 +2930,7 @@ defmodule SpitfireTest do
                   ]},
                  {:x, [line: 1, column: 15], nil}
                ]},
-              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} =
+              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} ==
                Spitfire.parse("%Foo a: 42} = x")
 
       assert {:error,
@@ -2942,7 +2942,7 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 2], "missing opening brace for struct %Foo"},
                 {[line: 1, column: 9], "missing closing brace for struct %Foo"}
-              ]} = Spitfire.parse("%Foo a: 1")
+              ]} == Spitfire.parse("%Foo a: 1")
 
       assert {:error,
               {:%, [line: 1, column: 1],
@@ -2950,7 +2950,7 @@ defmodule SpitfireTest do
                  {:__aliases__, [last: [line: 1, column: 2], line: 1, column: 2], [:Foo]},
                  {:%{}, [closing: [line: 1, column: 16], line: 1, column: 6], [a: 1, b: 2]}
                ]},
-              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} =
+              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} ==
                Spitfire.parse("%Foo a: 1, b: 2}")
 
       assert {:error,
@@ -2960,7 +2960,7 @@ defmodule SpitfireTest do
                  {:%{}, [closing: [line: 1, column: 14], line: 1, column: 6],
                   [{:|, [line: 1, column: 8], [{:x, [line: 1, column: 6], nil}, [a: 1]]}]}
                ]},
-              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} =
+              [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} ==
                Spitfire.parse("%Foo x | a: 1}")
 
       assert {:error,
@@ -2972,7 +2972,7 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 2], "missing opening brace for struct %Foo"},
                 {[line: 1, column: 13], "missing closing brace for struct %Foo"}
-              ]} = Spitfire.parse("%Foo x | a: 1")
+              ]} == Spitfire.parse("%Foo x | a: 1")
 
       assert {:error,
               {:foo, [closing: [line: 1, column: 15], line: 1, column: 1],
@@ -2983,7 +2983,7 @@ defmodule SpitfireTest do
                     {:%{}, [closing: [line: 1, column: 14], line: 1, column: 10], [a: 1]}
                   ]}
                ]},
-              [{[line: 1, column: 6], "missing opening brace for struct %Bar"}]} =
+              [{[line: 1, column: 6], "missing opening brace for struct %Bar"}]} ==
                Spitfire.parse("foo(%Bar a: 1})")
 
       assert {:error,
@@ -2996,7 +2996,7 @@ defmodule SpitfireTest do
                     {:%{}, [closing: [line: 1, column: 15], line: 1, column: 11], [a: 1]}
                   ]}
                ]},
-              [{[line: 1, column: 7], "missing opening brace for struct %Foo"}]} =
+              [{[line: 1, column: 7], "missing opening brace for struct %Foo"}]} ==
                Spitfire.parse("x |> %Foo a: 1}")
 
       # Nested structs
@@ -3017,7 +3017,7 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 16], "missing opening brace for struct %Inner"},
                 {[line: 1, column: 26], "missing closing brace for struct %Outer"}
-              ]} = Spitfire.parse("%Outer{inner: %Inner a: 1}")
+              ]} == Spitfire.parse("%Outer{inner: %Inner a: 1}")
 
       assert {:error,
               {:%, [line: 1, column: 1],
@@ -3033,7 +3033,7 @@ defmodule SpitfireTest do
                        ]}
                   ]}
                ]},
-              [{[line: 1, column: 2], "missing opening brace for struct %Outer"}]} =
+              [{[line: 1, column: 2], "missing opening brace for struct %Outer"}]} ==
                Spitfire.parse("%Outer inner: %Inner{a: 1}}")
 
       assert {:error,
@@ -3053,7 +3053,7 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 2], "missing opening brace for struct %Outer"},
                 {[line: 1, column: 16], "missing opening brace for struct %Inner"}
-              ]} = Spitfire.parse("%Outer inner: %Inner a: 1}}")
+              ]} == Spitfire.parse("%Outer inner: %Inner a: 1}}")
 
       # Module attribute struct
       assert {:error,
@@ -3065,7 +3065,7 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 3], "missing opening brace for struct %@foo"},
                 {[line: 1, column: 10], "missing closing brace for struct %@foo"}
-              ]} = Spitfire.parse("%@foo a: 1")
+              ]} == Spitfire.parse("%@foo a: 1")
 
       # __MODULE__ struct
       assert {:error,
@@ -3077,7 +3077,7 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 2], "missing opening brace for struct %__MODULE__"},
                 {[line: 1, column: 16], "missing closing brace for struct %__MODULE__"}
-              ]} = Spitfire.parse("%__MODULE__ a: 1")
+              ]} == Spitfire.parse("%__MODULE__ a: 1")
     end
   end
 
