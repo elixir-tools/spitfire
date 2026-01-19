@@ -1735,19 +1735,9 @@ defmodule Spitfire do
 
       case prefix do
         {left, parser} ->
-          terminals = [:eol, :eof, :"}", :")", :"]", :">>"]
-
-          {parser, is_valid} = validate_peek(parser, current_token_type(parser))
-
-          if is_valid do
-            while peek_token(parser) not in terminals && calc_prec(parser, associativity, precedence) <- {left, parser} do
-              case peek_token_type(parser) do
-                :. -> parse_dot_expression(next_token(parser), left)
-                _ -> {left, parser}
-              end
-            end
-          else
-            {left, parser}
+          while peek_token(parser) == :. &&
+                  calc_prec(parser, associativity, precedence) <- {left, parser} do
+            parse_dot_expression(next_token(parser), left)
           end
 
         nil ->
@@ -1776,51 +1766,105 @@ defmodule Spitfire do
     end
   end
 
+  # Formats a struct type AST to a string for error messages
+  defp format_struct_type({:__aliases__, _, parts}) do
+    Enum.map_join(parts, ".", fn
+      part when is_atom(part) -> Atom.to_string(part)
+      {:__MODULE__, _, _} -> "__MODULE__"
+      {name, _, _} when is_atom(name) -> Atom.to_string(name)
+      _ -> "?"
+    end)
+  end
+
+  defp format_struct_type({:@, _, [{name, _, _}]}) do
+    "@#{name}"
+  end
+
+  defp format_struct_type({name, _, _}) when is_atom(name) do
+    Atom.to_string(name)
+  end
+
+  defp format_struct_type(_), do: nil
+
   defp parse_struct_literal(%{current_token: {:%, _}} = parser) do
     trace "parse_struct_literal", trace_meta(parser) do
       meta = current_meta(parser)
       parser = next_token(parser)
       {type, parser} = parse_struct_type(parser)
 
-      parser = next_token(parser)
+      valid_type? = type != {:__block__, [], []}
+      struct_name = format_struct_type(type)
 
-      brace_meta = current_meta(parser)
-      parser = next_token(parser)
+      case peek_token(parser) do
+        :"{" ->
+          parser = next_token(parser)
+          brace_meta = current_meta(parser)
+          parser = next_token(parser)
 
-      newlines =
-        case current_newlines(parser) do
-          nil -> []
-          nl -> [newlines: nl]
-        end
+          newlines =
+            case current_newlines(parser) do
+              nil -> []
+              nl -> [newlines: nl]
+            end
 
-      parser = eat_eol(parser)
+          parser = eat_eol(parser)
+          old_nesting = parser.nesting
+          parser = Map.put(parser, :nesting, 0)
 
-      old_nesting = parser.nesting
-      parser = Map.put(parser, :nesting, 0)
+          if current_token(parser) == :"}" do
+            closing = current_meta(parser)
+            ast = {:%, meta, [type, {:%{}, newlines ++ [{:closing, closing} | brace_meta], []}]}
+            parser = Map.put(parser, :nesting, old_nesting)
+            {ast, parser}
+          else
+            {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
+            parser = eat_eol_at(parser, 1)
 
-      if current_token(parser) == :"}" do
-        closing = current_meta(parser)
-        ast = {:%, meta, [type, {:%{}, newlines ++ [{:closing, closing} | brace_meta], []}]}
-        parser = Map.put(parser, :nesting, old_nesting)
-        {ast, parser}
-      else
-        {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
+            parser =
+              case peek_token(parser) do
+                :"}" -> next_token(parser)
+                _ -> put_error(parser, {current_meta(parser), "missing closing brace for struct %#{struct_name}"})
+              end
 
-        parser = eat_eol_at(parser, 1)
-
-        parser =
-          case peek_token(parser) do
-            :"}" ->
-              next_token(parser)
-
-            _ ->
-              put_error(parser, {current_meta(parser), "missing closing brace for struct"})
+            closing = current_meta(parser)
+            ast = {:%, meta, [type, {:%{}, newlines ++ [{:closing, closing} | brace_meta], pairs}]}
+            parser = Map.put(parser, :nesting, old_nesting)
+            {ast, parser}
           end
 
-        closing = current_meta(parser)
-        ast = {:%, meta, [type, {:%{}, newlines ++ [{:closing, closing} | brace_meta], pairs}]}
-        parser = Map.put(parser, :nesting, old_nesting)
-        {ast, parser}
+        token when token in [:kw_identifier, :kw_identifier_unsafe, :identifier] and valid_type? ->
+          parser = put_error(parser, {current_meta(parser), "missing opening brace for struct %#{struct_name}"})
+          parser = next_token(parser)
+          brace_meta = current_meta(parser)
+
+          old_nesting = parser.nesting
+          parser = Map.put(parser, :nesting, 0)
+
+          {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
+          parser = eat_eol_at(parser, 1)
+
+          {parser, closing_meta} =
+            case peek_token(parser) do
+              :"}" ->
+                parser = next_token(parser)
+                {parser, [{:closing, current_meta(parser)} | brace_meta]}
+
+              _ ->
+                parser = put_error(parser, {current_meta(parser), "missing closing brace for struct %#{struct_name}"})
+                {parser, brace_meta}
+            end
+
+          ast = {:%, meta, [type, {:%{}, closing_meta, pairs}]}
+          parser = Map.put(parser, :nesting, old_nesting)
+          {ast, parser}
+
+        _ ->
+          parser =
+            if valid_type?,
+              do: put_error(parser, {current_meta(parser), "missing opening brace for struct %#{struct_name}"}),
+              else: parser
+
+          {{:%, meta, [type, {:%{}, [], []}]}, parser}
       end
     end
   end
