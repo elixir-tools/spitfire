@@ -173,6 +173,7 @@ defmodule Spitfire do
     case result do
       {:ok, ast} -> {:ok, ast, comments}
       {:error, ast, errors} -> {:error, ast, comments, errors}
+      {:error, :no_fuel_remaining} -> {:error, :no_fuel_remaining}
     end
   after
     Process.delete(:code_formatter_comments)
