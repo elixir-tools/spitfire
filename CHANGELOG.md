@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0](https://github.com/elixir-tools/spitfire/compare/v0.2.1...v0.3.0) (2026-01-19)
+
+
+### Features
+
+* Handle atom_safe and kw_identifier_safe tokens ([#72](https://github.com/elixir-tools/spitfire/issues/72)) ([c4fd161](https://github.com/elixir-tools/spitfire/commit/c4fd16102f8fb341be9aa77119f480382368af73))
+
+
+### Bug Fixes
+
+* handle eof inside list-esque constructs ([#67](https://github.com/elixir-tools/spitfire/issues/67)) ([14a2bf3](https://github.com/elixir-tools/spitfire/commit/14a2bf31da53f5b6e4c9d1db539ac2b068b73f7e))
+* handle no_fuel_remaining in parse_with_comments ([#73](https://github.com/elixir-tools/spitfire/issues/73)) ([f777bb4](https://github.com/elixir-tools/spitfire/commit/f777bb4badc7c8f89b90b398aba2e3e0cec71c90))
+* improve recovery from unexpected semicolons ([#70](https://github.com/elixir-tools/spitfire/issues/70)) ([792e9c9](https://github.com/elixir-tools/spitfire/commit/792e9c9e1c7996767775b50ff09712513d25a755))
+* infinite loop parsing incomplete struct ([#66](https://github.com/elixir-tools/spitfire/issues/66)) ([bebd845](https://github.com/elixir-tools/spitfire/commit/bebd84510edf4d6530e673462ef3847d04ca657e))
+* parsing crashes on code with errors ([#65](https://github.com/elixir-tools/spitfire/issues/65)) ([b6bbdb4](https://github.com/elixir-tools/spitfire/commit/b6bbdb48859722a35fc1238ef049554fcd23a308))
+* recover from incomplete keyword lists ([#71](https://github.com/elixir-tools/spitfire/issues/71)) ([0513a5d](https://github.com/elixir-tools/spitfire/commit/0513a5d98a2760cba189ba7b78b39a1707ca237c))
+
 ## [0.2.1](https://github.com/elixir-tools/spitfire/compare/v0.2.0...v0.2.1) (2025-06-03)
 
 
