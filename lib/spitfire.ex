@@ -2948,11 +2948,11 @@ defmodule Spitfire do
     MapSet.member?(@ops, ptype)
   end
 
-  # metadata describing how mnay newlines are present following the start of an expression
+  # metadata describing how many newlines are present following the start of an expression
   # eg: foo(
   #       arg
   #     )
-  # will have 1 newling due to the newline after the opening paren
+  # will have 1 newline due to the newline after the opening paren
   defp get_newlines(parser) do
     case peek_newlines(parser) do
       nil -> []
