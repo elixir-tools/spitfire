@@ -19,7 +19,10 @@ defmodule Main do
 
   def collect_files(argv) do
     root = List.first(argv)
-    files = Path.wildcard(Path.join(root, "lib/**/*.ex"))
+    IO.puts(root)
+    wildcard = Path.join(root, "**/{lib,test}/**/*.{ex,exs}")
+    IO.puts(wildcard)
+    files = Path.wildcard(wildcard)
     ignore = Enum.flat_map(@ignore, &Path.wildcard(Path.join(root, &1)))
 
     for file <- files, file not in ignore, {:ok, content} <- [File.read(file)] do
