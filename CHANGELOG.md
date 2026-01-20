@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/elixir-tools/spitfire/compare/v0.3.0...v0.3.1) (2026-01-20)
+
+
+### Bug Fixes
+
+* handle unexpected tokens when parsing stabs ([#76](https://github.com/elixir-tools/spitfire/issues/76)) ([365007b](https://github.com/elixir-tools/spitfire/commit/365007be455bafa0b559579430e440e95a357724))
+
 ## [0.3.0](https://github.com/elixir-tools/spitfire/compare/v0.2.1...v0.3.0) (2026-01-19)
 
 
