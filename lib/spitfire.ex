@@ -248,7 +248,7 @@ defmodule Spitfire do
 
   @terminals MapSet.new([:eol, :eof, :"}", :")", :"]", :">>"])
   @terminals_with_comma MapSet.put(@terminals, :",")
-  defp(parse_expression(parser, assoc \\ @lowest, is_list \\ false, is_map \\ false, is_top \\ false, is_stab \\ false))
+  defp parse_expression(parser, assoc \\ @lowest, is_list \\ false, is_map \\ false, is_top \\ false, is_stab \\ false)
 
   defp parse_expression(parser, {associativity, precedence}, is_list, is_map, is_top, is_stab) do
     trace "parse_expression", trace_meta(parser) do
