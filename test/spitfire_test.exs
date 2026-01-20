@@ -1195,6 +1195,97 @@ defmodule SpitfireTest do
       end
     end
 
+    test "parses nested stab expressions" do
+      assert Spitfire.parse(~s'fn :a -> 1; :b -> 2 end') == s2q(~s'fn :a -> 1; :b -> 2 end')
+      assert Spitfire.parse(~s'fn x -> fn y -> x + y end end') == s2q(~s'fn x -> fn y -> x + y end end')
+      assert Spitfire.parse(~s'fn x, y -> x + y end') == s2q(~s'fn x, y -> x + y end')
+
+      assert Spitfire.parse(~s'fn {:ok, x} -> x; {:error, _} -> nil end') ==
+               s2q(~s'fn {:ok, x} -> x; {:error, _} -> nil end')
+
+      assert Spitfire.parse(~s'fn a -> fn b -> fn c -> a + b + c end end end') ==
+               s2q(~s'fn a -> fn b -> fn c -> a + b + c end end end')
+
+      assert Spitfire.parse(~s'fn x -> Enum.map(x, fn y -> y * 2 end) end') ==
+               s2q(~s'fn x -> Enum.map(x, fn y -> y * 2 end) end')
+    end
+
+    test "parses multi-line stab expressions" do
+      code = ~S'''
+      fn
+        :a -> 1
+        :b -> 2
+        :c -> 3
+      end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      fn
+        x when is_integer(x) ->
+          x * 2
+        x when is_binary(x) ->
+          String.length(x)
+      end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      case x do
+        {:ok, val} ->
+          val
+        {:error, reason} ->
+          raise reason
+        _ ->
+          nil
+      end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      cond do
+        x > 0 ->
+          :positive
+        x < 0 ->
+          :negative
+        true ->
+          :zero
+      end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      receive do
+        {:msg, data} ->
+          handle(data)
+        :stop ->
+          exit(:normal)
+      after
+        1000 ->
+          :timeout
+      end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      try do
+        risky_operation()
+      rescue
+        e in RuntimeError ->
+          handle_runtime(e)
+        e in ArgumentError ->
+          handle_argument(e)
+      end
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "parses match operator" do
       codes = [
         ~s'''
@@ -3154,6 +3245,38 @@ defmodule SpitfireTest do
                  {:%{}, [closing: [line: 1, column: 7], line: 1, column: 1], [a: 1]},
                  {:__block__, [error: true, line: 1, column: 8], []}
                ]}, [{[line: 1, column: 8], "unknown token: )"}]} = Spitfire.parse("%{a: 1})")
+    end
+
+    test "stab expressions with capture between followed by fn" do
+      # This case is very contrived and was found by fuzzing tokens, trying to
+      # reproduce a real world crash for which we didn't have a repro case.
+      assert Spitfire.parse("a -> b &0 c -> d fn e f -> g end end") ==
+               {:error,
+                [
+                  {:->, [line: 1, column: 3], [[{:a, [line: 1, column: 1], nil}], {:__block__, [], []}]},
+                  {:->, [line: 1, column: 13],
+                   [
+                     [],
+                     {:d, [line: 1, column: 16],
+                      [
+                        {:fn, [closing: [line: 1, column: 30], line: 1, column: 18],
+                         [
+                           {:e, [line: 1, column: 21],
+                            [
+                              {:->, [line: 1, column: 25],
+                               [[{:f, [line: 1, column: 23], nil}], {:g, [line: 1, column: 28], nil}]}
+                            ]}
+                         ]}
+                      ]}
+                   ]},
+                  {:__block__, [error: true, line: 1, column: 30], []},
+                  {:__block__, [error: true, line: 1, column: 34], []}
+                ],
+                [
+                  {[line: 1, column: 11], "syntax error"},
+                  {[line: 1, column: 30], "unknown token: end"},
+                  {[line: 1, column: 34], "unknown token: end"}
+                ]}
     end
   end
 

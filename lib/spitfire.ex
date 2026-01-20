@@ -1281,6 +1281,8 @@ defmodule Spitfire do
 
   defp parse_anon_function(%{current_token: {:fn, _}} = parser) do
     trace "parse_anon_function", trace_meta(parser) do
+      # Clear any stab_state from outer context - fn creates its own stab scope
+      parser = Map.delete(parser, :stab_state)
       meta = current_meta(parser)
 
       newlines = get_newlines(parser)
