@@ -1694,6 +1694,22 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
     end
 
+    test "range operator precedence and nested ranges" do
+      codes = [
+        "a..b ++ c",
+        "a..b -- c",
+        "a..b <> c",
+        "a..b..c//d",
+        "1..2..3//4",
+        "a..b//c",
+        "1..10//2"
+      ]
+
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
+      end
+    end
+
     test "from nx repo" do
       code = ~S'''
       def a,

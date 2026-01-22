@@ -82,7 +82,7 @@ defmodule Spitfire do
   @xor_op {:left, 40}
   @ternary_op {:right, 42}
   @concat_op {:right, 44}
-  @range_op {:right, 46}
+  @range_op {:right, 44}
   @dual_op {:left, 48}
   @mult_op {:left, 50}
   @power_op {:left, 52}
@@ -382,7 +382,8 @@ defmodule Spitfire do
                   parse_infix_expression(next_token(parser), left)
 
                 :range_op ->
-                  parse_range_expression(next_token(parser), left)
+                  in_range = Map.get(parser, :in_range, false)
+                  parse_range_expression(next_token(parser), left, in_range)
 
                 :stab_op when not is_stab ->
                   parse_stab_expression(next_token(parser), left)
@@ -1065,15 +1066,19 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_range_expression(parser, lhs) do
+  defp parse_range_expression(parser, lhs, inside_range) do
     trace "parse_range_expression (with lhs)", trace_meta(parser) do
       token = current_token(parser)
       meta = current_meta(parser)
       precedence = current_precedence(parser)
       parser = next_token(parser)
-      {rhs, parser} = parse_expression(parser, precedence, false, false, false)
 
-      if peek_token(parser) == :ternary_op do
+      old_in_range = Map.get(parser, :in_range, false)
+      parser = Map.put(parser, :in_range, true)
+      {rhs, parser} = parse_expression(parser, precedence, false, false, false)
+      parser = Map.put(parser, :in_range, old_in_range)
+
+      if not inside_range and peek_token(parser) == :ternary_op do
         parser = parser |> next_token() |> next_token()
         {rrhs, parser} = parse_expression(parser, precedence, false, false, false)
 
