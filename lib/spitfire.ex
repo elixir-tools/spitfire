@@ -1806,7 +1806,16 @@ defmodule Spitfire do
 
   defp parse_ellipsis_op(parser) do
     trace "parse_ellipsis_op", trace_meta(parser) do
-      {{:..., current_meta(parser), []}, parser}
+      peek = peek_token_type(parser)
+
+      if MapSet.member?(@terminals_with_comma, peek_token(parser)) or peek == :stab_op do
+        {{:..., current_meta(parser), []}, parser}
+      else
+        meta = current_meta(parser)
+        parser = next_token(parser)
+        {rhs, parser} = parse_expression(parser, @lowest, false, false, false)
+        {{:..., meta, [rhs]}, parser}
+      end
     end
   end
 
