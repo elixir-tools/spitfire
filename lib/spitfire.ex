@@ -635,7 +635,7 @@ defmodule Spitfire do
       token = encode_literal(parser, token, meta)
       parser = parser |> next_token() |> eat_eoe()
 
-      {expr, parser} = parse_expression(parser, @kw_identifier, false, false, false)
+      {expr, parser} = parse_expression(parser, @list_comma, false, false, false)
 
       {{token, expr}, parser}
     end
@@ -647,7 +647,7 @@ defmodule Spitfire do
       {atom, parser} = parse_atom(%{parser | current_token: {map_kw_identifier_to_atom_token(type), meta, tokens}})
       parser = parser |> next_token() |> eat_eoe()
 
-      {expr, parser} = parse_expression(parser, @kw_identifier, false, false, false)
+      {expr, parser} = parse_expression(parser, @list_comma, false, false, false)
 
       atom =
         case atom do
