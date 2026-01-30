@@ -717,6 +717,9 @@ defmodule SpitfireTest do
         %Bar.__MODULE__.Foo{
           bar: "foo"
         }
+        ''',
+        ~S'''
+        %Foo{"ok": 1}
         '''
       ]
 

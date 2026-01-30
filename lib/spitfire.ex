@@ -2800,11 +2800,36 @@ defmodule Spitfire do
     nil
   end
 
-  defp current_newlines(%{current_token: {_token, {_line, _col, newlines}, _}}) when is_integer(newlines) do
+  @newline_carrying_tokens [
+    :eol,
+    :assoc_op,
+    :ternary_op,
+    :power_op,
+    :range_op,
+    :concat_op,
+    :arrow_op,
+    :comp_op,
+    :rel_op,
+    :and_op,
+    :or_op,
+    :xor_op,
+    :in_match_op,
+    :type_op,
+    :stab_op,
+    :mult_op,
+    :match_op,
+    :pipe_op,
+    :when_op,
+    :in_op
+  ]
+
+  defp current_newlines(%{current_token: {token, {_line, _col, newlines}, _}})
+       when token in @newline_carrying_tokens and is_integer(newlines) do
     newlines
   end
 
-  defp current_newlines(%{current_token: {_token, {_line, _col, newlines}}}) when is_integer(newlines) do
+  defp current_newlines(%{current_token: {token, {_line, _col, newlines}}})
+       when token in @newline_carrying_tokens and is_integer(newlines) do
     newlines
   end
 
