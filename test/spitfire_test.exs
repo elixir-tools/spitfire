@@ -2076,6 +2076,18 @@ defmodule SpitfireTest do
       '''
 
       assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      ... + 1 * 2
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      @type fun :: (... -> any())
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "blocks inside an anon function as a parameter" do
