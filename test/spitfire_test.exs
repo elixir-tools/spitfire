@@ -1012,6 +1012,18 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
     end
 
+    test "when syntax inside keyword list" do
+      code = ~S'[a: b when c]'
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
+    test "in_match_op inside keyword list" do
+      code = ~S'[a: b <- c]'
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "case expr" do
       codes = [
         ~s'''
