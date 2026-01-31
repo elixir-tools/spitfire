@@ -788,11 +788,30 @@ defmodule Spitfire do
         end
 
       parser = parser |> next_token() |> eat_eoe()
+      rhs_parser = parser
       {rhs, parser} = parse_expression(parser, precedence, false, false, false)
+
+      {rhs, parser} =
+        if unparenthesized_do_end_block?(rhs) do
+          parse_expression(rhs_parser, @lowest, false, false, false)
+        else
+          {rhs, parser}
+        end
 
       ast = {token, meta, [rhs]}
 
       {ast, parser}
+    end
+  end
+
+  defp unparenthesized_do_end_block?(ast) do
+    case ast do
+      {_, meta, _} when is_list(meta) ->
+        Keyword.has_key?(meta, :do) && Keyword.has_key?(meta, :end) &&
+          not Keyword.has_key?(meta, :parens)
+
+      _ ->
+        false
     end
   end
 

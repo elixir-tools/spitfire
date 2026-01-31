@@ -2163,6 +2163,16 @@ defmodule SpitfireTest do
         assert Spitfire.parse(code) == s2q(code)
       end
     end
+
+    test "operators on unmatched expression" do
+      code = ~S'''
+      +case a do
+        _ -> b
+      end |> c ** d >>> e
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
   end
 
   describe "code with errors" do
