@@ -728,6 +728,12 @@ defmodule SpitfireTest do
       end
     end
 
+    test "parses ambiguous map update" do
+      code = ~S'%{a do :ok end | b c, d => e}'
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "parses operators" do
       codes = [
         ~s'''

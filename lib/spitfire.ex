@@ -2,6 +2,8 @@ defmodule Spitfire do
   @moduledoc """
   Spitfire parser
   """
+
+  import Spitfire.Context
   import Spitfire.Tracer
   import Spitfire.While
   import Spitfire.While2
@@ -248,6 +250,7 @@ defmodule Spitfire do
 
   @terminals MapSet.new([:eol, :eof, :"}", :")", :"]", :">>"])
   @terminals_with_comma MapSet.put(@terminals, :",")
+
   defp parse_expression(parser, assoc \\ @lowest, is_list \\ false, is_map \\ false, is_top \\ false, is_stab \\ false)
 
   defp parse_expression(parser, {associativity, precedence}, is_list, is_map, is_top, is_stab) do
@@ -314,9 +317,13 @@ defmodule Spitfire do
           {parser, is_valid} = validate_peek(parser, current_token_type(parser))
 
           if is_valid do
-            while (is_nil(Map.get(parser, :stab_state)) and not MapSet.member?(terminals, peek_token(parser))) &&
-                    (current_token(parser) != :do and peek_token(parser) != :eol) &&
-                    calc_prec(parser, associativity, precedence) <- {left, parser} do
+            while is_nil(Map.get(parser, :stab_state)) and
+                    not MapSet.member?(terminals, peek_token(parser)) and
+                    current_token(parser) != :do and
+                    peek_token(parser) != :eol and
+                    calc_prec(parser, associativity, precedence) and
+                    not (block_assoc_op?(parser, is_map) and peek_token_type(parser) == :assoc_op) <-
+                    {left, parser} do
               parser = consume_fuel(parser)
               peek_token_type = peek_token_type(parser)
 
@@ -728,6 +735,7 @@ defmodule Spitfire do
       assoc_meta = current_meta(parser)
       parser = parser |> next_token() |> eat_eoe()
       {value, parser} = parse_expression(parser, @assoc_op, false, false, false)
+      parser = Map.put(parser, :last_assoc_meta, assoc_meta)
 
       key =
         case key do
@@ -742,7 +750,7 @@ defmodule Spitfire do
     end
   end
 
-  defp(parse_comma_list(parser, precedence \\ @list_comma, is_list \\ false, is_map \\ false))
+  defp parse_comma_list(parser, precedence \\ @list_comma, is_list \\ false, is_map \\ false)
 
   defp parse_comma_list(parser, precedence, is_list, is_map) do
     trace "parse_comma_list", trace_meta(parser) do
@@ -1054,12 +1062,114 @@ defmodule Spitfire do
 
       parser = eat_eoe(parser)
 
-      {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
+      {pairs, assoc_meta, parser} = parse_map_update_pairs(parser)
+      base_meta = newlines ++ meta
 
-      ast = {token, newlines ++ meta, [lhs, pairs]}
+      case map_update_rewrite(pairs, assoc_meta, newlines, meta) do
+        {:ok, pipe_meta, key, value} ->
+          pipe_ast = {token, pipe_meta, [lhs, key]}
+          {{pipe_ast, value}, parser}
 
-      {ast, parser}
+        :error ->
+          ast = {token, base_meta, [lhs, pairs]}
+          {ast, parser}
+      end
     end
+  end
+
+  defp parse_map_update_pairs(parser) do
+    {{pairs, capture}, parser} =
+      with_state(parser, %{map_context: true, last_assoc_meta: nil}, capture: [:last_assoc_meta]) do
+        parse_comma_list(parser, @list_comma, false, true)
+      end
+
+    assoc_meta = Map.get(capture, :last_assoc_meta)
+    {pairs, assoc_meta, parser}
+  end
+
+  defp map_update_rewrite(pairs, assoc_meta, newlines, meta) do
+    # Code like %{a do :ok end | b c, d => e} is ambiguous:
+    # It can be interpreted as either
+    # %{(... | b(c, d)) => e}
+    # or
+    # %{... | b(c, d) => e}
+    #
+    # Elixir recognizes this and decides to interpret it as the latter
+    # and emit a warning.
+    #
+    # This section rewrites the parse attempt to match Elixir's behavior.
+    case pairs do
+      [{{call, call_meta, [_, _ | _] = args}, value}] ->
+        if map_update_allowed?(call_meta) do
+          case Keyword.pop(call_meta, :assoc) do
+            {nil, _call_meta} ->
+              :error
+
+            {assoc_meta, call_meta} ->
+              key = {call, call_meta, args}
+              pipe_meta = map_update_meta(newlines, meta, assoc_meta)
+              {:ok, pipe_meta, key, value}
+          end
+        else
+          :error
+        end
+
+      [{call, call_meta, [_, _ | _] = args}] ->
+        if map_update_allowed?(call_meta) do
+          case extract_map_update_arg(args, assoc_meta) do
+            {:ok, assoc_meta, assoc_key, assoc_value, rest_args} ->
+              key = {call, call_meta, rest_args ++ [assoc_key]}
+              pipe_meta = map_update_meta(newlines, meta, assoc_meta)
+              {:ok, pipe_meta, key, assoc_value}
+
+            :error ->
+              :error
+          end
+        else
+          :error
+        end
+
+      _ ->
+        :error
+    end
+  end
+
+  defp map_update_allowed?(call_meta) do
+    not Keyword.has_key?(call_meta, :closing) and not Keyword.has_key?(call_meta, :parens)
+  end
+
+  defp map_update_meta(newlines, meta, assoc_meta) do
+    case assoc_meta do
+      nil -> newlines ++ meta
+      _ -> newlines ++ [{:assoc, assoc_meta} | meta]
+    end
+  end
+
+  defp extract_map_update_arg(args, assoc_meta) do
+    {last, rest} = List.pop_at(args, -1)
+
+    case last do
+      {assoc_key, assoc_value} ->
+        {assoc_meta, assoc_key} = extract_assoc_meta(assoc_key, assoc_meta)
+        {:ok, assoc_meta, assoc_key, assoc_value, rest}
+
+      _ ->
+        :error
+    end
+  end
+
+  defp extract_assoc_meta({name, meta, args}, fallback_meta) when is_list(meta) do
+    case Keyword.pop(meta, :assoc) do
+      {nil, _meta} ->
+        {fallback_meta, {name, meta, args}}
+
+      {assoc_meta, meta} ->
+        {assoc_meta, {name, meta, args}}
+    end
+  end
+
+  defp extract_assoc_meta(key, fallback_meta) do
+    {fallback_meta, key}
   end
 
   defp parse_access_expression(parser, lhs) do
@@ -1761,7 +1871,10 @@ defmodule Spitfire do
           {{:%{}, meta, []}, parser}
 
         true ->
-          {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
+          {pairs, parser} =
+            with_state(parser, %{map_context: true}) do
+              parse_comma_list(parser, @list_comma, false, true)
+            end
 
           parser = eat_eol_at(parser, 1)
 
@@ -1899,7 +2012,11 @@ defmodule Spitfire do
             parser = Map.put(parser, :nesting, old_nesting)
             {ast, parser}
           else
-            {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
+            {pairs, parser} =
+              with_state(parser, %{map_context: true}) do
+                parse_comma_list(parser, @list_comma, false, true)
+              end
+
             parser = eat_eol_at(parser, 1)
 
             parser =
@@ -1922,7 +2039,11 @@ defmodule Spitfire do
           old_nesting = parser.nesting
           parser = Map.put(parser, :nesting, 0)
 
-          {pairs, parser} = parse_comma_list(parser, @list_comma, false, true)
+          {pairs, parser} =
+            with_state(parser, %{map_context: true}) do
+              parse_comma_list(parser, @list_comma, false, true)
+            end
+
           parser = eat_eol_at(parser, 1)
 
           {parser, closing_meta} =
@@ -2888,6 +3009,10 @@ defmodule Spitfire do
 
   defp peek_precedence(parser) do
     Map.get(@precedences, peek_token_type(parser), @lowest)
+  end
+
+  defp block_assoc_op?(parser, is_map) do
+    not is_map and parser.nesting > 0 and Map.get(parser, :map_context, false)
   end
 
   defp pop_nesting(%{nesting: nesting} = parser) do
