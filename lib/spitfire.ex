@@ -1062,16 +1062,16 @@ defmodule Spitfire do
 
       parser = eat_eoe(parser)
 
-      {pairs, assoc_meta, parser} = parse_map_update_pairs(parser)
+      {entries, assoc_meta, parser} = parse_map_update_pairs(parser)
       base_meta = newlines ++ meta
 
-      case map_update_rewrite(pairs, assoc_meta, newlines, meta) do
+      case map_update_rewrite(entries, assoc_meta, newlines, meta) do
         {:ok, pipe_meta, key, value} ->
           pipe_ast = {token, pipe_meta, [lhs, key]}
           {{pipe_ast, value}, parser}
 
         :error ->
-          ast = {token, base_meta, [lhs, pairs]}
+          ast = {token, base_meta, [lhs, entries]}
           {ast, parser}
       end
     end
@@ -1087,18 +1087,22 @@ defmodule Spitfire do
     {pairs, assoc_meta, parser}
   end
 
-  defp map_update_rewrite(pairs, assoc_meta, newlines, meta) do
-    # Code like %{a do :ok end | b c, d => e} is ambiguous:
-    # It can be interpreted as either
-    # %{(... | b(c, d)) => e}
-    # or
-    # %{... | b(c, d) => e}
-    #
-    # Elixir recognizes this and decides to interpret it as the latter
-    # and emit a warning.
-    #
-    # This section rewrites the parse attempt to match Elixir's behavior.
-    case pairs do
+  # Code like %{a do :ok end | b c, d => e} is ambiguous:
+  # It can be interpreted as either
+  # %{(... | b(c, d)) => e}
+  # or
+  # %{... | b(c, d) => e}
+  #
+  # The ambiguity only exists for calls with 2+ args (a comma that could
+  # belong to the call or to the map-update list).
+  #
+  # Elixir recognizes this and decides to interpret it as the latter
+  # and emit a warning.
+  #
+  # This rewrites the parse attempt to match Elixir's behavior.
+  defp map_update_rewrite(entries, assoc_meta, newlines, meta) do
+    case entries do
+      # %{... | (b(c, d)) => e}
       [{{call, call_meta, [_, _ | _] = args}, value}] ->
         if map_update_allowed?(call_meta) do
           case Keyword.pop(call_meta, :assoc) do
@@ -1114,6 +1118,7 @@ defmodule Spitfire do
           :error
         end
 
+      # %{... | b(c, d => e)}
       [{call, call_meta, [_, _ | _] = args}] ->
         if map_update_allowed?(call_meta) do
           case extract_map_update_arg(args, assoc_meta) do
