@@ -2173,6 +2173,12 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code) == s2q(code)
     end
+
+    test "when in bracketless kw list" do
+      code = ~S'with a <- b, do: c when a'
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
   end
 
   describe "code with errors" do
