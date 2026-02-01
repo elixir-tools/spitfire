@@ -1012,6 +1012,16 @@ defmodule Spitfire do
           :"not in" ->
             {:not, meta, [{:in, meta, [lhs, rhs]}]}
 
+          :in ->
+            case lhs do
+              {op, _meta, [inner]} when op in [:!, :not] ->
+                in_ast = {:in, meta, [inner, rhs]}
+                {op, meta, [in_ast]}
+
+              _ ->
+                {token, newlines ++ meta, [lhs, rhs]}
+            end
+
           :when ->
             lhs =
               case lhs do

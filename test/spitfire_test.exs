@@ -814,6 +814,9 @@ defmodule SpitfireTest do
         ~s'''
         1 in foo()
         ''',
+        "!A.a() in B.b()",
+        "!fn -> a end in a",
+        "not fn x -> x end in a",
         ~s'''
         foo not in bar
         ''',
@@ -875,6 +878,51 @@ defmodule SpitfireTest do
       for code <- codes do
         assert Spitfire.parse(code) == s2q(code)
       end
+    end
+
+    test "rearranges !(left) in right into !(left in right)" do
+      bad_code = ~S'!(left) in right'
+      good_code = ~S'!(left in right)'
+
+      assert Spitfire.parse!(bad_code) ==
+               {
+                 :!,
+                 [line: 1, column: 9],
+                 [
+                   {
+                     :in,
+                     [{:line, 1}, {:column, 9}],
+                     [
+                       {
+                         :left,
+                         [
+                           {:parens, [line: 1, column: 2, closing: [line: 1, column: 7]]},
+                           {:line, 1},
+                           {:column, 3}
+                         ],
+                         nil
+                       },
+                       {:right, [line: 1, column: 12], nil}
+                     ]
+                   }
+                 ]
+               }
+
+      assert Spitfire.parse!(good_code) ==
+               {
+                 :!,
+                 [line: 1, column: 1],
+                 [
+                   {
+                     :in,
+                     [parens: [line: 1, column: 2, closing: [line: 1, column: 16]], line: 1, column: 8],
+                     [
+                       {:left, [line: 1, column: 3], nil},
+                       {:right, [line: 1, column: 11], nil}
+                     ]
+                   }
+                 ]
+               }
     end
 
     test "parses setting module attr" do
