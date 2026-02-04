@@ -34,10 +34,8 @@ defmodule Spitfire.MixProject do
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:styler, "~> 0.11", only: [:dev, :test]},
       {:credo, "~> 1.7", only: :dev},
-      {:dialyxir, "~> 1.0", only: :dev}
-
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:dialyxir, "~> 1.0", only: :dev},
+      {:stream_data, "~> 1.0", only: [:dev, :test]}
     ]
   end
 
