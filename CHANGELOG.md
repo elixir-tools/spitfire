@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.2](https://github.com/elixir-tools/spitfire/compare/v0.3.1...v0.3.2) (2026-02-01)
+
+
+### Bug Fixes
+
+* associativity in bracketless kw list ([#89](https://github.com/elixir-tools/spitfire/issues/89)) ([91b5d5b](https://github.com/elixir-tools/spitfire/commit/91b5d5b38a75408543abb4a908a632622512366d))
+* extract newlines only from newline carrying tokens ([#86](https://github.com/elixir-tools/spitfire/issues/86)) ([edba800](https://github.com/elixir-tools/spitfire/commit/edba800af197ebae5d5e9cbb13c26c5f0532a25a))
+* improve handling of matched/unmatched expressions ([#88](https://github.com/elixir-tools/spitfire/issues/88)) ([dd45cb1](https://github.com/elixir-tools/spitfire/commit/dd45cb1de39929975ce6e260f0739db8fd5bb5d9))
+* keyword list associativity ([#85](https://github.com/elixir-tools/spitfire/issues/85)) ([a7d2a54](https://github.com/elixir-tools/spitfire/commit/a7d2a5487ae0790d0b9c7815e143f89093317275))
+* parse ellipsis_op as unary operator ([#83](https://github.com/elixir-tools/spitfire/issues/83)) ([e86f1f4](https://github.com/elixir-tools/spitfire/commit/e86f1f423094739bfa5b54bdd72a97e5c6d1e8c5))
+* rearrange `!(left) in right` ([#91](https://github.com/elixir-tools/spitfire/issues/91)) ([fae2579](https://github.com/elixir-tools/spitfire/commit/fae2579b29212a4c7551022897f95a7b4d040461))
+
 ## [0.3.1](https://github.com/elixir-tools/spitfire/compare/v0.3.0...v0.3.1) (2026-01-20)
 
 
