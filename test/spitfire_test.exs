@@ -687,6 +687,16 @@ defmodule SpitfireTest do
       end
     end
 
+    test "parses ambiguous map update" do
+      code = ~S'%{a do :ok end | b c, d => e}'
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'%{a do :ok end | b c, d => e, f => g}'
+
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "parses structs" do
       codes = [
         ~s'''
@@ -3360,7 +3370,7 @@ defmodule SpitfireTest do
       assert Spitfire.parse("a -> b &0 c -> d fn e f -> g end end") ==
                {:error,
                 [
-                  {:->, [line: 1, column: 3], [[{:a, [line: 1, column: 1], nil}], {:__block__, [], []}]},
+                  {:->, [line: 1, column: 3], [[{:a, [line: 1, column: 1], nil}], nil]},
                   {:->, [line: 1, column: 13],
                    [
                      [],
@@ -3368,10 +3378,10 @@ defmodule SpitfireTest do
                       [
                         {:fn, [closing: [line: 1, column: 30], line: 1, column: 18],
                          [
-                           {:e, [line: 1, column: 21],
+                           {:->, [line: 1, column: 25],
                             [
-                              {:->, [line: 1, column: 25],
-                               [[{:f, [line: 1, column: 23], nil}], {:g, [line: 1, column: 28], nil}]}
+                              [{:e, [line: 1, column: 21], [{:f, [line: 1, column: 23], nil}]}],
+                              {:g, [line: 1, column: 28], nil}
                             ]}
                          ]}
                       ]}
@@ -3384,6 +3394,55 @@ defmodule SpitfireTest do
                   {[line: 1, column: 30], "unknown token: end"},
                   {[line: 1, column: 34], "unknown token: end"}
                 ]}
+    end
+
+    test "grouped stab cannot have comma expression in body" do
+      code = ~S'(a, b -> c, d)'
+
+      # Comma expressions are not allowed in stab bodies - this is a syntax error
+      assert Spitfire.parse(code) ==
+               {:error,
+                [
+                  {:->, [line: 1, column: 7],
+                   [
+                     [{:a, [line: 1, column: 2], nil}, {:b, [line: 1, column: 5], nil}],
+                     {:__block__, [error: true, line: 1, column: 10], []}
+                   ]}
+                ], [{[line: 1, column: 10], "syntax error"}]}
+    end
+
+    test "fn stab cannot have comma expression in body" do
+      code = ~S'fn x -> a, b end'
+
+      assert Spitfire.parse(code) ==
+               {:error,
+                {:fn, [closing: [line: 1, column: 14], line: 1, column: 1],
+                 [
+                   {:->, [line: 1, column: 6],
+                    [
+                      [{:x, [line: 1, column: 4], nil}],
+                      {:__block__, [error: true, line: 1, column: 9], []}
+                    ]}
+                 ]}, [{[line: 1, column: 9], "syntax error"}]}
+    end
+
+    test "errors on invalid map update" do
+      code = ~S'%{a do :ok end | b c, d => e, f => g, h i, j => k}'
+
+      assert Spitfire.parse(code) ==
+               {:error,
+                {:%{}, [closing: [line: 1, column: 50], line: 1, column: 1],
+                 [
+                   {{:|, [assoc: [line: 1, column: 25], line: 1, column: 16],
+                     [
+                       {:a, [do: [line: 1, column: 5], end: [line: 1, column: 12], line: 1, column: 3], [[do: :ok]]},
+                       {:b, [line: 1, column: 18], [{:c, [line: 1, column: 20], nil}, {:d, [line: 1, column: 23], nil}]}
+                     ]}, {:e, [line: 1, column: 28], nil}},
+                   {{:f, [assoc: [line: 1, column: 33], line: 1, column: 31], nil}, {:g, [line: 1, column: 36], nil}},
+                   {{:h, [assoc: [line: 1, column: 46], line: 1, column: 39],
+                     [{:i, [line: 1, column: 41], nil}, {:j, [line: 1, column: 44], nil}]},
+                    {:k, [line: 1, column: 49], nil}}
+                 ]}, [{[line: 1, column: 46], "syntax error"}]}
     end
   end
 
