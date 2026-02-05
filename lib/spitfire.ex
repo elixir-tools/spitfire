@@ -762,7 +762,10 @@ defmodule Spitfire do
       token = encode_literal(parser, token, meta)
       parser = parser |> next_token() |> eat_eoe()
 
-      {expr, parser} = parse_expression(parser, @list_comma, false, false, false)
+      {expr, parser} =
+        with_context(parser, %{in_map: false}, fn parser ->
+          parse_expression(parser, @list_comma, false, false, false)
+        end)
 
       {{token, expr}, parser}
     end
@@ -774,7 +777,10 @@ defmodule Spitfire do
       {atom, parser} = parse_atom(%{parser | current_token: {map_kw_identifier_to_atom_token(type), meta, tokens}})
       parser = parser |> next_token() |> eat_eoe()
 
-      {expr, parser} = parse_expression(parser, @list_comma, false, false, false)
+      {expr, parser} =
+        with_context(parser, %{in_map: false}, fn parser ->
+          parse_expression(parser, @list_comma, false, false, false)
+        end)
 
       atom =
         case atom do
@@ -880,7 +886,11 @@ defmodule Spitfire do
         end
 
       parser = parser |> next_token() |> eat_eoe()
-      {value, parser} = parse_expression(parser, @assoc_op, false, false, false)
+
+      {value, parser} =
+        with_context(parser, %{in_map: false}, fn parser ->
+          parse_expression(parser, @assoc_op, false, false, false)
+        end)
 
       key =
         case key do
@@ -927,14 +937,24 @@ defmodule Spitfire do
     end
   end
 
+  defp invalid_assoc_call_meta?(meta) when is_list(meta) do
+    not Keyword.has_key?(meta, :parens) and
+      not Keyword.has_key?(meta, :closing) and
+      not Keyword.has_key?(meta, :delimiter) and
+      not Keyword.has_key?(meta, :do)
+  end
+
   defp invalid_assoc_key_in_map?({name, meta, args}) when is_atom(name) and is_list(meta) and is_list(args) do
     arity = length(args)
 
     arity > 1 and
       not Macro.operator?(name, arity) and
-      not Keyword.has_key?(meta, :parens) and
-      not Keyword.has_key?(meta, :closing) and
-      not Keyword.has_key?(meta, :do)
+      not Macro.special_form?(name, arity) and
+      invalid_assoc_call_meta?(meta)
+  end
+
+  defp invalid_assoc_key_in_map?({{:., _, [_lhs, _rhs]}, meta, args}) when is_list(meta) and is_list(args) do
+    length(args) > 1 and invalid_assoc_call_meta?(meta)
   end
 
   defp invalid_assoc_key_in_map?({{name, meta, args}, _value}) when is_atom(name) and is_list(meta) and is_list(args) do
@@ -1814,27 +1834,31 @@ defmodule Spitfire do
             # No-parens call with args
             parser = next_token(parser)
             parser = push_nesting(parser)
-            {first_arg, parser} = parse_expression(parser)
+            rest_precedence = if Map.get(parser, :in_map, false), do: {:left, 18}, else: @lowest
+            {first_arg, parser} = parse_expression(parser, rest_precedence, false, false, false)
 
             {rest_args, parser} =
               while2 peek_token(parser) == :"," <- parser do
-                parser
-                |> next_token()
-                |> next_token()
-                |> parse_expression()
+                parser = parser |> next_token() |> next_token()
+                parse_expression(parser, rest_precedence, false, false, false)
               end
 
             args = [first_arg | rest_args]
             parser = pop_nesting(parser)
 
             # Handle trailing do-block
-            if parser.nesting == 0 && current_token(parser) == :do do
-              dot_call = {{token, meta, [lhs, rhs_name]}, ident_meta, args}
-              parse_do_block(parser, dot_call)
-            else
-              # NOTE(doorgan): we don't add ambiguous_op for dot calls, only for regular identifier calls
-              ast = {{token, meta, [lhs, rhs_name]}, ident_meta, args}
-              {ast, parser}
+            dot_call = {{token, meta, [lhs, rhs_name]}, ident_meta, args}
+
+            cond do
+              parser.nesting == 0 && current_token(parser) == :do ->
+                parse_do_block(parser, dot_call)
+
+              parser.nesting == 0 && peek_token(parser) == :do ->
+                parse_do_block(next_token(parser), dot_call)
+
+              true ->
+                # NOTE(doorgan): we don't add ambiguous_op for dot calls, only for regular identifier calls
+                {dot_call, parser}
             end
           end
 
@@ -2956,16 +2980,16 @@ defmodule Spitfire do
 
         parser = push_nesting(parser)
 
-        # In maps, cap precedence at assoc_op to prevent => from being consumed
-        precedence = if Map.get(parser, :in_map, false), do: {:left, 18}, else: @lowest
-        {first_arg, parser} = parse_expression(parser, precedence, false, false, false)
+        # In maps, cap precedence at assoc_op for arguments to prevent => from being consumed
+        rest_precedence = if Map.get(parser, :in_map, false), do: {:left, 18}, else: @lowest
+        {first_arg, parser} = parse_expression(parser, rest_precedence, false, false, false)
 
         front = first_arg
 
         {args, parser} =
           while2 peek_token(parser) == :"," and not stab_state_set?(parser) <- parser do
             parser = parser |> next_token() |> next_token()
-            {arg, parser} = parse_expression(parser, precedence, false, false, false)
+            {arg, parser} = parse_expression(parser, rest_precedence, false, false, false)
             {arg, parser}
           end
 
@@ -2973,17 +2997,22 @@ defmodule Spitfire do
         parser = pop_nesting(parser)
 
         {ast, parser} =
-          if parser.nesting == 0 && current_token(parser) == :do do
-            parse_do_block(parser, {token, meta, args})
-          else
-            meta =
-              if identifier == :op_identifier && length(args) == 1 do
-                [{:ambiguous_op, nil} | meta]
-              else
-                meta
-              end
+          cond do
+            parser.nesting == 0 && current_token(parser) == :do ->
+              parse_do_block(parser, {token, meta, args})
 
-            {{token, meta, args}, parser}
+            parser.nesting == 0 && peek_token(parser) == :do ->
+              parse_do_block(next_token(parser), {token, meta, args})
+
+            true ->
+              meta =
+                if identifier == :op_identifier && length(args) == 1 do
+                  [{:ambiguous_op, nil} | meta]
+                else
+                  meta
+                end
+
+              {{token, meta, args}, parser}
           end
 
         parser = maybe_widen_stab_state(parser, ast)
