@@ -3444,6 +3444,27 @@ defmodule SpitfireTest do
                     {:k, [line: 1, column: 49], nil}}
                  ]}, [{[line: 1, column: 46], "syntax error"}]}
     end
+
+    test "stab expression with fn and stray closing delimiter does not exhaust fuel" do
+      assert Spitfire.parse("a -> b -> fn} -> c") ==
+               {:error,
+                [
+                  {:->, [line: 1, column: 3], [[{:a, [line: 1, column: 1], nil}], nil]},
+                  {:->, [line: 1, column: 8],
+                   [
+                     [],
+                     {:fn, [line: 1, column: 11],
+                      [
+                        {:__block__, [error: true, line: 1, column: 13], []},
+                        {:->, [line: 1, column: 15], [[], {:c, [line: 1, column: 18], nil}]}
+                      ]}
+                   ]}
+                ],
+                [
+                  {[line: 1, column: 13], "unknown token: }"},
+                  {[line: 1, column: 11], "missing closing end for anonymous function"}
+                ]}
+    end
   end
 
   describe "&parse_with_comments/2" do

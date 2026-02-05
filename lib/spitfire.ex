@@ -1112,7 +1112,7 @@ defmodule Spitfire do
       parser = Map.put(parser, :nesting, 0)
 
       {exprs, parser} =
-        while2 peek_token(parser) not in [:end, :")", :block_identifier] <- parser do
+        while2 peek_token(parser) not in [:end, :eof, :")", :block_identifier] <- parser do
           parser = parser |> next_token() |> eat_eoe()
           {ast, parser} = parse_expression(parser, @lowest, false, false, true)
 
