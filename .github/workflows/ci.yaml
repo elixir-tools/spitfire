@@ -136,6 +136,9 @@ jobs:
       - name: Install Dependencies
         run: nix develop --command bash -c "mix deps.get"
 
+      - name: Compile with --warnings-as-errors
+        run: nix develop --command bash -c "mix compile --warnings-as-errors"
+
       - name: Run Formatter
         run: nix develop --command bash -c "mix format --check-formatted"
 
