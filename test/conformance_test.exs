@@ -2735,15 +2735,11 @@ defmodule Spitfire.ConformanceTest do
     end
 
     test "block list combinations" do
-      assert_conforms(
-        "try do\n:ok\nrescue e -> e\ncatch :throw, x -> x\nelse _ -> :default\nafter :cleanup\nend"
-      )
+      assert_conforms("try do\n:ok\nrescue e -> e\ncatch :throw, x -> x\nelse _ -> :default\nafter :cleanup\nend")
 
       assert_conforms("receive do\n:msg -> :ok\nafter 100 -> :timeout\nend")
 
-      assert_conforms(
-        "with {:ok, a} <- foo(), {:ok, b} <- bar() do\n{a, b}\nelse {:error, e} -> e\nend"
-      )
+      assert_conforms("with {:ok, a} <- foo(), {:ok, b} <- bar() do\n{a, b}\nelse {:error, e} -> e\nend")
     end
 
     test "stab_eoe annotations" do
