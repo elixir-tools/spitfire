@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3](https://github.com/elixir-tools/spitfire/compare/v0.3.2...v0.3.3) (2026-02-08)
+
+
+### Bug Fixes
+
+* add `:eof` to the terminator list in `parse_stab_expression/1` ([#92](https://github.com/elixir-tools/spitfire/issues/92)) ([8f976ef](https://github.com/elixir-tools/spitfire/commit/8f976ef1432fcb0de5dab08a04aca06b1a969a99))
+* better align parsing with elixir's matched/unmatched/no-parens ([#93](https://github.com/elixir-tools/spitfire/issues/93)) ([808783e](https://github.com/elixir-tools/spitfire/commit/808783e6bf838e8821a9fd05c00b072cfa99834b))
+
 ## [0.3.2](https://github.com/elixir-tools/spitfire/compare/v0.3.1...v0.3.2) (2026-02-01)
 
 
