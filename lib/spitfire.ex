@@ -2570,10 +2570,12 @@ defmodule Spitfire do
     trace "parse_ellipsis_op", trace_meta(parser) do
       peek = peek_token_type(parser)
 
-      # `...` is standalone when followed by a terminal, stab op, or keyword
+      # `...` is standalone when followed by a terminal, stab op, keyword
+      # or binary operators (except :dual_op)
       if MapSet.member?(@terminals_with_comma, peek_token(parser)) or
            peek_token(parser) == :";" or
-           peek in [:stab_op, :do, :end, :block_identifier] do
+           peek in [:stab_op, :do, :end, :block_identifier] or
+           (is_binary_op?(peek) and peek != :dual_op) do
         {{:..., current_meta(parser), []}, parser}
       else
         meta = current_meta(parser)
