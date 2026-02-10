@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.5](https://github.com/elixir-tools/spitfire/compare/v0.3.4...v0.3.5) (2026-02-10)
+
+
+### Bug Fixes
+
+* operator precedence ([#78](https://github.com/elixir-tools/spitfire/issues/78)) ([0c91f43](https://github.com/elixir-tools/spitfire/commit/0c91f43f4af7fc06a222ab6258d8f37536278db8))
+
 ## [0.3.4](https://github.com/elixir-tools/spitfire/compare/v0.3.3...v0.3.4) (2026-02-09)
 
 
