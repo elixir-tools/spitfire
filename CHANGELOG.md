@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/elixir-tools/spitfire/compare/v0.3.3...v0.3.4) (2026-02-09)
+
+
+### Bug Fixes
+
+* align ellipsis operator precedence with elixir ([#96](https://github.com/elixir-tools/spitfire/issues/96)) ([b4f94c9](https://github.com/elixir-tools/spitfire/commit/b4f94c97676dba359c7f6f573005980b13fac4c8))
+
 ## [0.3.3](https://github.com/elixir-tools/spitfire/compare/v0.3.2...v0.3.3) (2026-02-08)
 
 
