@@ -130,6 +130,7 @@ defmodule Spitfire do
 
   # Operators that indicate an identifier should be treated as a lone identifier (not a call)
   @no_parens_stop_operators [
+    :|,
     :"=>",
     :->,
     :+,
@@ -317,6 +318,8 @@ defmodule Spitfire do
 
   defp do_parse_expression(parser, {associativity, precedence}, is_list, is_map, is_top) do
     stop_before_stab_op? = Map.get(parser, :stop_before_stab_op?, false)
+    stop_before_map_op? = Map.get(parser, :stop_before_map_op?, false)
+    inside_map_update_pairs? = Map.get(parser, :inside_map_update_pairs, false)
 
     prefix =
       case current_token_type(parser) do
@@ -381,6 +384,9 @@ defmodule Spitfire do
         if is_valid do
           while (not stab_state_set?(parser) and not MapSet.member?(terminals, peek_token(parser))) &&
                   (current_token(parser) != :do and peek_token(parser) != :eol) &&
+                  (not stop_before_map_op? or
+                     (peek_token_type(parser) != :assoc_op and
+                        peek_token(parser) != :"=>")) &&
                   calc_prec(parser, associativity, precedence) <- {left, parser} do
             parser = consume_fuel(parser)
             peek_token_type = peek_token_type(parser)
@@ -392,7 +398,7 @@ defmodule Spitfire do
               :when_op ->
                 parse_infix_expression(next_token(parser), left)
 
-              :pipe_op when is_map ->
+              :pipe_op when is_map and not inside_map_update_pairs? ->
                 parse_pipe_op_in_map(next_token(parser), left)
 
               :pipe_op ->
@@ -886,23 +892,23 @@ defmodule Spitfire do
         end
 
       parser = parser |> next_token() |> eat_eoe()
+      {value, parser} = parse_expression(parser, @lowest, false, false, false)
 
-      {value, parser} =
-        with_context(parser, %{in_map: false}, fn parser ->
-          parse_expression(parser, @assoc_op, false, false, false)
-        end)
-
-      key =
-        case key do
-          {f, meta, args} ->
-            {f, [{:assoc, assoc_meta} | meta], args}
-
-          _ ->
-            key
-        end
-
-      {{key, value}, parser}
+      {:pair, pair} = normalize_assoc_key(key, value, assoc_meta)
+      {pair, parser}
     end
+  end
+
+  defp add_assoc_meta({f, meta, args}, assoc_meta)
+       when is_list(meta) and (is_list(args) or is_nil(args)) do
+    {f, [{:assoc, assoc_meta} | meta], args}
+  end
+
+  defp add_assoc_meta(other, _assoc_meta), do: other
+
+  defp normalize_assoc_key(key, value, assoc_meta) do
+    key = add_assoc_meta(key, assoc_meta)
+    {:pair, {key, value}}
   end
 
   defp(parse_comma_list(parser, precedence \\ @list_comma, is_list \\ false, is_map \\ false))
@@ -994,7 +1000,13 @@ defmodule Spitfire do
 
       {rhs, parser} =
         if unparenthesized_do_end_block?(rhs) do
-          parse_expression(rhs_parser, @lowest, false, false, false)
+          if Map.get(parser, :in_map, false) do
+            with_context(rhs_parser, %{stop_before_map_op?: true}, fn parser ->
+              parse_expression(parser, @lowest, false, false, false)
+            end)
+          else
+            parse_expression(rhs_parser, @lowest, false, false, false)
+          end
         else
           {rhs, parser}
         end
@@ -1015,6 +1027,16 @@ defmodule Spitfire do
         false
     end
   end
+
+  # An expression is "unmatched" (in yrl terms) if it contains an
+  # unparenthesized do-end block anywhere in its AST. Binary operators
+  # with an unmatched operand produce unmatched expressions.
+  defp unmatched_expr?({_, meta, args} = ast) when is_list(meta) do
+    unparenthesized_do_end_block?(ast) or
+      (is_list(args) and Enum.any?(args, &unmatched_expr?/1))
+  end
+
+  defp unmatched_expr?(_), do: false
 
   defp parse_prefix_lone_identifer(parser) do
     trace "parse_prefix_lone_identifer", trace_meta(parser) do
@@ -1316,6 +1338,14 @@ defmodule Spitfire do
       token = current_token(parser)
       meta = current_meta(parser)
       precedence = current_precedence(parser)
+      effective_precedence =
+        if Map.get(parser, :in_map, false) do
+          {_, prec} = precedence
+          {_, assoc_prec} = @assoc_op
+          if prec > assoc_prec, do: precedence, else: {:left, assoc_prec}
+        else
+          precedence
+        end
       # we save this in case the next expression is an error
       pre_parser = parser
 
@@ -1333,13 +1363,13 @@ defmodule Spitfire do
         if token == :when do
           {rhs, parser} =
             with_context(parser, %{stop_before_stab_op?: true}, fn parser ->
-              parse_expression(parser, precedence, false, false, false)
+              parse_expression(parser, effective_precedence, false, false, false)
             end)
 
           parser = Map.delete(parser, :stab_state)
           {rhs, parser}
         else
-          parse_expression(parser, precedence, false, false, false)
+          parse_expression(parser, effective_precedence, false, false, false)
         end
 
       {rhs, parser} =
@@ -1416,7 +1446,11 @@ defmodule Spitfire do
 
       rhs_parser = parser |> next_token() |> eat_eoe()
 
-      if ambiguous_map_pipe_assoc?(lhs, rhs_parser) do
+      if rhs_has_binding_op?(rhs_parser) or
+           (unmatched_expr?(lhs) and rhs_has_bare_comma?(rhs_parser)) do
+        # When the RHS of `|` has low-precedence operators (::, when, <-, \\) or
+        # the LHS is an unmatched_expr (do-end) and the RHS has no-parens commas,
+        # treat `|` as a regular pipe operator (matching Elixir's LALR grammar).
         parse_infix_expression(parser, lhs)
       else
         {pairs, pairs_parser} = parse_map_update_pairs(rhs_parser)
@@ -1426,49 +1460,135 @@ defmodule Spitfire do
     end
   end
 
-  defp ambiguous_map_pipe_assoc?(lhs, rhs_parser) do
-    unparenthesized_do_end_block?(lhs) and ambiguous_map_pipe_assoc_rhs?(rhs_parser)
+  # Operators with precedence between assoc_op (18) and pipe_op (22) that
+  # should NOT be consumed inside parse_map_update_pairs.
+  @low_prec_map_op_types MapSet.new([:type_op, :when_op, :in_match_op])
+
+  defp rhs_has_binding_op?(parser) do
+    scan_binding_op(parser |> eat_eoe(), 0)
   end
 
-  defp ambiguous_map_pipe_assoc_rhs?(rhs_parser) do
-    case {current_token_type(rhs_parser), peek_token_type(rhs_parser)} do
-      {:identifier, :identifier} ->
-        parser = rhs_parser |> next_token() |> eat_eoe()
+  defp scan_binding_op(parser, nesting) do
+    token = peek_token(parser)
+    token_type = peek_token_type(parser)
 
-        if peek_token(parser) == :"," do
-          parser = parser |> next_token() |> next_token() |> eat_eoe()
-          peek_token_type(parser) == :assoc_op
-        else
-          false
-        end
-
-      _ ->
-        false
+    cond do
+      MapSet.member?(@low_prec_map_op_types, token_type) and nesting == 0 -> true
+      token_type == :assoc_op and nesting == 0 -> false
+      token_type in [:kw_identifier, :kw_identifier_safe, :kw_identifier_unsafe] and nesting == 0 -> false
+      token == :"}" and nesting == 0 -> false
+      token == :"," and nesting == 0 -> false
+      token == :eof -> false
+      token in [:"(", :"[", :"{", :"<<"] ->
+        scan_binding_op(next_token(parser), nesting + 1)
+      token in [:")", :"]", :"}", :">>"] ->
+        scan_binding_op(next_token(parser), max(nesting - 1, 0))
+      token == :do ->
+        skip_do_end_for_binding_op(next_token(parser), 1, nesting)
+      true ->
+        scan_binding_op(next_token(parser), nesting)
     end
   end
 
+  defp skip_do_end_for_binding_op(parser, 0, nesting) do
+    scan_binding_op(parser, nesting)
+  end
+
+  defp skip_do_end_for_binding_op(parser, depth, nesting) do
+    case peek_token(parser) do
+      :end -> skip_do_end_for_binding_op(next_token(parser), depth - 1, nesting)
+      :do -> skip_do_end_for_binding_op(next_token(parser), depth + 1, nesting)
+      :eof -> false
+      _ -> skip_do_end_for_binding_op(next_token(parser), depth, nesting)
+    end
+  end
+
+  defp rhs_has_bare_comma?(parser) do
+    rhs_scan_comma_before_assoc(parser |> eat_eoe(), 0, false)
+  end
+
+  defp rhs_scan_comma_before_assoc(parser, nesting, saw_do_end) do
+    token = peek_token(parser)
+    token_type = peek_token_type(parser)
+
+    cond do
+      token == :"," and nesting == 0 ->
+        not saw_do_end and not rhs_has_do_before_assoc?(next_token(parser), 0)
+
+      token == :"}" and nesting == 0 -> false
+      token == :eof -> false
+      token_type == :assoc_op and nesting == 0 -> false
+      token_type in [:kw_identifier, :kw_identifier_safe, :kw_identifier_unsafe] and nesting == 0 -> false
+      token in [:"(", :"[", :"{", :"<<"] ->
+        rhs_scan_comma_before_assoc(next_token(parser), nesting + 1, saw_do_end)
+      token in [:")", :"]", :"}", :">>"] ->
+        rhs_scan_comma_before_assoc(next_token(parser), max(nesting - 1, 0), saw_do_end)
+      token == :do ->
+        rhs_skip_do_end(next_token(parser), 1, nesting, true)
+      true ->
+        rhs_scan_comma_before_assoc(next_token(parser), nesting, saw_do_end)
+    end
+  end
+
+  defp rhs_has_do_before_assoc?(parser, nesting) do
+    token = peek_token(parser)
+    token_type = peek_token_type(parser)
+
+    cond do
+      token == :do and nesting == 0 -> true
+      token_type == :assoc_op and nesting == 0 -> false
+      token_type in [:kw_identifier, :kw_identifier_safe, :kw_identifier_unsafe] and nesting == 0 -> false
+      token == :"}" and nesting == 0 -> false
+      token == :eof -> false
+      token in [:"(", :"[", :"{", :"<<"] ->
+        rhs_has_do_before_assoc?(next_token(parser), nesting + 1)
+      token in [:")", :"]", :"}", :">>"] ->
+        rhs_has_do_before_assoc?(next_token(parser), max(nesting - 1, 0))
+      true ->
+        rhs_has_do_before_assoc?(next_token(parser), nesting)
+    end
+  end
+
+  defp rhs_skip_do_end(parser, 0, nesting, saw_do_end) do
+    rhs_scan_comma_before_assoc(parser, nesting, saw_do_end)
+  end
+
+  defp rhs_skip_do_end(parser, depth, nesting, saw_do_end) do
+    case peek_token(parser) do
+      :end -> rhs_skip_do_end(next_token(parser), depth - 1, nesting, saw_do_end)
+      :do -> rhs_skip_do_end(next_token(parser), depth + 1, nesting, saw_do_end)
+      :eof -> false
+      _ -> rhs_skip_do_end(next_token(parser), depth, nesting, saw_do_end)
+    end
+  end
+
+  # Parses the RHS of a map update (after `|`). Inside here, `|` is treated
+  # as a regular pipe operator (not a nested map update), matching the yrl
+  # grammar where `assoc_update` only appears at the top level of `map_args`.
   defp parse_map_update_pairs(parser) do
-    {first, parser} = parse_expression(parser, @list_comma, false, true, false)
+    with_context(parser, %{inside_map_update_pairs: true}, fn parser ->
+      {first, parser} = parse_expression(parser, @list_comma, false, true, false)
 
-    {items, parser} =
-      while2 peek_token(parser) == :"," <- parser do
-        parser = next_token(parser)
+      {items, parser} =
+        while2 peek_token(parser) == :"," <- parser do
+          parser = next_token(parser)
 
-        case peek_token(parser) do
-          delimiter when delimiter in [:"}", :"]", :")", :">>"] ->
-            {:filter, {nil, parser}}
+          case peek_token(parser) do
+            delimiter when delimiter in [:"}", :"]", :")", :">>"] ->
+              {:filter, {nil, parser}}
 
-          _ ->
-            parser = parser |> next_token() |> eat_eoe()
-            {item, parser} = parse_expression(parser, @list_comma, false, true, false)
-            {item, parser}
+            _ ->
+              parser = parser |> next_token() |> eat_eoe()
+              {item, parser} = parse_expression(parser, @list_comma, false, true, false)
+              {item, parser}
+          end
         end
-      end
 
-    pairs = [first | items]
-    pairs = Enum.reject(pairs, &is_nil/1)
+      pairs = [first | items]
+      pairs = Enum.reject(pairs, &is_nil/1)
 
-    {pairs, parser}
+      {pairs, parser}
+    end)
   end
 
   defp parse_access_expression(parser, lhs) do
@@ -1834,13 +1954,28 @@ defmodule Spitfire do
             # No-parens call with args
             parser = next_token(parser)
             parser = push_nesting(parser)
-            rest_precedence = if Map.get(parser, :in_map, false), do: {:left, 18}, else: @lowest
-            {first_arg, parser} = parse_expression(parser, rest_precedence, false, false, false)
+            in_map = Map.get(parser, :in_map, false)
+
+            {first_arg, parser} =
+              if in_map do
+                with_context(parser, %{stop_before_map_op?: true}, fn parser ->
+                  parse_expression(parser, @lowest, false, false, false)
+                end)
+              else
+                parse_expression(parser, @lowest, false, false, false)
+              end
 
             {rest_args, parser} =
               while2 peek_token(parser) == :"," <- parser do
                 parser = parser |> next_token() |> next_token()
-                parse_expression(parser, rest_precedence, false, false, false)
+
+                if in_map do
+                  with_context(parser, %{stop_before_map_op?: true}, fn parser ->
+                    parse_expression(parser, @lowest, false, false, false)
+                  end)
+                else
+                  parse_expression(parser, @lowest, false, false, false)
+                end
               end
 
             args = [first_arg | rest_args]
@@ -2580,7 +2715,22 @@ defmodule Spitfire do
       else
         meta = current_meta(parser)
         parser = next_token(parser)
-        {rhs, parser} = parse_expression(parser, @lowest, false, false, false)
+        rhs_parser = parser
+        {rhs, parser} = parse_expression(parser, @capture_op, false, false, false)
+
+        {rhs, parser} =
+          if unparenthesized_do_end_block?(rhs) do
+            if Map.get(parser, :in_map, false) do
+              with_context(rhs_parser, %{stop_before_map_op?: true}, fn parser ->
+                parse_expression(parser, @lowest, false, false, false)
+              end)
+            else
+              parse_expression(rhs_parser, @lowest, false, false, false)
+            end
+          else
+            {rhs, parser}
+          end
+
         {{:..., meta, [rhs]}, parser}
       end
     end
