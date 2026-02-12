@@ -1199,16 +1199,12 @@ defmodule Spitfire do
               :eol ->
                 # Peek at the next token after eol without consuming
                 # We need to manually check the token sequence
-                case parser.peek_token do
-                  {:eol, _} ->
-                    # Look at the tokens list to find what comes after eol
-                    case parser.tokens do
-                      [{:";", _} | _] -> true
-                      _ -> false
-                    end
-
-                  _ ->
-                    false
+                with {:eol, _} <- parser.current_token,
+                     # Look at the tokens list to find what comes after eol
+                     [{:";", _} | _] <- parser.tokens do
+                  true
+                else
+                  _ -> false
                 end
 
               _ ->
