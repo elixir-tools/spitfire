@@ -16,8 +16,8 @@ defmodule Spitfire.CharPropertyTest do
     :ok
   end
 
-  # Options used by both oracle and Spitfire for consistency
-  @oracle_opts [
+  # Options used by both elixir and Spitfire for consistency
+  @elixir_opts [
     columns: true,
     token_metadata: true,
     emit_warnings: false,
@@ -1714,17 +1714,17 @@ defmodule Spitfire.CharPropertyTest do
   # ===========================================================================
 
   defp run_comparison(context, code, mode) do
-    oracle_result = oracle_parse(code)
+    elixir_result = elixir_parse(code)
 
-    case {mode, oracle_result} do
-      # Strict mode: if oracle errors/crashes, skip (assume passed)
+    case {mode, elixir_result} do
+      # Strict mode: if elixir errors/crashes, skip (assume passed)
       {:strict, {:error, _}} ->
         :ok
 
       {:strict, :crashed} ->
         :ok
 
-      # Tolerant mode: if oracle errors/crashes, spitfire must not crash
+      # Tolerant mode: if elixir errors/crashes, spitfire must not crash
       {:tolerant, {:error, _}} ->
         # Spitfire must not crash - just call it and ensure no exception
         _ = spitfire_parse(code)
@@ -1735,22 +1735,22 @@ defmodule Spitfire.CharPropertyTest do
         _ = spitfire_parse(code)
         :ok
 
-      # Both modes: if oracle returns ok, spitfire must return exactly the same AST
+      # Both modes: if elixir returns ok, spitfire must return exactly the same AST
       {_, {:ok, {:__block__, _, []}}} ->
         # Empty block - skip detailed comparison
         :ok
 
-      {_, {:ok, oracle_ast}} ->
+      {_, {:ok, elixir_ast}} ->
         spitfire_result = spitfire_parse(code)
 
         case spitfire_result do
           {:ok, spitfire_ast} ->
-            assert oracle_ast == spitfire_ast,
+            assert elixir_ast == spitfire_ast,
                    """
                    AST mismatch in context #{context} for code: #{inspect(code)}
 
-                   Oracle:
-                   #{inspect(oracle_ast, pretty: true)}
+                   Elixir:
+                   #{inspect(elixir_ast, pretty: true)}
 
                    Spitfire:
                    #{inspect(spitfire_ast, pretty: true)}
@@ -1758,33 +1758,33 @@ defmodule Spitfire.CharPropertyTest do
 
           {:error, _spitfire_ast, _errors} ->
             flunk("""
-            Spitfire returned error when oracle succeeded in context #{context} for code: #{inspect(code)}
+            Spitfire returned error when elixir succeeded in context #{context} for code: #{inspect(code)}
 
-            Oracle AST:
-            #{inspect(oracle_ast, pretty: true)}
+            Elixir AST:
+            #{inspect(elixir_ast, pretty: true)}
             """)
 
           {:error, :no_fuel_remaining} ->
             flunk("""
             Spitfire ran out of fuel in context #{context} for code: #{inspect(code)}
 
-            Oracle AST:
-            #{inspect(oracle_ast, pretty: true)}
+            Elixir AST:
+            #{inspect(elixir_ast, pretty: true)}
             """)
 
           :crashed ->
             flunk("""
-            Spitfire crashed when oracle succeeded in context #{context} for code: #{inspect(code)}
+            Spitfire crashed when elixir succeeded in context #{context} for code: #{inspect(code)}
 
-            Oracle AST:
-            #{inspect(oracle_ast, pretty: true)}
+            Elixir AST:
+            #{inspect(elixir_ast, pretty: true)}
             """)
         end
     end
   end
 
-  defp oracle_parse(code) do
-    Code.string_to_quoted(code, @oracle_opts)
+  defp elixir_parse(code) do
+    Code.string_to_quoted(code, @elixir_opts)
   rescue
     _ -> :crashed
   end
