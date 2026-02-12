@@ -319,7 +319,6 @@ defmodule Spitfire do
   defp do_parse_expression(parser, {associativity, precedence}, is_list, is_map, is_top) do
     stop_before_stab_op? = Map.get(parser, :stop_before_stab_op?, false)
     stop_before_map_op? = Map.get(parser, :stop_before_map_op?, false)
-    inside_map_update_pairs? = Map.get(parser, :inside_map_update_pairs, false)
 
     prefix =
       case current_token_type(parser) do
@@ -398,8 +397,13 @@ defmodule Spitfire do
               :when_op ->
                 parse_infix_expression(next_token(parser), left)
 
-              :pipe_op when is_map and not inside_map_update_pairs? ->
-                parse_pipe_op_in_map(next_token(parser), left)
+              :pipe_op when is_map ->
+                # When already inside map pairs (not first), treat | as infix operator
+                if Map.get(parser, :inside_map_update_pairs, false) or Map.get(parser, :in_map_pairs, false) do
+                  parse_infix_expression(next_token(parser), left)
+                else
+                  parse_pipe_op_in_map(next_token(parser), left)
+                end
 
               :pipe_op ->
                 parse_infix_expression(next_token(parser), left)
@@ -919,6 +923,9 @@ defmodule Spitfire do
       # backtrack later
       Process.put(:comma_list_parsers, [parser])
 
+      # After first expression in map, subsequent | should be infix not map update
+      parser = if is_map, do: Map.put(parser, :in_map_pairs, true), else: parser
+
       {items, parser} =
         while2 peek_token(parser) == :"," <- parser do
           parser = next_token(parser)
@@ -938,6 +945,7 @@ defmodule Spitfire do
           end
         end
 
+      parser = if is_map, do: Map.delete(parser, :in_map_pairs), else: parser
       {[front | items], parser}
     end
   end
@@ -1037,34 +1045,14 @@ defmodule Spitfire do
 
   defp unmatched_expr?(_), do: false
 
-  defp parse_prefix_lone_identifer(parser) do
-    trace "parse_prefix_lone_identifer", trace_meta(parser) do
+  defp parse_struct_type_prefix(parser) do
+    trace "parse_struct_type_prefix", trace_meta(parser) do
       token = current_token(parser)
       meta = current_meta(parser)
-
       parser = parser |> next_token() |> eat_eoe()
-
-      {rhs, parser} =
-        case current_token_type(parser) do
-          :"(" ->
-            parse_grouped_expression(parser)
-
-          _ ->
-            {ident, parser} = parse_lone_identifier(parser)
-            {associativity, precedence} = @lowest
-
-            while peek_token(parser) in [:., :"["] &&
-                    calc_prec(parser, associativity, precedence) <- {ident, parser} do
-              case peek_token(parser) do
-                :. -> parse_dot_for_struct_type(next_token(parser), ident)
-                :"[" -> parse_access_expression(next_token(parser), ident)
-              end
-            end
-        end
-
-      ast = {token, meta, [rhs]}
-
-      {ast, parser}
+      parser = Map.delete(parser, :inside_map_update_pairs)
+      {rhs, parser} = parse_struct_type(parser)
+      {{token, meta, [rhs]}, parser}
     end
   end
 
@@ -1126,7 +1114,12 @@ defmodule Spitfire do
     trace "parse_stab_expression", trace_meta(parser) do
       token = current_token(parser)
       meta = current_meta(parser)
-      newlines = get_newlines(parser)
+
+      newlines =
+        case current_newlines(parser) do
+          nil -> get_newlines(parser)
+          nl -> [newlines: nl]
+        end
 
       parser = eat_at(parser, [:eol, :";"], 1)
       old_nesting = parser.nesting
@@ -1188,8 +1181,39 @@ defmodule Spitfire do
         :-> ->
           token = current_token(parser)
           meta = current_meta(parser)
-          newlines = get_newlines(parser)
-          has_leading_semicolon = peek_token(parser) == :";"
+
+          newlines =
+            case current_newlines(parser) do
+              nil -> get_newlines(parser)
+              nl -> [newlines: nl]
+            end
+
+          # Check if we have a semicolon right after -> (possibly after eol)
+          # Check if there's a leading semicolon right after ->
+          # Handles both ";expr" and "\n;expr" patterns
+          has_leading_semicolon =
+            case peek_token(parser) do
+              :";" ->
+                true
+
+              :eol ->
+                # Peek at the next token after eol without consuming
+                # We need to manually check the token sequence
+                case parser.peek_token do
+                  {:eol, _} ->
+                    # Look at the tokens list to find what comes after eol
+                    case parser.tokens do
+                      [{:";", _} | _] -> true
+                      _ -> false
+                    end
+
+                  _ ->
+                    false
+                end
+
+              _ ->
+                false
+            end
 
           parser = eat_eoe_at(parser, 1)
 
@@ -1200,7 +1224,14 @@ defmodule Spitfire do
             while2 not stab_state_set?(parser) and peek_token(parser) not in [:eof, :end, :")", :block_identifier, :->] <-
                      parser do
               parser = next_token(parser)
-              {ast, parser} = parse_stab_aware_expression(parser)
+
+              # If we encounter a semicolon, it represents a nil expression
+              {ast, parser} =
+                if current_token_type(parser) == :";" do
+                  {nil, eat_eoe(parser)}
+                else
+                  parse_stab_aware_expression(parser)
+                end
 
               if stab_state_set?(parser) do
                 {:filter, {nil, next_token(parser)}}
@@ -1362,9 +1393,15 @@ defmodule Spitfire do
       # e.g., `() when bar 1, 2, 3 -> foo()` should parse `bar 1, 2, 3` as the guard
       {rhs, parser} =
         if token == :when do
+          # Check if when has simple LHS (empty block or comma args).
+          # If so and we're in fn context, use lower precedence to allow <- in guard.
+          in_fn_context = Map.get(parser, :stop_before_stab_op?, false)
+          simple_lhs = match?({:__block__, _, []}, lhs) or match?({:comma, _, _}, lhs)
+          when_precedence = if in_fn_context and simple_lhs, do: @list_comma, else: effective_precedence
+
           {rhs, parser} =
             with_context(parser, %{stop_before_stab_op?: true}, fn parser ->
-              parse_expression(parser, effective_precedence, false, false, false)
+              parse_expression(parser, when_precedence, false, false, false)
             end)
 
           parser = Map.delete(parser, :stab_state)
@@ -1825,7 +1862,23 @@ defmodule Spitfire do
                     if current_token_type(parser) == :stab_op do
                       parse_stab_expression(parser)
                     else
-                      parse_expression(parser, @lowest, false, false, true)
+                      # Use stab-aware expression parsing to properly handle stabs in do-block contexts
+                      {ast, parser} = parse_stab_aware_expression(parser, @lowest, true)
+
+                      case Map.get(parser, :stab_state) do
+                        %{ast: lhs} ->
+                          parser =
+                            if current_token(parser) != :-> do
+                              next_token(Map.delete(parser, :stab_state))
+                            else
+                              Map.delete(parser, :stab_state)
+                            end
+
+                          parse_stab_expression(parser, lhs)
+
+                        nil ->
+                          {ast, parser}
+                      end
                     end
                 end
 
@@ -1863,8 +1916,10 @@ defmodule Spitfire do
           {put_error(parser, {do_meta, "missing `end` for do block"}), do_meta}
         end
 
+      exprs = exprs ++ extra_exprs
+
       exprs =
-        case exprs ++ extra_exprs do
+        case exprs do
           [] -> [{type, []}]
           exprs -> exprs
         end
@@ -2663,30 +2718,117 @@ defmodule Spitfire do
 
       prefix =
         case current_token_type(parser) do
-          :identifier -> parse_lone_identifier(parser)
-          :paren_identifier -> parse_paren_identifier(parser)
-          :alias -> parse_alias(parser)
-          :at_op -> parse_lone_module_attr(parser)
-          :unary_op -> parse_prefix_lone_identifer(parser)
-          :dual_op -> parse_prefix_lone_identifer(parser)
-          :ternary_op -> parse_ternary_prefix_lone_identifier(parser)
-          :ellipsis_op -> parse_ellipsis_lone_identifier(parser)
-          :list_string -> parse_string(parser)
-          :bin_string -> parse_string(parser)
-          :int -> parse_int(parser)
-          nil -> parse_nil_literal(parser)
-          :atom -> parse_atom(parser)
-          :"(" -> parse_grouped_expression(parser)
-          _ -> nil
+          :identifier ->
+            parse_lone_identifier(parser)
+
+          :bracket_identifier ->
+            parse_lone_identifier(parser)
+
+          :paren_identifier ->
+            parse_paren_identifier(parser)
+
+          :alias ->
+            parse_alias(parser)
+
+          :at_op ->
+            parse_lone_module_attr(parser)
+
+          :unary_op ->
+            parse_struct_type_prefix(parser)
+
+          :dual_op ->
+            parse_struct_type_prefix(parser)
+
+          :capture_op ->
+            parse_struct_type_prefix(parser)
+
+          :capture_int ->
+            parse_capture_int(parser)
+
+          :ternary_op ->
+            parse_ternary_prefix_lone_identifier(parser)
+
+          :ellipsis_op ->
+            parse_ellipsis_lone_identifier(parser)
+
+          :range_op ->
+            parse_range_expression(parser)
+
+          :sigil ->
+            parse_sigil(parser)
+
+          :list_string ->
+            parse_string(parser)
+
+          :bin_string ->
+            parse_string(parser)
+
+          :int ->
+            parse_int(parser)
+
+          :flt ->
+            parse_float(parser)
+
+          :char ->
+            parse_char(parser)
+
+          true ->
+            parse_boolean(parser)
+
+          false ->
+            parse_boolean(parser)
+
+          nil ->
+            parse_nil_literal(parser)
+
+          :atom ->
+            parse_atom(parser)
+
+          :atom_quoted ->
+            parse_atom(parser)
+
+          :"(" ->
+            parse_grouped_expression(parser)
+
+          _ ->
+            nil
         end
 
       case prefix do
         {left, parser} ->
-          while peek_token(parser) in [:., :"["] &&
+          while peek_token(parser) in [:., :dot_call_op, :"[", :"("] &&
                   calc_prec(parser, associativity, precedence) <- {left, parser} do
             case peek_token(parser) do
-              :. -> parse_dot_for_struct_type(next_token(parser), left)
-              :"[" -> parse_access_expression(next_token(parser), left)
+              token when token in [:., :dot_call_op] ->
+                {new_left, parser} = parse_dot_for_struct_type(next_token(parser), left)
+                # Check if next token is ( for zero-arity calls
+                if peek_token(parser) == :"(" do
+                  parser = next_token(parser)
+
+                  if current_token(parser) == :")" do
+                    closing = current_meta(parser)
+                    new_left = {new_left, [{:closing, closing}, {:line, 1}, {:column, 3}], []}
+                    {new_left, next_token(parser)}
+                  else
+                    {new_left, parser}
+                  end
+                else
+                  {new_left, parser}
+                end
+
+              :"[" ->
+                parse_access_expression(next_token(parser), left)
+
+              :"(" ->
+                # Handle () after a dot expression
+                parser = next_token(parser)
+
+                if current_token(parser) == :")" do
+                  closing = current_meta(parser)
+                  {{:., current_meta(parser), [left]}, [{:closing, closing}], []}
+                else
+                  {left, parser}
+                end
             end
           end
 
@@ -2716,31 +2858,56 @@ defmodule Spitfire do
       token = current_token(parser)
       meta = current_meta(parser)
 
-      case peek_token_type(parser) do
-        :alias ->
-          parser = next_token(parser)
-          {{:__aliases__, ameta, aliases}, parser} = parse_alias(parser)
-          last = ameta[:last]
-          {{:__aliases__, [{:last, last} | meta], [lhs | aliases]}, parser}
+      # For dot_call_op, we need to handle the () specially
+      current_type = current_token_type(parser)
 
-        type when type in [:identifier, :do_identifier, :op_identifier] ->
-          parser = next_token(parser)
-          %{current_token: {_, token_meta, rhs_name}} = parser
+      if current_type == :dot_call_op do
+        # dot_call_op means . followed by ()
+        # Just produce the dot with lhs, the () will be handled by the while loop
+        parser = next_token(parser)
+        {{:., meta, [lhs]}, parser}
+      else
+        case peek_token_type(parser) do
+          :alias ->
+            parser = next_token(parser)
+            {{:__aliases__, ameta, aliases}, parser} = parse_alias(parser)
+            last = ameta[:last]
+            {{:__aliases__, [{:last, last} | meta], [lhs | aliases]}, parser}
 
-          ident_meta =
-            parser
-            |> current_meta()
-            |> push_delimiter(token_meta)
+          type when type in [:identifier, :do_identifier, :op_identifier] ->
+            parser = next_token(parser)
+            %{current_token: {_, token_meta, rhs_name}} = parser
 
-          ast = {{token, meta, [lhs, rhs_name]}, [no_parens: true] ++ ident_meta, []}
-          {ast, parser}
+            ident_meta =
+              parser
+              |> current_meta()
+              |> push_delimiter(token_meta)
 
-        _ ->
-          parser = next_token(parser)
-          next_meta = current_meta(parser)
-          {rhs, parser} = parse_expression(parser, @lowest, false, false, false)
-          ast = {{token, meta, [lhs, rhs]}, next_meta, []}
-          {ast, parser}
+            # Check if there's a () after the identifier for zero-arity calls
+            if peek_token(parser) == :"(" do
+              parser = next_token(parser)
+
+              if current_token(parser) == :")" do
+                closing = current_meta(parser)
+                ast = {{token, meta, [lhs, rhs_name]}, [{:closing, closing}] ++ ident_meta, []}
+                {ast, next_token(parser)}
+              else
+                # Shouldn't happen in valid syntax, but handle gracefully
+                ast = {{token, meta, [lhs, rhs_name]}, [no_parens: true] ++ ident_meta, []}
+                {ast, parser}
+              end
+            else
+              ast = {{token, meta, [lhs, rhs_name]}, [no_parens: true] ++ ident_meta, []}
+              {ast, parser}
+            end
+
+          _ ->
+            parser = next_token(parser)
+            next_meta = current_meta(parser)
+            {rhs, parser} = parse_expression(parser, @lowest, false, false, false)
+            ast = {{token, meta, [lhs, rhs]}, next_meta, []}
+            {ast, parser}
+        end
       end
     end
   end
@@ -2824,9 +2991,9 @@ defmodule Spitfire do
       valid_type? = type != {:__block__, [], []}
       struct_name = format_struct_type(type)
 
-      case peek_token(parser) do
+      case peek_token_eat_eoe(parser) do
         :"{" ->
-          parser = next_token(parser)
+          parser = eat_eol(next_token(parser))
           brace_meta = current_meta(parser)
           parser = next_token(parser)
 
@@ -3301,11 +3468,47 @@ defmodule Spitfire do
 
       {rhs, parser} =
         case current_token_type(parser) do
-          :"[" -> parse_list_literal(parser)
-          :int -> parse_int(parser)
-          :dual_op -> parse_prefix_lone_identifer(parser)
-          :unary_op -> parse_prefix_lone_identifer(parser)
-          _ -> parse_lone_identifier(parser)
+          :"[" ->
+            parse_list_literal(parser)
+
+          :int ->
+            parse_int(parser)
+
+          :flt ->
+            parse_float(parser)
+
+          :char ->
+            parse_char(parser)
+
+          :list_string ->
+            parse_string(parser)
+
+          :bin_string ->
+            parse_string(parser)
+
+          :capture_op ->
+            parse_struct_type_prefix(parser)
+
+          :capture_int ->
+            parse_capture_int(parser)
+
+          :dual_op ->
+            parse_struct_type_prefix(parser)
+
+          :unary_op ->
+            parse_struct_type_prefix(parser)
+
+          :atom ->
+            parse_atom(parser)
+
+          :alias ->
+            parse_alias(parser)
+
+          :at_op ->
+            parse_lone_module_attr(parser)
+
+          _ ->
+            parse_lone_identifier(parser)
         end
 
       {{token, meta, [rhs]}, parser}
