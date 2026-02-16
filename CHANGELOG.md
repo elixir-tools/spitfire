@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.6](https://github.com/elixir-tools/spitfire/compare/v0.3.5...v0.3.6) (2026-02-16)
+
+
+### Bug Fixes
+
+* parity with elixir parser based on property tests ([#79](https://github.com/elixir-tools/spitfire/issues/79)) ([8ca3746](https://github.com/elixir-tools/spitfire/commit/8ca374656b4131ec083449b46ec00067c78654dc))
+
 ## [0.3.5](https://github.com/elixir-tools/spitfire/compare/v0.3.4...v0.3.5) (2026-02-10)
 
 
