@@ -1465,6 +1465,16 @@ defmodule SpitfireTest do
         else
           _ -> :error
         end
+        ''',
+        ~s'''
+        fn () when o<-c ->
+          :ok
+        end
+        ''',
+        ~s'''
+        fn x when c<-c ->
+          1
+        end
         '''
       ]
 
@@ -2236,6 +2246,52 @@ defmodule SpitfireTest do
       code = ~S'with a <- b, do: c when a'
 
       assert Spitfire.parse(code) == s2q(code)
+    end
+
+    # These were found by property tests but were not triggering reliably
+    # We have them here to make sure they don't regress
+    test "property test regression cases" do
+      # Prefix operators in struct types
+      assert Spitfire.parse("%?0{}") == s2q("%?0{}")
+      assert Spitfire.parse("%^@_{}") == s2q("%^@_{}")
+      assert Spitfire.parse("%-..{}") == s2q("%-..{}")
+      assert Spitfire.parse("%!:c{}") == s2q("%!:c{}")
+      assert Spitfire.parse("%~a<>{}") == s2q("%~a<>{}")
+      assert Spitfire.parse("%!A{}") == s2q("%!A{}")
+      assert Spitfire.parse("%@A{}") == s2q("%@A{}")
+      assert Spitfire.parse("%@:rd{}") == s2q("%@:rd{}")
+      assert Spitfire.parse("%!0{}") == s2q("%!0{}")
+
+      # Nested module attributes
+      assert Spitfire.parse("%@@u{}") == s2q("%@@u{}")
+
+      # Quoted atoms
+      assert Spitfire.parse(~s(%:""{})) == s2q(~s(%:""{}))
+
+      # Range operator in struct types
+      assert Spitfire.parse("%..{}") == s2q("%..{}")
+
+      # Char tokens after module attributes in struct types
+      assert Spitfire.parse("%@?w{}") == s2q("%@?w{}")
+
+      # Empty char list after module attributes in struct types
+      assert Spitfire.parse("%@''{}") == s2q(~s(%@''{}))
+
+      # Float in struct types
+      assert Spitfire.parse("%0.0{}") == s2q("%0.0{}")
+
+      # Bin strings after module attributes in struct types
+      assert Spitfire.parse(~s(%@"foo"{})) == s2q(~s(%@"foo"{}))
+
+      # Capture operator in struct types
+      assert Spitfire.parse("%&0{}") == s2q("%&0{}")
+
+      # Boolean literals in struct types
+      assert Spitfire.parse("%false{}") == s2q("%false{}")
+      assert Spitfire.parse("%true{}") == s2q("%true{}")
+
+      # In-match operator (<-) in map keys - should be part of key, not wrap it
+      assert Spitfire.parse("%{s\\\\r => 1}") == s2q("%{s\\\\r => 1}")
     end
   end
 
