@@ -2323,6 +2323,12 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
 
+    test "for generator rhs with || [] inside assoc-map list value" do
+      code = ~S(%{"s" => [for x <- y || [] do x end]})
+
+      assert spitfire_parse(code) == s2q(code)
+    end
+
     test "triple less than" do
       # <<< is custom operator, << is bitstring
       code = "a <<< b"
