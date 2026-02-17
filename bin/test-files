@@ -81,6 +81,12 @@ data =
     {k, Enum.count(v)}
   end)
 
+ok_count = Map.get(data, :ok, 0)
+error_count = Map.get(data, :error, 0)
+timeout_count = Map.get(data, :timeout, 0)
+total = ok_count + error_count + timeout_count
+success_pct = if total == 0, do: 0.0, else: ok_count / total * 100
+
 IO.puts("Results written to results.csv")
 IO.puts("Parsed #{lines} concurrently in #{time}ms")
-IO.puts("Currently parsing: #{data.ok / (Map.get(data, :error, 0) + Map.get(data, :timeout, 0) + data.ok) * 100}%")
+IO.puts("Currently parsing: #{success_pct}%")
