@@ -896,7 +896,14 @@ defmodule Spitfire do
         end
 
       parser = parser |> next_token() |> eat_eoe()
-      {value, parser} = parse_expression(parser, @lowest, false, false, false)
+
+      # Map values should parse as regular expressions. Keeping `in_map: true`
+      # here applies key-specific precedence caps and can misparse constructs
+      # like `for ... <- ... || [] do ... end` inside map values.
+      {value, parser} =
+        with_context(parser, %{in_map: false}, fn parser ->
+          parse_expression(parser, @lowest, false, false, false)
+        end)
 
       {:pair, pair} = normalize_assoc_key(key, value, assoc_meta)
       {pair, parser}
