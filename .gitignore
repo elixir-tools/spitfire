@@ -30,3 +30,4 @@ spitfire-*.tar
 benchmarks
 *.bggg
 priv/plts/*
+results.csv
