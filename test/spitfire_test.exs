@@ -2290,6 +2290,9 @@ defmodule SpitfireTest do
       assert Spitfire.parse("%false{}") == s2q("%false{}")
       assert Spitfire.parse("%true{}") == s2q("%true{}")
 
+      # Struct arg inside struct arg
+      assert Spitfire.parse("%%{}{}") == s2q("%%{}{}")
+
       # In-match operator (<-) in map keys - should be part of key, not wrap it
       assert Spitfire.parse("%{s\\\\r => 1}") == s2q("%{s\\\\r => 1}")
     end
