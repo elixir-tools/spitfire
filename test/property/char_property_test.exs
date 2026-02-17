@@ -19,14 +19,7 @@ defmodule Spitfire.CharPropertyTest do
                           @default_property_max_runs
 
                         value ->
-                          case Integer.parse(value) do
-                            {runs, ""} when runs > 0 ->
-                              runs
-
-                            _ ->
-                              raise ArgumentError,
-                                    "expected #{@property_max_runs_env_var} to be a positive integer, got: #{inspect(value)}"
-                          end
+                          String.to_integer(value)
                       end)
 
   @property_check_opts [max_runs: @property_max_runs, max_shrinking_steps: 50]
