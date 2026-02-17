@@ -2295,6 +2295,10 @@ defmodule SpitfireTest do
 
       # In-match operator (<-) in map keys - should be part of key, not wrap it
       assert Spitfire.parse("%{s\\\\r => 1}") == s2q("%{s\\\\r => 1}")
+
+      # Fn args with semicolon/newline trivia
+      assert Spitfire.parse("fn ;\n -> :ok end") == s2q("fn ;\n -> :ok end")
+      assert Spitfire.parse("fn ; -> :ok end") == s2q("fn ; -> :ok end")
     end
   end
 

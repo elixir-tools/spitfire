@@ -2109,7 +2109,18 @@ defmodule Spitfire do
     trace "parse_anon_function", trace_meta(parser) do
       meta = current_meta(parser)
 
-      newlines = get_newlines(parser)
+      semicolon_newlines =
+        case peek_newlines(parser, :";") do
+          nl when is_integer(nl) and nl > 0 -> nl
+          _ -> nil
+        end
+
+      newlines =
+        case peek_newlines(parser) || semicolon_newlines do
+          nil -> []
+          nl -> [newlines: nl]
+        end
+
       parser = parser |> next_token() |> eat_eoe()
 
       # fn creates its own stab scope
