@@ -11,16 +11,7 @@ defmodule Spitfire.CharPropertyTest do
 
   use ExUnitProperties
 
-  @property_max_runs_env_var "SPITFIRE_PROPERTY_MAX_RUNS"
-  @default_property_max_runs 1000
-
-  @property_max_runs (case System.get_env(@property_max_runs_env_var) do
-                        nil ->
-                          @default_property_max_runs
-
-                        value ->
-                          String.to_integer(value)
-                      end)
+  @property_max_runs "SPITFIRE_PROPERTY_MAX_RUNS" |> System.get_env("1000") |> String.to_integer()
 
   @property_check_opts [max_runs: @property_max_runs, max_shrinking_steps: 50]
 
