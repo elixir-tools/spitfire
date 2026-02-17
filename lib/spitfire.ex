@@ -897,7 +897,7 @@ defmodule Spitfire do
 
       parser = parser |> next_token() |> eat_eoe()
 
-      # Map values should parse as regular expressions. Keeping `in_map: true`
+      # Map values should parse as basic expressions. Keeping `in_map: true`
       # here applies key-specific precedence caps and can misparse constructs
       # like `for ... <- ... || [] do ... end` inside map values.
       {value, parser} =
