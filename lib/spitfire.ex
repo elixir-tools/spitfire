@@ -2871,10 +2871,7 @@ defmodule Spitfire do
       current_type = current_token_type(parser)
 
       if current_type == :dot_call_op do
-        # dot_call_op means . followed by ()
-        # Just produce the dot with lhs, the () will be handled by the while loop
-        parser = next_token(parser)
-        {{:., meta, [lhs]}, parser}
+        parse_dot_call_expression(parser, lhs)
       else
         case peek_token_type(parser) do
           :alias ->
