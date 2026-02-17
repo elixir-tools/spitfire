@@ -22,6 +22,9 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 spitfire-*.tar
 
+# Ignore Expert stuff
+.expert/
+
 # Temporary files, for example, from tests.
 /tmp/
 benchmarks
