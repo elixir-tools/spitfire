@@ -2300,6 +2300,10 @@ defmodule SpitfireTest do
       assert Spitfire.parse("%e.(){}") == s2q("%e.(){}")
       assert Spitfire.parse("%e.(1){}") == s2q("%e.(1){}")
       assert Spitfire.parse("%e.(a, b){}") == s2q("%e.(a, b){}")
+
+      # Ellipsis + ternary edge cases (newline and semicolon-separated)
+      assert Spitfire.parse("x...\n//y") == s2q("x...\n//y")
+      assert Spitfire.parse("x...;//y") == s2q("x...;//y")
     end
   end
 
