@@ -16,7 +16,7 @@ defmodule Main do
 
   def collect_files(argv) do
     root = List.first(argv)
-    files = Path.wildcard(Path.join(root, "lib/**/*.ex"))
+    files = Path.wildcard(Path.join(root, "lib/**/*.{ex,exs}"))
     ignore = Enum.flat_map(@ignore, &Path.wildcard(Path.join(root, &1)))
     for file <- files, file not in ignore, {:ok, content} <- [File.read(file)] do
       lines = String.split(content, "\n") |> Enum.count()
