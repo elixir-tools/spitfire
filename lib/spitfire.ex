@@ -2790,6 +2790,12 @@ defmodule Spitfire do
           :atom_quoted ->
             parse_atom(parser)
 
+          :%{} ->
+            parse_map_literal(parser)
+
+          :% ->
+            parse_struct_literal(parser)
+
           :"(" ->
             parse_grouped_expression(parser)
 
