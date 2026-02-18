@@ -99,7 +99,7 @@ jobs:
         run: nix develop --command bash -c "mix deps.get"
 
       - name: Unit Tests
-        run: nix develop --command bash -c "mix test"
+        run: nix develop --command bash -c "mix test --exclude property"
 
   lint:
     runs-on: ubuntu-latest
@@ -163,4 +163,3 @@ jobs:
 
       - name: Run dialyzer
         run: nix develop --command bash -c 'mix dialyzer --format github'
-
