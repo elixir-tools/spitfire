@@ -2799,6 +2799,9 @@ defmodule Spitfire do
           :"(" ->
             parse_grouped_expression(parser)
 
+          :"[" ->
+            parse_list_literal(parser)
+
           _ ->
             nil
         end
