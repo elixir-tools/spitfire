@@ -307,7 +307,7 @@ defmodule Spitfire do
       parser = consume_fuel(parser)
 
       if is_map do
-        with_context(parser, %{in_map: true}, fn parser ->
+        with_context(parser, %{parsing_map_key: true}, fn parser ->
           do_parse_expression(parser, {associativity, precedence}, is_list, is_map, is_top)
         end)
       else
@@ -773,7 +773,7 @@ defmodule Spitfire do
       parser = parser |> next_token() |> eat_eoe()
 
       {expr, parser} =
-        with_context(parser, %{in_map: false}, fn parser ->
+        with_context(parser, %{parsing_map_key: false}, fn parser ->
           parse_expression(parser, @list_comma, false, false, false)
         end)
 
@@ -788,7 +788,7 @@ defmodule Spitfire do
       parser = parser |> next_token() |> eat_eoe()
 
       {expr, parser} =
-        with_context(parser, %{in_map: false}, fn parser ->
+        with_context(parser, %{parsing_map_key: false}, fn parser ->
           parse_expression(parser, @list_comma, false, false, false)
         end)
 
@@ -889,7 +889,7 @@ defmodule Spitfire do
 
       # Reject unparenthesized multi-arg call as map key: `foo a, b => c`
       parser =
-        if Map.get(parser, :in_map, false) and invalid_assoc_key_in_map?(key) do
+        if Map.get(parser, :parsing_map_key, false) and invalid_assoc_key_in_map?(key) do
           put_error(parser, {assoc_meta, "syntax error"})
         else
           parser
@@ -897,11 +897,11 @@ defmodule Spitfire do
 
       parser = parser |> next_token() |> eat_eoe()
 
-      # Map values should parse as basic expressions. Keeping `in_map: true`
+      # Map values should parse as basic expressions. Keeping `parsing_map_key: true`
       # here applies key-specific precedence caps and can misparse constructs
       # like `for ... <- ... || [] do ... end` inside map values.
       {value, parser} =
-        with_context(parser, %{in_map: false}, fn parser ->
+        with_context(parser, %{parsing_map_key: false}, fn parser ->
           parse_expression(parser, @lowest, false, false, false)
         end)
 
@@ -1001,7 +1001,7 @@ defmodule Spitfire do
       rhs_parser = parser
       # In maps, cap precedence at assoc_op to prevent => from being consumed
       effective_precedence =
-        if Map.get(parser, :in_map, false) do
+        if Map.get(parser, :parsing_map_key, false) do
           {_, prec} = precedence
           {_, assoc_prec} = @assoc_op
           # Use :left to prevent right-associative decrement
@@ -1014,7 +1014,7 @@ defmodule Spitfire do
 
       {rhs, parser} =
         if unparenthesized_do_end_block?(rhs) do
-          if Map.get(parser, :in_map, false) do
+          if Map.get(parser, :parsing_map_key, false) do
             with_context(rhs_parser, %{stop_before_map_op?: true}, fn parser ->
               parse_expression(parser, @lowest, false, false, false)
             end)
@@ -1373,7 +1373,7 @@ defmodule Spitfire do
       precedence = current_precedence(parser)
 
       effective_precedence =
-        if Map.get(parser, :in_map, false) do
+        if Map.get(parser, :parsing_map_key, false) do
           {_, prec} = precedence
           {_, assoc_prec} = @assoc_op
           if prec > assoc_prec, do: precedence, else: {:left, assoc_prec}
@@ -2051,10 +2051,10 @@ defmodule Spitfire do
             # No-parens call with args
             parser = next_token(parser)
             parser = push_nesting(parser)
-            in_map = Map.get(parser, :in_map, false)
+            parsing_map_key = Map.get(parser, :parsing_map_key, false)
 
             {first_arg, parser} =
-              if in_map do
+              if parsing_map_key do
                 with_context(parser, %{stop_before_map_op?: true}, fn parser ->
                   parse_expression(parser, @lowest, false, false, false)
                 end)
@@ -2066,7 +2066,7 @@ defmodule Spitfire do
               while2 peek_token(parser) == :"," <- parser do
                 parser = parser |> next_token() |> next_token()
 
-                if in_map do
+                if parsing_map_key do
                   with_context(parser, %{stop_before_map_op?: true}, fn parser ->
                     parse_expression(parser, @lowest, false, false, false)
                   end)
@@ -2882,10 +2882,7 @@ defmodule Spitfire do
       current_type = current_token_type(parser)
 
       if current_type == :dot_call_op do
-        # dot_call_op means . followed by ()
-        # Just produce the dot with lhs, the () will be handled by the while loop
-        parser = next_token(parser)
-        {{:., meta, [lhs]}, parser}
+        parse_dot_call_expression(parser, lhs)
       else
         case peek_token_type(parser) do
           :alias ->
@@ -2951,7 +2948,7 @@ defmodule Spitfire do
 
         {rhs, parser} =
           if unparenthesized_do_end_block?(rhs) do
-            if Map.get(parser, :in_map, false) do
+            if Map.get(parser, :parsing_map_key, false) do
               with_context(rhs_parser, %{stop_before_map_op?: true}, fn parser ->
                 parse_expression(parser, @lowest, false, false, false)
               end)
@@ -3368,7 +3365,7 @@ defmodule Spitfire do
         parser = push_nesting(parser)
 
         # In maps, cap precedence at assoc_op for arguments to prevent => from being consumed
-        rest_precedence = if Map.get(parser, :in_map, false), do: {:left, 18}, else: @lowest
+        rest_precedence = if Map.get(parser, :parsing_map_key, false), do: {:left, 18}, else: @lowest
         {first_arg, parser} = parse_expression(parser, rest_precedence, false, false, false)
 
         front = first_arg

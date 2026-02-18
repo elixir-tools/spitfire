@@ -2299,6 +2299,11 @@ defmodule SpitfireTest do
       # Fn args with semicolon/newline trivia
       assert Spitfire.parse("fn ;\n -> :ok end") == s2q("fn ;\n -> :ok end")
       assert Spitfire.parse("fn ; -> :ok end") == s2q("fn ; -> :ok end")
+      
+      # Struct type with dot-call target
+      assert Spitfire.parse("%e.(){}") == s2q("%e.(){}")
+      assert Spitfire.parse("%e.(1){}") == s2q("%e.(1){}")
+      assert Spitfire.parse("%e.(a, b){}") == s2q("%e.(a, b){}")
     end
   end
 
