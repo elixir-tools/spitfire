@@ -2960,7 +2960,7 @@ defmodule Spitfire do
   defp newline_ternary_continuation?(parser) do
     cond do
       peek_token(parser) == :eol ->
-        peek_token_skip_eoe(parser) == :ternary_op
+        peek_token_skip_eol(parser) == :ternary_op
 
       peek_token_type(parser) == :ternary_op ->
         case parser |> next_token() |> current_newlines() do
