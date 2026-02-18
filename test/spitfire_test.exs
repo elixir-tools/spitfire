@@ -2301,6 +2301,11 @@ defmodule SpitfireTest do
       assert Spitfire.parse("%e.(){}") == s2q("%e.(){}")
       assert Spitfire.parse("%e.(1){}") == s2q("%e.(1){}")
       assert Spitfire.parse("%e.(a, b){}") == s2q("%e.(a, b){}")
+
+      # Ellipsis followed by infix operators that should not be consumed as RHS
+      assert Spitfire.parse("x...<-y") == s2q("x...<-y")
+      assert Spitfire.parse("x...::y") == s2q("x...::y")
+      assert Spitfire.parse("x... when y") == s2q("x... when y")
     end
   end
 
