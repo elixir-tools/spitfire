@@ -29,10 +29,6 @@ defmodule Spitfire.OperatorsTest do
   """
   use ExUnit.Case, async: true
 
-  # =============================================================================
-  # Unary Operators
-  # =============================================================================
-
   describe "unary @ operator" do
     test "module attribute" do
       code = "@foo"
@@ -168,10 +164,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Dot Operator (Left Associativity)
-  # =============================================================================
-
   describe "dot operator - left associativity" do
     test "simple dot access" do
       code = "foo.bar"
@@ -214,10 +206,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Power Operator ** (Left Associativity)
-  # =============================================================================
-
   describe "** operator - left associativity" do
     test "simple power" do
       code = "2 ** 3"
@@ -250,10 +238,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # Multiplication and Division * / (Left Associativity)
-  # =============================================================================
 
   describe "* and / operators - left associativity" do
     test "simple multiplication" do
@@ -297,10 +281,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Addition and Subtraction + - (Left Associativity)
-  # =============================================================================
-
   describe "+ and - operators - left associativity" do
     test "simple addition" do
       code = "1 + 2"
@@ -342,10 +322,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # List Operators ++ -- +++ --- (Right Associativity)
-  # =============================================================================
 
   describe "++ operator - right associativity" do
     test "simple concatenation" do
@@ -462,10 +438,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Membership Operators in, not in (Left Associativity)
-  # =============================================================================
-
   describe "in operator - left associativity" do
     test "simple in" do
       code = "a in [1, 2, 3]"
@@ -499,10 +471,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # Pipeline Operators |> <<< >>> <<~ ~>> <~ ~> <~> (Left Associativity)
-  # =============================================================================
 
   describe "|> operator - left associativity" do
     test "simple pipe" do
@@ -622,10 +590,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Comparison Operators < > <= >= (Left Associativity)
-  # =============================================================================
-
   describe "< operator - left associativity" do
     test "simple less than" do
       code = "a < b"
@@ -700,10 +664,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # Equality Operators == != =~ === !== (Left Associativity)
-  # =============================================================================
 
   describe "== operator - left associativity" do
     test "simple equality" do
@@ -792,10 +752,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Logical AND Operators && &&& and (Left Associativity)
-  # =============================================================================
-
   describe "&& operator - left associativity" do
     test "simple and" do
       code = "a && b"
@@ -864,10 +820,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Logical OR Operators || ||| or (Left Associativity)
-  # =============================================================================
-
   describe "|| operator - left associativity" do
     test "simple or" do
       code = "a || b"
@@ -931,10 +883,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Match Operator = (Right Associativity)
-  # =============================================================================
-
   describe "= operator - right associativity" do
     test "simple match" do
       code = "a = b"
@@ -972,10 +920,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # Capture Operator & (Unary)
-  # =============================================================================
 
   describe "& operator - unary" do
     test "capture function" do
@@ -1041,10 +985,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Map Arrow Operator => (Right Associativity, only in %{})
-  # =============================================================================
-
   describe "=> operator - right associativity in maps" do
     test "simple map with =>" do
       code = "%{a => b}"
@@ -1071,10 +1011,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # Pipe Operator | (Right Associativity)
-  # =============================================================================
 
   describe "| operator - right associativity" do
     test "simple cons" do
@@ -1108,10 +1044,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Type Operator :: (Right Associativity)
-  # =============================================================================
-
   describe ":: operator - right associativity" do
     test "simple type annotation" do
       code = "a :: integer"
@@ -1143,10 +1075,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # When Operator (Right Associativity)
-  # =============================================================================
 
   describe "when operator - right associativity" do
     test "simple guard" do
@@ -1200,10 +1128,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Left Arrow Operator <- (Left Associativity)
-  # =============================================================================
-
   describe "<- operator - left associativity" do
     test "simple generator" do
       code = "for x <- [1, 2, 3], do: x"
@@ -1231,10 +1155,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Default Argument Operator \\ (Left Associativity)
-  # =============================================================================
-
   describe "\\\\ operator - left associativity" do
     test "simple default argument" do
       code = "def foo(a \\\\ 1), do: a"
@@ -1256,10 +1176,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # Precedence Interactions Between Operators
-  # =============================================================================
 
   describe "precedence interactions" do
     test "arithmetic vs logical" do
@@ -1338,10 +1254,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Associativity Verification
-  # =============================================================================
-
   describe "left associativity verification" do
     test "left associative operators group left to right" do
       # For left associative: a op b op c == (a op b) op c
@@ -1396,10 +1308,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Nullary Range Operator ..
-  # =============================================================================
-
   describe "nullary .. operator" do
     test "bare range" do
       code = ".."
@@ -1411,10 +1319,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # Range with Step Operator ..//
-  # =============================================================================
 
   describe "..// operator" do
     test "simple range with step" do
@@ -1442,11 +1346,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # Comprehensive Precedence Boundary Tests
-  # Each test verifies precedence between adjacent levels in the table
-  # =============================================================================
 
   describe "precedence boundaries: @ (highest) vs . (second highest)" do
     test "@ binds tighter than dot on result" do
@@ -1896,10 +1795,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Mixed Operators at Same Precedence Level
-  # =============================================================================
-
   describe "same precedence level: ++ -- +++ --- .. <>" do
     test "++ and -- at same precedence" do
       code = "a ++ b -- c"
@@ -2074,10 +1969,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Edge Cases and Special Scenarios
-  # =============================================================================
-
   describe "edge cases" do
     test "parentheses override precedence" do
       code = "(1 + 2) * 3"
@@ -2190,10 +2081,6 @@ defmodule Spitfire.OperatorsTest do
     end
   end
 
-  # =============================================================================
-  # Complete Precedence Level Tests (Full Chain from Highest to Lowest)
-  # =============================================================================
-
   describe "full precedence chain tests" do
     test "expression using operators from many precedence levels" do
       # @ > . > unary > ** > * > + > ++ > in > |> > < > == > && > || > =
@@ -2281,10 +2168,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # Regression Tests for Known Edge Cases
-  # =============================================================================
 
   describe "regression and tricky cases" do
     test "minus after dot without space" do
@@ -2430,10 +2313,6 @@ defmodule Spitfire.OperatorsTest do
       assert spitfire_parse(code) == s2q(code)
     end
   end
-
-  # =============================================================================
-  # Helper Functions
-  # =============================================================================
 
   defp spitfire_parse(code, _options \\ []) do
     case Spitfire.parse(code) do
