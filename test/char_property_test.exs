@@ -11,8 +11,8 @@ defmodule Spitfire.CharPropertyTest do
 
   use ExUnitProperties
 
-  @property_max_runs "SPITFIRE_PROPERTY_MAX_RUNS" |> System.get_env("1000") |> String.to_integer()
-  @property_check_opts [max_runs: @property_max_runs, max_shrinking_steps: 50]
+  @ci Application.compile_env(:spitfire, :is_ci, false)
+  @moduletag timeout: if(@ci, do: :timer.hours(1), else: :timer.minutes(2))
 
   setup %{mode: mode} do
     Process.put(:spitfire_test_mode, mode)
@@ -125,10 +125,6 @@ defmodule Spitfire.CharPropertyTest do
     ?\n
   ]
 
-  # ===========================================================================
-  # Code Fragment Generator
-  # ===========================================================================
-
   defp code_fragment_gen(opts \\ []) do
     min_length = Keyword.get(opts, :min_length, 0)
     max_length = Keyword.get(opts, :max_length, 16)
@@ -140,10 +136,6 @@ defmodule Spitfire.CharPropertyTest do
     |> Keyword.put_new(:min_length, 1)
     |> code_fragment_gen()
   end
-
-  # ===========================================================================
-  # Context Generators - each returns {context_name, full_code}
-  # ===========================================================================
 
   # Beginning of string (code as standalone expression)
   defp context_standalone do
@@ -1166,18 +1158,12 @@ defmodule Spitfire.CharPropertyTest do
     ])
   end
 
-  # ===========================================================================
-  # Property Tests
-  # ===========================================================================
-
   describe "ascii in contexts" do
     @tag :property
-    @tag timeout: 120_000
     property "grammar trees round-trip through Spitfire in all contexts" do
-      check all(
-              {context, code} <- all_contexts_gen(),
-              @property_check_opts
-            ) do
+      # dbg( )
+
+      check all {context, code} <- all_contexts_gen(), max_runs: 250_000 do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1186,12 +1172,8 @@ defmodule Spitfire.CharPropertyTest do
   # Individual context tests for targeted debugging
   describe "ascii standalone" do
     @tag :property
-    @tag timeout: 120_000
     property "standalone expressions" do
-      check all(
-              {context, code} <- context_standalone(),
-              @property_check_opts
-            ) do
+      check all({context, code} <- context_standalone()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1199,15 +1181,13 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii bitstring" do
     @tag :property
-    @tag timeout: 120_000
     property "inside bitstring" do
       check all(
               {context, code} <-
                 StreamData.one_of([
                   context_bitstring(),
                   context_bitstring_positional_then_kw_data()
-                ]),
-              @property_check_opts
+                ])
             ) do
         run_comparison(context, code, current_mode())
       end
@@ -1216,12 +1196,8 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii before_do" do
     @tag :property
-    @tag timeout: 120_000
     property "before do block" do
-      check all(
-              {context, code} <- context_before_do(),
-              @property_check_opts
-            ) do
+      check all({context, code} <- context_before_do()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1229,9 +1205,8 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii after_do" do
     @tag :property
-    @tag timeout: 120_000
     property "after do block" do
-      check all({context, code} <- context_after_do(), @property_check_opts) do
+      check all({context, code} <- context_after_do()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1239,7 +1214,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii fn" do
     @tag :property
-    @tag timeout: 120_000
     property "inside fn expressions" do
       fn_contexts =
         StreamData.one_of([
@@ -1254,7 +1228,7 @@ defmodule Spitfire.CharPropertyTest do
           context_fn_multi_arg_with_arrow()
         ])
 
-      check all({context, code} <- fn_contexts, @property_check_opts) do
+      check all({context, code} <- fn_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1262,12 +1236,8 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii inside_do" do
     @tag :property
-    @tag timeout: 120_000
     property "inside do block" do
-      check all(
-              {context, code} <- context_inside_do(),
-              @property_check_opts
-            ) do
+      check all({context, code} <- context_inside_do()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1275,7 +1245,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii calls" do
     @tag :property
-    @tag timeout: 120_000
     property "inside function calls" do
       call_contexts =
         StreamData.one_of([
@@ -1285,7 +1254,7 @@ defmodule Spitfire.CharPropertyTest do
           context_no_parens_call()
         ])
 
-      check all({context, code} <- call_contexts, @property_check_opts) do
+      check all({context, code} <- call_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1293,7 +1262,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii bracket_access" do
     @tag :property
-    @tag timeout: 120_000
     property "inside bracket access" do
       check all(
               {context, code} <-
@@ -1303,8 +1271,7 @@ defmodule Spitfire.CharPropertyTest do
                   context_bracket_access_kw_data_value(),
                   context_bracket_at_access(),
                   context_bracket_at_access_kw_data_value()
-                ]),
-              @property_check_opts
+                ])
             ) do
         run_comparison(context, code, current_mode())
       end
@@ -1313,7 +1280,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii containers" do
     @tag :property
-    @tag timeout: 120_000
     property "inside containers (map, tuple, list, struct)" do
       container_contexts =
         StreamData.one_of([
@@ -1329,10 +1295,7 @@ defmodule Spitfire.CharPropertyTest do
           context_parens()
         ])
 
-      check all(
-              {context, code} <- container_contexts,
-              @property_check_opts
-            ) do
+      check all({context, code} <- container_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1340,12 +1303,8 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii interpolation" do
     @tag :property
-    @tag timeout: 120_000
     property "inside string interpolation" do
-      check all(
-              {context, code} <- context_interpolation(),
-              @property_check_opts
-            ) do
+      check all({context, code} <- context_interpolation()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1353,7 +1312,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii operators" do
     @tag :property
-    @tag timeout: 120_000
     property "after operators (pipe, assignment)" do
       op_contexts =
         StreamData.one_of([
@@ -1361,7 +1319,7 @@ defmodule Spitfire.CharPropertyTest do
           context_after_assignment()
         ])
 
-      check all({context, code} <- op_contexts, @property_check_opts) do
+      check all({context, code} <- op_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1369,12 +1327,8 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii struct_arg" do
     @tag :property
-    @tag timeout: 120_000
     property "inside struct arg" do
-      check all(
-              {context, code} <- context_struct_arg(),
-              @property_check_opts
-            ) do
+      check all({context, code} <- context_struct_arg()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1382,12 +1336,8 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii between_do_blocks" do
     @tag :property
-    @tag timeout: 120_000
     property "between do blocks" do
-      check all(
-              {context, code} <- context_between_do_blocks(),
-              @property_check_opts
-            ) do
+      check all({context, code} <- context_between_do_blocks()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1395,7 +1345,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii ternary" do
     @tag :property
-    @tag timeout: 120_000
     property "inside ternary range expressions" do
       ternary_contexts =
         StreamData.one_of([
@@ -1404,7 +1353,7 @@ defmodule Spitfire.CharPropertyTest do
           context_ternary_third()
         ])
 
-      check all({context, code} <- ternary_contexts, @property_check_opts) do
+      check all({context, code} <- ternary_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1412,7 +1361,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii map_update" do
     @tag :property
-    @tag timeout: 120_000
     property "inside map update expressions" do
       map_update_contexts =
         StreamData.one_of([
@@ -1421,10 +1369,7 @@ defmodule Spitfire.CharPropertyTest do
           context_map_update_value()
         ])
 
-      check all(
-              {context, code} <- map_update_contexts,
-              @property_check_opts
-            ) do
+      check all({context, code} <- map_update_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1432,12 +1377,8 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii after_parens_call" do
     @tag :property
-    @tag timeout: 120_000
     property "after parens call" do
-      check all(
-              {context, code} <- context_after_parens_call(),
-              @property_check_opts
-            ) do
+      check all({context, code} <- context_after_parens_call()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1445,12 +1386,8 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii no_parens_call_middle" do
     @tag :property
-    @tag timeout: 120_000
     property "inside no parens call middle" do
-      check all(
-              {context, code} <- context_no_parens_call_middle(),
-              @property_check_opts
-            ) do
+      check all({context, code} <- context_no_parens_call_middle()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1458,7 +1395,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii dot" do
     @tag :property
-    @tag timeout: 120_000
     property "inside dot expressions" do
       dot_contexts =
         StreamData.one_of([
@@ -1468,7 +1404,7 @@ defmodule Spitfire.CharPropertyTest do
           context_after_dot()
         ])
 
-      check all({context, code} <- dot_contexts, @property_check_opts) do
+      check all({context, code} <- dot_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1476,12 +1412,8 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii between_operators" do
     @tag :property
-    @tag timeout: 120_000
     property "between operators" do
-      check all(
-              {context, code} <- context_between_operators(),
-              @property_check_opts
-            ) do
+      check all({context, code} <- context_between_operators()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1489,7 +1421,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii unary" do
     @tag :property
-    @tag timeout: 120_000
     property "after unary operators" do
       unary_contexts =
         StreamData.one_of([
@@ -1502,7 +1433,7 @@ defmodule Spitfire.CharPropertyTest do
           context_after_not()
         ])
 
-      check all({context, code} <- unary_contexts, @property_check_opts) do
+      check all({context, code} <- unary_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1510,7 +1441,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii interpolated_atom_keyword" do
     @tag :property
-    @tag timeout: 120_000
     property "inside interpolated atoms and keywords" do
       interp_contexts =
         StreamData.one_of([
@@ -1518,7 +1448,7 @@ defmodule Spitfire.CharPropertyTest do
           context_interpolated_keyword()
         ])
 
-      check all({context, code} <- interp_contexts, @property_check_opts) do
+      check all({context, code} <- interp_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1526,12 +1456,8 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii charlist_interpolation" do
     @tag :property
-    @tag timeout: 120_000
     property "inside charlist interpolation" do
-      check all(
-              {context, code} <- context_charlist_interpolation(),
-              @property_check_opts
-            ) do
+      check all({context, code} <- context_charlist_interpolation()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1539,7 +1465,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii heredoc_interpolation" do
     @tag :property
-    @tag timeout: 120_000
     property "inside heredoc interpolation" do
       heredoc_contexts =
         StreamData.one_of([
@@ -1547,10 +1472,7 @@ defmodule Spitfire.CharPropertyTest do
           context_charlist_heredoc_interpolation()
         ])
 
-      check all(
-              {context, code} <- heredoc_contexts,
-              @property_check_opts
-            ) do
+      check all({context, code} <- heredoc_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1558,7 +1480,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii sigil_interpolation" do
     @tag :property
-    @tag timeout: 120_000
     property "inside sigil interpolation" do
       sigil_contexts =
         StreamData.one_of([
@@ -1566,7 +1487,7 @@ defmodule Spitfire.CharPropertyTest do
           context_sigil_heredoc_interpolation()
         ])
 
-      check all({context, code} <- sigil_contexts, @property_check_opts) do
+      check all({context, code} <- sigil_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1574,9 +1495,8 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii fn_when" do
     @tag :property
-    @tag timeout: 120_000
     property "inside fn when guard" do
-      check all({context, code} <- context_fn_when(), @property_check_opts) do
+      check all({context, code} <- context_fn_when()) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1584,7 +1504,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii def" do
     @tag :property
-    @tag timeout: 120_000
     property "inside def expressions" do
       def_contexts =
         StreamData.one_of([
@@ -1593,7 +1512,7 @@ defmodule Spitfire.CharPropertyTest do
           context_def_when()
         ])
 
-      check all({context, code} <- def_contexts, @property_check_opts) do
+      check all({context, code} <- def_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1601,7 +1520,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii keyword/kv_data" do
     @tag :property
-    @tag timeout: 120_000
     property "inside keyword lists, maps, structs and keyword args" do
       kv_contexts =
         StreamData.one_of([
@@ -1613,7 +1531,7 @@ defmodule Spitfire.CharPropertyTest do
           context_no_parens_call_kw_value()
         ])
 
-      check all({context, code} <- kv_contexts, @property_check_opts) do
+      check all({context, code} <- kv_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1621,7 +1539,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii stabs/control-flow" do
     @tag :property
-    @tag timeout: 120_000
     property "inside case/cond/fn clauses and do/else/after" do
       stab_contexts =
         StreamData.one_of([
@@ -1639,7 +1556,7 @@ defmodule Spitfire.CharPropertyTest do
           context_receive_clause_lhs()
         ])
 
-      check all({context, code} <- stab_contexts, @property_check_opts) do
+      check all({context, code} <- stab_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1647,7 +1564,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii call_args variants" do
     @tag :property
-    @tag timeout: 120_000
     property "inside multi-arg calls and nested no-parens calls" do
       args_contexts =
         StreamData.one_of([
@@ -1657,7 +1573,7 @@ defmodule Spitfire.CharPropertyTest do
           context_nested_no_parens_call()
         ])
 
-      check all({context, code} <- args_contexts, @property_check_opts) do
+      check all({context, code} <- args_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1665,7 +1581,6 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii comprehensions/with" do
     @tag :property
-    @tag timeout: 120_000
     property "inside for/with generators and filters/else" do
       comp_contexts =
         StreamData.one_of([
@@ -1676,7 +1591,7 @@ defmodule Spitfire.CharPropertyTest do
           context_with_else_body()
         ])
 
-      check all({context, code} <- comp_contexts, @property_check_opts) do
+      check all({context, code} <- comp_contexts) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1684,20 +1599,12 @@ defmodule Spitfire.CharPropertyTest do
 
   describe "ascii bitstring specs" do
     @tag :property
-    @tag timeout: 120_000
     property "inside bitstring segment spec" do
-      check all(
-              {context, code} <- context_bitstring_segment_spec(),
-              @property_check_opts
-            ) do
+      check all({context, code} <- context_bitstring_segment_spec()) do
         run_comparison(context, code, current_mode())
       end
     end
   end
-
-  # ===========================================================================
-  # Comparison Helper
-  # ===========================================================================
 
   defp run_comparison(context, code, mode) do
     elixir_result = elixir_parse(code)
@@ -1713,12 +1620,12 @@ defmodule Spitfire.CharPropertyTest do
       # Tolerant mode: if elixir errors/crashes, spitfire must not crash
       {:tolerant, {:error, _}} ->
         # Spitfire must not crash - just call it and ensure no exception
-        _ = spitfire_parse(code)
+        spitfire_parse(code)
         :ok
 
       {:tolerant, :crashed} ->
         # Spitfire must not crash - just call it and ensure no exception
-        _ = spitfire_parse(code)
+        spitfire_parse(code)
         :ok
 
       # Both modes: if elixir returns ok, spitfire must return exactly the same AST
@@ -1731,40 +1638,88 @@ defmodule Spitfire.CharPropertyTest do
 
         case spitfire_result do
           {:ok, spitfire_ast} ->
-            assert elixir_ast == spitfire_ast,
-                   """
-                   AST mismatch in context #{context} for code: #{inspect(code)}
+            msg =
+              if @ci do
+                JSON.encode!(%{
+                  type: :mismatch,
+                  context: context,
+                  code: code,
+                  elixir: inspect(elixir_ast, pretty: true),
+                  spitfire: inspect(spitfire_ast, pretty: true)
+                })
+              else
+                """
+                AST mismatch in context #{context} for code: #{inspect(code)}
 
-                   Elixir:
-                   #{inspect(elixir_ast, pretty: true)}
+                Elixir:
+                #{inspect(elixir_ast, pretty: true)}
 
-                   Spitfire:
-                   #{inspect(spitfire_ast, pretty: true)}
-                   """
+                Spitfire:
+                #{inspect(spitfire_ast, pretty: true)}
+                """
+              end
+
+            assert elixir_ast == spitfire_ast, msg
 
           {:error, _spitfire_ast, _errors} ->
-            flunk("""
-            Spitfire returned error when elixir succeeded in context #{context} for code: #{inspect(code)}
+            msg =
+              if @ci do
+                JSON.encode!(%{
+                  type: :spitfire_error,
+                  context: context,
+                  code: code,
+                  elixir: inspect(elixir_ast, pretty: true)
+                })
+              else
+                """
+                Spitfire returned error when elixir succeeded in context #{context} for code: #{inspect(code)}
 
-            Elixir AST:
-            #{inspect(elixir_ast, pretty: true)}
-            """)
+                Elixir AST:
+                #{inspect(elixir_ast, pretty: true)}
+                """
+              end
+
+            flunk(msg)
 
           {:error, :no_fuel_remaining} ->
-            flunk("""
-            Spitfire ran out of fuel in context #{context} for code: #{inspect(code)}
+            msg =
+              if @ci do
+                JSON.encode!(%{
+                  type: :spitfire_fuel,
+                  context: context,
+                  code: code,
+                  elixir: inspect(elixir_ast, pretty: true)
+                })
+              else
+                """
+                Spitfire ran out of fuel in context #{context} for code: #{inspect(code)}
 
-            Elixir AST:
-            #{inspect(elixir_ast, pretty: true)}
-            """)
+                Elixir AST:
+                #{inspect(elixir_ast, pretty: true)}
+                """
+              end
+
+            flunk(msg)
 
           :crashed ->
-            flunk("""
-            Spitfire crashed when elixir succeeded in context #{context} for code: #{inspect(code)}
+            msg =
+              if @ci do
+                JSON.encode!(%{
+                  type: :spitfire_crash,
+                  context: context,
+                  code: code,
+                  elixir: inspect(elixir_ast, pretty: true)
+                })
+              else
+                """
+                Spitfire crashed when elixir succeeded in context #{context} for code: #{inspect(code)}
 
-            Elixir AST:
-            #{inspect(elixir_ast, pretty: true)}
-            """)
+                Elixir AST:
+                #{inspect(elixir_ast, pretty: true)}
+                """
+              end
+
+            flunk(msg)
         end
     end
   end
