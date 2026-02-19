@@ -36,6 +36,9 @@ jobs:
       - name: Install Dependencies
         run: nix develop --command bash -c "mix deps.get"
 
+      - name: Compile
+        run: nix develop --command bash -c "MIX_ENV=test mix compile"
+
       - name: Run property tests
         env:
           GH_TOKEN: ${{ github.token }}
