@@ -2721,7 +2721,7 @@ defmodule SpitfireTest do
 
       for code <- codes do
         assert {:error, _} = s2q(code)
-        assert {:error, _} = Spitfire.parse(code)
+        assert {:error, _, _} = Spitfire.parse(code)
       end
     end
 
