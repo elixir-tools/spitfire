@@ -6,7 +6,11 @@ defmodule Main do
 
   @repo System.get_env("REPO", "elixir-tools/spitfire")
   def run do
-    input = IO.read(:eof)
+    input =
+      with :eof <- IO.read(:eof) do
+        Logger.error("Stdin is empty")
+        System.halt(2)
+      end
 
     results =
       case JSON.decode(input) do
