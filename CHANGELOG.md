@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.7](https://github.com/elixir-tools/spitfire/compare/v0.3.6...v0.3.7) (2026-02-19)
+
+
+### Bug Fixes
+
+* allow list literals in struct type parsing ([#111](https://github.com/elixir-tools/spitfire/issues/111)) ([f2eabee](https://github.com/elixir-tools/spitfire/commit/f2eabee78f740f6109609724179fbea1a9537558))
+* parse assoc-map values outside key context ([#102](https://github.com/elixir-tools/spitfire/issues/102)) ([6751c15](https://github.com/elixir-tools/spitfire/commit/6751c15bd1a7aec63fa2d81ff81bc8a9b3905f3f))
+* parse nested struct/map targets in struct literals ([#105](https://github.com/elixir-tools/spitfire/issues/105)) ([3d1cc61](https://github.com/elixir-tools/spitfire/commit/3d1cc61120c36f2c686ab32bbfa307407991bc17))
+* support dot-call struct targets like %e.(){} ([#110](https://github.com/elixir-tools/spitfire/issues/110)) ([706f0b0](https://github.com/elixir-tools/spitfire/commit/706f0b01c1a6440be5ea3618ecedfab0f5452353))
+
 ## [0.3.6](https://github.com/elixir-tools/spitfire/compare/v0.3.5...v0.3.6) (2026-02-16)
 
 
