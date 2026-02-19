@@ -1195,28 +1195,9 @@ defmodule Spitfire do
               nl -> [newlines: nl]
             end
 
-          # Check if we have a semicolon right after -> (possibly after eol)
-          # Check if there's a leading semicolon right after ->
-          # Handles both ";expr" and "\n;expr" patterns
-          has_leading_semicolon =
-            case peek_token(parser) do
-              :";" ->
-                true
-
-              :eol ->
-                # Peek at the next token after eol without consuming
-                # We need to manually check the token sequence
-                with {:eol, _} <- parser.current_token,
-                     # Look at the tokens list to find what comes after eol
-                     [{:";", _} | _] <- parser.tokens do
-                  true
-                else
-                  _ -> false
-                end
-
-              _ ->
-                false
-            end
+          # A semicolon immediately after `->` (with optional newlines in between)
+          # starts the clause body with an implicit nil expression.
+          has_leading_semicolon = peek_token_skip_eol(parser) == :";"
 
           parser = eat_eoe_at(parser, 1)
 
@@ -1423,8 +1404,28 @@ defmodule Spitfire do
             {rhs, parser}
         end
 
+      parser =
+        if token == :"//" and not match?({:.., _, [_, _]}, lhs) do
+          put_error(
+            pre_parser,
+            {meta,
+             "the range step operator (//) must immediately follow the range definition operator (..), for example: 1..9//2. If you wanted to define a default argument, use (\\\\) instead. Syntax error before: '//'"}
+          )
+        else
+          parser
+        end
+
       ast =
         case token do
+          :"//" ->
+            case lhs do
+              {:.., lhs_meta, [left, middle]} ->
+                {:..//, lhs_meta, [left, middle, rhs]}
+
+              _ ->
+                {token, newlines ++ meta, [lhs, rhs]}
+            end
+
           :"not in" ->
             {:not, meta, [{:in, meta, [lhs, rhs]}]}
 
@@ -2941,7 +2942,7 @@ defmodule Spitfire do
       if MapSet.member?(@terminals_with_comma, peek_token(parser)) or
            peek_token(parser) == :";" or
            peek in [:stab_op, :do, :end, :block_identifier] or
-           (is_binary_op?(peek) and peek != :dual_op) do
+           (is_binary_op?(peek) and peek not in [:dual_op, :ternary_op]) do
         {{:..., current_meta(parser), []}, parser}
       else
         meta = current_meta(parser)

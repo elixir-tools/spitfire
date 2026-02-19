@@ -1,0 +1,45 @@
+name: Property Tests
+on:
+  # schedule:
+  #   - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: property-test
+  cancel-in-progress: false
+
+jobs:
+  proptest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: cachix/cachix-action@v14
+        with:
+          name: elixir-tools
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ hashFiles('**/.mise.toml') }}-
+
+      - name: Install Dependencies
+        run: nix develop --command bash -c "mix deps.get"
+
+      - name: Compile
+        run: nix develop --command bash -c "MIX_ENV=test mix compile"
+
+      - name: Run property tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: nix develop --command bash -c "MIX_ENV=test mix test.json --only property | .github/property_failures.exs"

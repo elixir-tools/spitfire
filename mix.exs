@@ -7,7 +7,7 @@ defmodule Spitfire.MixProject do
     [
       app: :spitfire,
       description: "Error resilient parser for Elixir",
-      version: "0.3.6",
+      version: "0.3.7",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -35,7 +35,8 @@ defmodule Spitfire.MixProject do
       {:styler, "~> 0.11", only: [:dev, :test]},
       {:credo, "~> 1.7", only: :dev},
       {:dialyxir, "~> 1.0", only: :dev},
-      {:stream_data, "~> 1.0", only: [:dev, :test]}
+      {:stream_data, "~> 1.0", only: [:dev, :test]},
+      {:ex_unit_json, "~> 0.4.1", only: [:dev, :test]}
     ]
   end
 
