@@ -1483,6 +1483,42 @@ defmodule SpitfireTest do
       end
     end
 
+    test "fn args with parenthesized heads and low-precedence operators" do
+      codes = [
+        "fn a, u\\\\c -> :ok end",
+        "fn (a, 0<-c) -> :ok end",
+        "fn (a, b<-c<-d) -> :ok end",
+        "fn (a, b\\\\c\\\\d) -> :ok end",
+        "fn (a, b<-c) when is_integer(c) -> :ok end",
+        "fn (a, b\\\\c) when is_integer(c) -> :ok end",
+        "fn (a, b, d<-c) when is_integer(c) -> :ok end",
+        "fn (a, b, d\\\\c) when is_integer(c) -> :ok end",
+        "fn (a, b<-c) when c<-c -> :ok end",
+        "fn (a, b\\\\c) when c\\\\c -> :ok end",
+        "fn (a, b<-c<-d) when c<-c -> :ok end",
+        "fn (a, b\\\\c\\\\d) when c\\\\c -> :ok end",
+        "fn a, (b<-c) when c<-c -> :ok end",
+        "fn a, (b\\\\c) when c\\\\c -> :ok end",
+        "fn a, b<-c when c<-c -> :ok end",
+        "fn a, b\\\\c when c\\\\c -> :ok end",
+        "fn a, b when c<-c -> :ok end",
+        "fn a, b when c\\\\c -> :ok end",
+        "fn a, b when c<-c<-d -> :ok end",
+        "fn (a: 1) when c<-c -> :ok end",
+        "fn (a: 1) when c<-c<-d -> :ok end",
+        "fn (a: 1) when c\\\\c -> :ok end",
+        "fn (a: 1) when c\\\\c\\\\d -> :ok end",
+        "fn (x: 1, y: 2) when c<-c -> :ok end",
+        "fn (x: 1, y: 2) when c\\\\c -> :ok end",
+        "fn ('x': 1, y: 2) when c<-c -> :ok end",
+        "fn (x: 1, 'y': 2) when c\\\\c -> :ok end"
+      ]
+
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
+      end
+    end
+
     test "capture operator" do
       codes = [
         ~s'''
@@ -2660,6 +2696,33 @@ defmodule SpitfireTest do
                  {[line: 2, column: 11], "missing closing parentheses for function invocation"}
                ]
              }
+    end
+
+    test "rejects nested parenthesized fn args" do
+      codes = [
+        # whole arg list double/triple-wrapped
+        "fn ((a, b)) -> :ok end",
+        "fn (((a, b))) -> :ok end",
+        "fn ((a, b)) when true -> :ok end",
+        "fn ((a, b<-c)) -> :ok end",
+        "fn ((a, b\\\\c)) -> :ok end",
+        "fn (((a, b<-c))) -> :ok end",
+        # keyword list double-wrapped
+        "fn ((a: 1)) -> :ok end",
+        "fn ((a: 1)) when true -> :ok end",
+        # individual args as parenthesized tuples
+        "fn ((a, b), c) -> :ok end",
+        "fn (a, (b, c)) -> :ok end",
+        "fn ((a, b), (c, d)) -> :ok end",
+        "fn ((a, b), (c, d)) when true -> :ok end",
+        "fn ((a, (b<-c))) -> :ok end",
+        "fn ((a, (b\\\\c))) -> :ok end"
+      ]
+
+      for code <- codes do
+        assert {:error, _} = s2q(code)
+        assert {:error, _} = Spitfire.parse(code)
+      end
     end
 
     test "example from github issue" do
