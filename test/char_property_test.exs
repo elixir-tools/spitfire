@@ -1640,15 +1640,13 @@ defmodule Spitfire.CharPropertyTest do
           {:ok, spitfire_ast} ->
             msg =
               if @ci do
-                %{
+                JSON.encode!(%{
                   type: :mismatch,
                   context: context,
                   code: code,
                   elixir: inspect(elixir_ast, pretty: true),
                   spitfire: inspect(spitfire_ast, pretty: true)
-                }
-                |> :json.encode()
-                |> IO.iodata_to_binary()
+                })
               else
                 """
                 AST mismatch in context #{context} for code: #{inspect(code)}
@@ -1666,14 +1664,12 @@ defmodule Spitfire.CharPropertyTest do
           {:error, _spitfire_ast, _errors} ->
             msg =
               if @ci do
-                %{
+                JSON.encode!(%{
                   type: :spitfire_error,
                   context: context,
                   code: code,
                   elixir: inspect(elixir_ast, pretty: true)
-                }
-                |> :json.encode()
-                |> IO.iodata_to_binary()
+                })
               else
                 """
                 Spitfire returned error when elixir succeeded in context #{context} for code: #{inspect(code)}
@@ -1688,14 +1684,12 @@ defmodule Spitfire.CharPropertyTest do
           {:error, :no_fuel_remaining} ->
             msg =
               if @ci do
-                %{
+                JSON.encode!(%{
                   type: :spitfire_fuel,
                   context: context,
                   code: code,
                   elixir: inspect(elixir_ast, pretty: true)
-                }
-                |> :json.encode()
-                |> IO.iodata_to_binary()
+                })
               else
                 """
                 Spitfire ran out of fuel in context #{context} for code: #{inspect(code)}
@@ -1710,14 +1704,12 @@ defmodule Spitfire.CharPropertyTest do
           :crashed ->
             msg =
               if @ci do
-                %{
+                JSON.encode!(%{
                   type: :spitfire_crash,
                   context: context,
                   code: code,
                   elixir: inspect(elixir_ast, pretty: true)
-                }
-                |> :json.encode()
-                |> IO.iodata_to_binary()
+                })
               else
                 """
                 Spitfire crashed when elixir succeeded in context #{context} for code: #{inspect(code)}

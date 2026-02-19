@@ -2,15 +2,36 @@
 
 defmodule Main do
   @moduledoc false
+  require Logger
+
   @repo System.get_env("REPO", "elixir-tools/spitfire")
   def run do
-    results = :json.decode(IO.read(:eof))
+    input = IO.read(:eof)
+
+    results =
+      case JSON.decode(input) do
+        {:ok, results} ->
+          results
+
+        {:error, reason} ->
+          case reason do
+            {_, offset, byte} ->
+              Logger.error(inspect(byte))
+              Logger.error(binary_slice(input, offset, byte_size(input)))
+
+            _ ->
+              :ok
+          end
+
+          Logger.error(inspect(reason))
+          raise "Malformed JSON: " <> input
+      end
 
     failures =
       for failures <- get_in(results, ["tests", Access.all(), "failures"]), f <- failures do
         [match] = Regex.run(~r/.*Clause:.*\s+Generated:.*\n+(.*)/, f["message"], capture: :all_but_first)
 
-        :json.decode(String.trim(match))
+        JSON.decode!(String.trim(match))
       end
 
     failures = Enum.uniq_by(failures, & &1["code"])
@@ -26,7 +47,7 @@ defmodule Main do
             ["--jq", ~s<. | map(. | select(.title == "#{fail["code"]}"))>]
         )
 
-      case :json.decode(issues) do
+      case JSON.decode!(issues) do
         [] ->
           IO.write(:stderr, "Making new issue for #{fail["code"]}\n")
 
