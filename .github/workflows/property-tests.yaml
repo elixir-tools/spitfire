@@ -39,4 +39,4 @@ jobs:
       - name: Run property tests
         env:
           GH_TOKEN: ${{ github.token }}
-        run: nix develop --command bash -c "mix test --only property | .github/property_failures.exs"
+        run: nix develop --command bash -c "MIX_ENV=test mix test.json --only property | .github/property_failures.exs"
