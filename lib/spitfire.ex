@@ -1376,7 +1376,7 @@ defmodule Spitfire do
 
   # Reject nested grouped tuple/keyword arguments inside fn heads, for example
   # `fn (a, (b, c)) -> ... end` and `fn ((a, b), c) -> ... end`.
-  defp maybe_error_invalid_fn_head_args(parser, args) do
+  defp maybe_error_invalid_fn_head_args(parser, args) when is_list(args) do
     Enum.reduce(args, parser, fn arg, parser ->
       case arg do
         {:comma, [{:parens, parens_meta} | _], _} ->
@@ -1393,6 +1393,8 @@ defmodule Spitfire do
       end
     end)
   end
+
+  defp maybe_error_invalid_fn_head_args(parser, _args), do: parser
 
   # Reject top-level fn-head wrappers that carry more than one parens entry,
   # such as `((a, b))` and `((a: 1))`.
@@ -1568,11 +1570,11 @@ defmodule Spitfire do
 
           _ ->
             case lhs do
-              {:comma, comma_meta, args} when args != [] ->
+              {:comma, comma_meta, args} when is_list(args) and args != [] ->
                 {leading, [last]} = Enum.split(args, -1)
                 {:comma, comma_meta, leading ++ [{token, newlines ++ meta, [last, rhs]}]}
 
-              {:when, when_meta, when_args} when length(when_args) > 2 ->
+              {:when, when_meta, when_args} when is_list(when_args) and length(when_args) > 2 ->
                 {leading, [second_last, guard]} = Enum.split(when_args, -2)
                 when_node = {:when, when_meta, [second_last, guard]}
                 {:comma, [], leading ++ [{token, newlines ++ meta, [when_node, rhs]}]}
