@@ -2321,6 +2321,20 @@ defmodule SpitfireTest do
                 [{[line: 1, column: 5], "unknown token: %"}]}
     end
 
+    test "range step operator requires a range lhs" do
+      code = "x...//y"
+
+      assert {:error, _} = s2q(code)
+      assert {:error, _ast, errors} = Spitfire.parse(code)
+
+      assert Enum.any?(errors, fn {_meta, message} ->
+               String.contains?(
+                 message,
+                 "the range step operator (//) must immediately follow the range definition operator (..)"
+               )
+             end)
+    end
+
     test "missing bitstring brackets" do
       code = """
       <<one::
