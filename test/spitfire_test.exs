@@ -2301,6 +2301,10 @@ defmodule SpitfireTest do
       assert Spitfire.parse("%e.(){}") == s2q("%e.(){}")
       assert Spitfire.parse("%e.(1){}") == s2q("%e.(1){}")
       assert Spitfire.parse("%e.(a, b){}") == s2q("%e.(a, b){}")
+
+      # with/else stab body with leading semicolon after newline
+      assert Spitfire.parse("with x <- 1 do :ok else _ -> \n;a end") ==
+               s2q("with x <- 1 do :ok else _ -> \n;a end")
     end
   end
 
