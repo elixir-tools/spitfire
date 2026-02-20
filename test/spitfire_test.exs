@@ -2337,6 +2337,9 @@ defmodule SpitfireTest do
       assert Spitfire.parse("%e.(){}") == s2q("%e.(){}")
       assert Spitfire.parse("%e.(1){}") == s2q("%e.(1){}")
       assert Spitfire.parse("%e.(a, b){}") == s2q("%e.(a, b){}")
+
+      # Regression from absinthe-graphql/absinthe lexer
+      assert Spitfire.parse("comma = ascii_char([?,])") == s2q("comma = ascii_char([?,])")
     end
   end
 
