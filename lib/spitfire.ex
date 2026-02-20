@@ -1195,28 +1195,9 @@ defmodule Spitfire do
               nl -> [newlines: nl]
             end
 
-          # Check if we have a semicolon right after -> (possibly after eol)
-          # Check if there's a leading semicolon right after ->
-          # Handles both ";expr" and "\n;expr" patterns
-          has_leading_semicolon =
-            case peek_token(parser) do
-              :";" ->
-                true
-
-              :eol ->
-                # Peek at the next token after eol without consuming
-                # We need to manually check the token sequence
-                with {:eol, _} <- parser.current_token,
-                     # Look at the tokens list to find what comes after eol
-                     [{:";", _} | _] <- parser.tokens do
-                  true
-                else
-                  _ -> false
-                end
-
-              _ ->
-                false
-            end
+          # A semicolon immediately after `->` (with optional newlines in between)
+          # starts the clause body with an implicit nil expression.
+          has_leading_semicolon = peek_token_skip_eol(parser) == :";"
 
           parser = eat_eoe_at(parser, 1)
 
