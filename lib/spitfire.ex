@@ -2920,18 +2920,14 @@ defmodule Spitfire do
 
   defp parse_ellipsis_op(parser) do
     trace "parse_ellipsis_op", trace_meta(parser) do
-      peek_type = peek_token_type(parser)
-      peek = peek_token(parser)
+      peek = peek_token_type(parser)
 
-      standalone? =
-        MapSet.member?(@terminals_with_comma, peek) or
-          peek == :";" or
-          peek_type in [:stab_op, :do, :end, :block_identifier] or
-          (is_binary_op?(peek_type) and peek_type != :dual_op)
-
-      # `...` is standalone when followed by a terminal, stab op, keyword,
-      # or binary operator (except :dual_op), unless it continues a newline ternary (`//`).
-      if standalone? and not newline_ternary_continuation?(parser) do
+      # `...` is standalone when followed by a terminal, stab op, keyword
+      # or binary operators (except :dual_op)
+      if MapSet.member?(@terminals_with_comma, peek_token(parser)) or
+           peek_token(parser) == :";" or
+           peek in [:stab_op, :do, :end, :block_identifier] or
+           (is_binary_op?(peek) and peek != :dual_op) do
         {{:..., current_meta(parser), []}, parser}
       else
         meta = current_meta(parser)
@@ -2954,22 +2950,6 @@ defmodule Spitfire do
 
         {{:..., meta, [rhs]}, parser}
       end
-    end
-  end
-
-  defp newline_ternary_continuation?(parser) do
-    cond do
-      peek_token(parser) == :eol ->
-        peek_token_skip_eol(parser) == :ternary_op
-
-      peek_token_type(parser) == :ternary_op ->
-        case parser |> next_token() |> current_newlines() do
-          nl when is_integer(nl) and nl > 0 -> true
-          _ -> false
-        end
-
-      true ->
-        false
     end
   end
 
