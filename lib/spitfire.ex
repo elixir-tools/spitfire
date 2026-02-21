@@ -1423,8 +1423,28 @@ defmodule Spitfire do
             {rhs, parser}
         end
 
+      parser =
+        if token == :"//" and not match?({:.., _, [_, _]}, lhs) do
+          put_error(
+            pre_parser,
+            {meta,
+             "the range step operator (//) must immediately follow the range definition operator (..), for example: 1..9//2. If you wanted to define a default argument, use (\\\\) instead. Syntax error before: '//'"}
+          )
+        else
+          parser
+        end
+
       ast =
         case token do
+          :"//" ->
+            case lhs do
+              {:.., lhs_meta, [left, middle]} ->
+                {:..//, lhs_meta, [left, middle, rhs]}
+
+              _ ->
+                {token, newlines ++ meta, [lhs, rhs]}
+            end
+
           :"not in" ->
             {:not, meta, [{:in, meta, [lhs, rhs]}]}
 
@@ -2930,7 +2950,7 @@ defmodule Spitfire do
       if MapSet.member?(@terminals_with_comma, peek_token(parser)) or
            peek_token(parser) == :";" or
            peek in [:stab_op, :do, :end, :block_identifier] or
-           (is_binary_op?(peek) and peek != :dual_op) do
+           (is_binary_op?(peek) and peek not in [:dual_op, :ternary_op]) do
         {{:..., current_meta(parser), []}, parser}
       else
         meta = current_meta(parser)

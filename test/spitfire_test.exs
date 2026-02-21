@@ -2301,6 +2301,13 @@ defmodule SpitfireTest do
       assert Spitfire.parse("%e.(){}") == s2q("%e.(){}")
       assert Spitfire.parse("%e.(1){}") == s2q("%e.(1){}")
       assert Spitfire.parse("%e.(a, b){}") == s2q("%e.(a, b){}")
+
+      # Ellipsis + ternary edge cases (newline and semicolon-separated)
+      assert Spitfire.parse("x...\n//y") == s2q("x...\n//y")
+      assert Spitfire.parse("x...;//y") == s2q("x...;//y")
+      assert Spitfire.parse("x...\n;//y") == s2q("x...\n;//y")
+      assert Spitfire.parse("x...\n;\n//y") == s2q("x...\n;\n//y")
+      assert Spitfire.parse("x...\n;\n# comment\n//y") == s2q("x...\n;\n# comment\n//y")
     end
   end
 
@@ -2313,6 +2320,20 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) ==
                {:error, {:foo, [line: 1, column: 1], [{:__block__, [error: true, line: 1, column: 5], []}]},
                 [{[line: 1, column: 5], "unknown token: %"}]}
+    end
+
+    test "range step operator requires a range lhs" do
+      code = "x...//y"
+
+      assert {:error, _} = s2q(code)
+      assert {:error, _ast, errors} = Spitfire.parse(code)
+
+      assert Enum.any?(errors, fn {_meta, message} ->
+               String.contains?(
+                 message,
+                 "the range step operator (//) must immediately follow the range definition operator (..)"
+               )
+             end)
     end
 
     test "missing bitstring brackets" do
