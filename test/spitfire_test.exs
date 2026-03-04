@@ -2348,6 +2348,7 @@ defmodule SpitfireTest do
              end)
     end
 
+    # https://github.com/elixir-lang/expert/issues/461
     test "fn -> followed by closing delimiter does not hang" do
       assert {:error, _ast, _errors} = Spitfire.parse("fn ->)")
       assert {:error, _ast, _errors} = Spitfire.parse("fn ->")
