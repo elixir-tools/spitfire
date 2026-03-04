@@ -2348,6 +2348,13 @@ defmodule SpitfireTest do
              end)
     end
 
+    test "fn -> followed by closing delimiter does not hang" do
+      assert {:error, _ast, _errors} = Spitfire.parse("fn ->)")
+      assert {:error, _ast, _errors} = Spitfire.parse("fn ->")
+      assert {:error, _ast, _errors} = Spitfire.parse("Enum.map(fn ->)")
+      assert {:error, _ast, _errors} = Spitfire.parse("fn ->\n)")
+    end
+
     test "missing bitstring brackets" do
       code = """
       <<one::
