@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.9](https://github.com/elixir-tools/spitfire/compare/v0.3.8...v0.3.9) (2026-03-04)
+
+
+### Bug Fixes
+
+* prevent infinite loop when typing out anonymous function ([#122](https://github.com/elixir-tools/spitfire/issues/122)) ([8334932](https://github.com/elixir-tools/spitfire/commit/8334932a053312d746c51f3baf67ad6705e3e7f3))
+
 ## [0.3.8](https://github.com/elixir-tools/spitfire/compare/v0.3.7...v0.3.8) (2026-03-04)
 
 
