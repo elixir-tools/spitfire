@@ -2316,6 +2316,10 @@ defmodule SpitfireTest do
       assert Spitfire.parse("x...\n;//y") == s2q("x...\n;//y")
       assert Spitfire.parse("x...\n;\n//y") == s2q("x...\n;\n//y")
       assert Spitfire.parse("x...\n;\n# comment\n//y") == s2q("x...\n;\n# comment\n//y")
+      # Ellipsis followed by infix operators that should not be consumed as RHS
+      assert Spitfire.parse("x...<-y") == s2q("x...<-y")
+      assert Spitfire.parse("x...::y") == s2q("x...::y")
+      assert Spitfire.parse("x... when y") == s2q("x... when y")
     end
   end
 
