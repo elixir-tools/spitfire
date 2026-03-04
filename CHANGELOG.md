@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.8](https://github.com/elixir-tools/spitfire/compare/v0.3.7...v0.3.8) (2026-03-04)
+
+
+### Bug Fixes
+
+* handle ellipsis before &lt;-, ::, and when ([#114](https://github.com/elixir-tools/spitfire/issues/114)) ([221fe49](https://github.com/elixir-tools/spitfire/commit/221fe497296cd49df74b21a4423fa60a9eeb5cca))
+* parse newline ternary continuation after ellipsis ([#115](https://github.com/elixir-tools/spitfire/issues/115)) ([708da64](https://github.com/elixir-tools/spitfire/commit/708da646a84384502fd6a64f2023988aab324a61))
+* preserve fn newline metadata after semicolons ([#112](https://github.com/elixir-tools/spitfire/issues/112)) ([52099ff](https://github.com/elixir-tools/spitfire/commit/52099ff36ad704a2003560f7b7d3a0ede78e08ea))
+* preserve leading nil in stab clause body ([#120](https://github.com/elixir-tools/spitfire/issues/120)) ([f0a79a0](https://github.com/elixir-tools/spitfire/commit/f0a79a050aa0510a2bc254cdc26db9ffb4dc05b1)), closes [#113](https://github.com/elixir-tools/spitfire/issues/113)
+
 ## [0.3.7](https://github.com/elixir-tools/spitfire/compare/v0.3.6...v0.3.7) (2026-02-19)
 
 
