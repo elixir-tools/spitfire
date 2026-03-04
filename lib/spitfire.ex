@@ -2180,7 +2180,7 @@ defmodule Spitfire do
 
                     {ast, parser} =
                       cond do
-                        current_token(parser) == :-> and peek_token(parser) == :end ->
+                        current_token(parser) == :-> and peek_token(parser) in [:")", :end, :eof] ->
                           parser = next_token(parser)
                           {ast, parser}
 
