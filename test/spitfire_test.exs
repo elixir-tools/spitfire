@@ -2305,6 +2305,7 @@ defmodule SpitfireTest do
       # with/else stab body with leading semicolon after newline
       assert Spitfire.parse("with x <- 1 do :ok else _ -> \n;a end") ==
                s2q("with x <- 1 do :ok else _ -> \n;a end")
+
       # Ellipsis + ternary edge cases (newline and semicolon-separated)
       assert Spitfire.parse("x...\n//y") == s2q("x...\n//y")
       assert Spitfire.parse("x...;//y") == s2q("x...;//y")
