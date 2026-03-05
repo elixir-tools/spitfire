@@ -3804,6 +3804,10 @@ defmodule Spitfire do
     :eof
   end
 
+  defp peek_token(%{peek_token: nil}) do
+    :eof
+  end
+
   defp peek_token(%{tokens: :eot}) do
     :eof
   end

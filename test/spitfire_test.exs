@@ -2439,6 +2439,11 @@ defmodule SpitfireTest do
                     ], [1]},
                    :ok
                  ]}, [{[line: 1, column: 1], "missing closing brace for tuple"}]}
+
+      code = "fn x -> %{a: {1,"
+
+      assert {:error, _ast, errors} = Spitfire.parse(code)
+      assert {[line: 1, column: 14], "missing closing brace for tuple"} in errors
     end
 
     test "missing closing map brace" do
