@@ -7,6 +7,8 @@ defmodule Spitfire.ConformanceTest do
   """
   use ExUnit.Case, async: true
 
+  import Spitfire.Assertions, only: [assert_conforms: 1]
+
   # =============================================================================
   # TERMINALS - Basic building blocks that are valid as standalone expressions
   # =============================================================================
@@ -2894,50 +2896,5 @@ defmodule Spitfire.ConformanceTest do
     assert_conforms("foo \n;")
     assert_conforms("^!u\n;")
     assert_conforms("foo()\n;")
-  end
-
-  # =============================================================================
-  # Helper function
-  # =============================================================================
-
-  defp assert_conforms(code, _opts \\ []) do
-    reference = s2q(code)
-
-    case reference do
-      {:ok, expected_ast} ->
-        actual = spitfire_parse(code)
-
-        assert actual == reference,
-               """
-               AST mismatch for: #{inspect(code)}
-
-               Reference:
-               #{inspect(expected_ast, pretty: true)}
-
-               Actual:
-               #{inspect(actual, pretty: true)}
-               """
-
-      {:error, _} ->
-        # Reference parser errors - skip, nothing to validate conformance against
-        :ok
-    end
-  end
-
-  defp s2q(code) do
-    Code.string_to_quoted(
-      code,
-      columns: true,
-      token_metadata: true,
-      emit_warnings: false
-    )
-  end
-
-  defp spitfire_parse(code) do
-    case Spitfire.parse(code) do
-      {:ok, ast} -> {:ok, ast}
-      {:error, _ast, _errors} -> {:error, :parse_error}
-      {:error, :no_fuel_remaining} -> {:error, :no_fuel_remaining}
-    end
   end
 end
