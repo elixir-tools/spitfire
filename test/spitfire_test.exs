@@ -1,7 +1,7 @@
 defmodule SpitfireTest do
   use ExUnit.Case, async: true
 
-  import Spitfire.Assertions, only: [assert_conforms: 1, s2q: 1, s2q: 2]
+  import Spitfire.Assertions, only: [assert_conforms: 1, assert_errors: 1, s2q: 1, s2q: 2]
 
   doctest Spitfire
 
@@ -2135,8 +2135,8 @@ defmodule SpitfireTest do
       assert_conforms("%{s\\\\r => 1}")
 
       # Fn args with semicolon/newline trivia
-      assert Spitfire.parse("fn ;\n -> :ok end") == s2q("fn ;\n -> :ok end")
-      assert Spitfire.parse("fn ; -> :ok end") == s2q("fn ; -> :ok end")
+      assert_conforms("fn ;\n -> :ok end")
+      assert_conforms("fn ; -> :ok end")
 
       # Struct type with dot-call target
       assert_conforms("%e.(){}")
@@ -2187,10 +2187,10 @@ defmodule SpitfireTest do
 
     # https://github.com/elixir-lang/expert/issues/461
     test "fn -> followed by closing delimiter does not hang" do
-      assert {:error, _ast, _errors} = Spitfire.parse("fn ->)")
-      assert {:error, _ast, _errors} = Spitfire.parse("fn ->")
-      assert {:error, _ast, _errors} = Spitfire.parse("Enum.map(fn ->)")
-      assert {:error, _ast, _errors} = Spitfire.parse("fn ->\n)")
+      assert_errors("fn ->)")
+      assert_errors("fn ->")
+      assert_errors("Enum.map(fn ->)")
+      assert_errors("fn ->\n)")
     end
 
     test "missing bitstring brackets" do
