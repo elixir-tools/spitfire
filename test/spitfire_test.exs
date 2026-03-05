@@ -2356,6 +2356,13 @@ defmodule SpitfireTest do
       assert {:error, _ast, _errors} = Spitfire.parse("fn ->\n)")
     end
 
+    test "fn -> followed by block identifier exhausts fuel instead of hanging" do
+      assert Spitfire.parse("fn -> catch") == {:error, :no_fuel_remaining}
+      assert Spitfire.parse("fn -> after") == {:error, :no_fuel_remaining}
+      assert Spitfire.parse("fn -> rescue") == {:error, :no_fuel_remaining}
+      assert Spitfire.parse("fn -> else") == {:error, :no_fuel_remaining}
+    end
+
     test "missing bitstring brackets" do
       code = """
       <<one::
