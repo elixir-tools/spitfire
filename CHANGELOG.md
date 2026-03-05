@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.10](https://github.com/elixir-tools/spitfire/compare/v0.3.9...v0.3.10) (2026-03-05)
+
+
+### Bug Fixes
+
+* don't crash on unclosed brace in tuple inside map inside anonymous function ([#125](https://github.com/elixir-tools/spitfire/issues/125)) ([44702ce](https://github.com/elixir-tools/spitfire/commit/44702ceb9c040afc4fecf7c2472f9603a944ec9d))
+
 ## [0.3.9](https://github.com/elixir-tools/spitfire/compare/v0.3.8...v0.3.9) (2026-03-04)
 
 
