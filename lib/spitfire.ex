@@ -964,16 +964,21 @@ defmodule Spitfire do
   defp invalid_assoc_call_meta?([_entry | meta]), do: invalid_assoc_call_meta?(meta)
 
   defp invalid_assoc_key_in_map?({name, meta, args}) when is_atom(name) and is_list(meta) and is_list(args) do
-    arity = length(args)
+    case args do
+      [_, _ | _] ->
+        arity = length(args)
 
-    arity > 1 and
-      not Macro.operator?(name, arity) and
-      not Macro.special_form?(name, arity) and
-      invalid_assoc_call_meta?(meta)
+        not Macro.operator?(name, arity) and
+          not Macro.special_form?(name, arity) and
+          invalid_assoc_call_meta?(meta)
+
+      _ ->
+        false
+    end
   end
 
   defp invalid_assoc_key_in_map?({{:., _, [_lhs, _rhs]}, meta, args}) when is_list(meta) and is_list(args) do
-    length(args) > 1 and invalid_assoc_call_meta?(meta)
+    match?([_, _ | _], args) and invalid_assoc_call_meta?(meta)
   end
 
   defp invalid_assoc_key_in_map?({{name, meta, args}, _value}) when is_atom(name) and is_list(meta) and is_list(args) do
@@ -3196,7 +3201,7 @@ defmodule Spitfire do
                 {Enum.reverse(pairs), parser}
             end
 
-          if length(pairs) == 2 do
+          if match?([_, _], pairs) do
             tuple = encode_literal(parser, pairs |> List.wrap() |> List.to_tuple(), orig_meta)
             parser = Map.put(parser, :nesting, old_nesting)
             {tuple, parser}
@@ -3418,7 +3423,7 @@ defmodule Spitfire do
 
             true ->
               meta =
-                if identifier == :op_identifier && length(args) == 1 do
+                if identifier == :op_identifier && match?([_], args) do
                   [{:ambiguous_op, nil} | meta]
                 else
                   meta
