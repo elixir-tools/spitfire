@@ -957,12 +957,11 @@ defmodule Spitfire do
     end
   end
 
-  defp invalid_assoc_call_meta?(meta) when is_list(meta) do
-    not Keyword.has_key?(meta, :parens) and
-      not Keyword.has_key?(meta, :closing) and
-      not Keyword.has_key?(meta, :delimiter) and
-      not Keyword.has_key?(meta, :do)
-  end
+  defp invalid_assoc_call_meta?([]), do: true
+
+  defp invalid_assoc_call_meta?([{key, _value} | _meta]) when key in [:parens, :closing, :delimiter, :do], do: false
+
+  defp invalid_assoc_call_meta?([_entry | meta]), do: invalid_assoc_call_meta?(meta)
 
   defp invalid_assoc_key_in_map?({name, meta, args}) when is_atom(name) and is_list(meta) and is_list(args) do
     arity = length(args)
@@ -1034,13 +1033,27 @@ defmodule Spitfire do
   defp unparenthesized_do_end_block?(ast) do
     case ast do
       {_, meta, _} when is_list(meta) ->
-        Keyword.has_key?(meta, :do) && Keyword.has_key?(meta, :end) &&
-          not Keyword.has_key?(meta, :parens)
+        meta_has_do_end_without_parens?(meta)
 
       _ ->
         false
     end
   end
+
+  # using recursion here to pass the list only once
+  defp meta_has_do_end_without_parens?(meta), do: meta_has_do_end_without_parens?(meta, false, false)
+
+  defp meta_has_do_end_without_parens?([], has_do, has_end), do: has_do and has_end
+  defp meta_has_do_end_without_parens?([{:parens, _value} | _meta], _has_do, _has_end), do: false
+
+  defp meta_has_do_end_without_parens?([{:do, _value} | meta], _has_do, has_end),
+    do: meta_has_do_end_without_parens?(meta, true, has_end)
+
+  defp meta_has_do_end_without_parens?([{:end, _value} | meta], has_do, _has_end),
+    do: meta_has_do_end_without_parens?(meta, has_do, true)
+
+  defp meta_has_do_end_without_parens?([_entry | meta], has_do, has_end),
+    do: meta_has_do_end_without_parens?(meta, has_do, has_end)
 
   # An expression is "unmatched" if it contains an unparenthesized do-end block
   # anywhere in its AST. Binary operators with an unmatched operand produce
@@ -1745,10 +1758,18 @@ defmodule Spitfire do
   end
 
   defp has_do_end_block?({_, meta, _}) when is_list(meta) do
-    Keyword.has_key?(meta, :do) and Keyword.has_key?(meta, :end)
+    meta_has_do_end?(meta)
   end
 
   defp has_do_end_block?(_), do: false
+
+  # using recursion here to pass the list only once
+  defp meta_has_do_end?(meta), do: meta_has_do_end?(meta, false, false)
+
+  defp meta_has_do_end?([], has_do, has_end), do: has_do and has_end
+  defp meta_has_do_end?([{:do, _value} | meta], _has_do, has_end), do: meta_has_do_end?(meta, true, has_end)
+  defp meta_has_do_end?([{:end, _value} | meta], has_do, _has_end), do: meta_has_do_end?(meta, has_do, true)
+  defp meta_has_do_end?([_entry | meta], has_do, has_end), do: meta_has_do_end?(meta, has_do, has_end)
 
   @binary_op_types [
     :and_op,
