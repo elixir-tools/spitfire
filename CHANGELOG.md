@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.11](https://github.com/elixir-tools/spitfire/compare/v0.3.10...v0.3.11) (2026-04-23)
+
+
+### Performance Improvements
+
+* prefer recursion over multiple `Keyword.has_key?` ([#129](https://github.com/elixir-tools/spitfire/issues/129)) ([47fad18](https://github.com/elixir-tools/spitfire/commit/47fad18a1bf7ca3ad5bca3b4d06a121e4ddceeb6))
+* replace list length-checks with pattern matching ([#128](https://github.com/elixir-tools/spitfire/issues/128)) ([883764e](https://github.com/elixir-tools/spitfire/commit/883764e62f88a8ae956da4443631d021d0e40e14))
+
 ## [0.3.10](https://github.com/elixir-tools/spitfire/compare/v0.3.9...v0.3.10) (2026-03-05)
 
 
