@@ -307,7 +307,7 @@ build_string([], Output) -> Output;
 build_string(Buffer, Output) -> [lists:reverse(Buffer) | Output].
 
 build_interpol(Line, Column, EndLine, EndColumn, Buffer, Output) ->
-  [{{Line, Column, nil}, {EndLine, EndColumn, nil}, Buffer} | Output].
+  [{{Line, Column, EndLine, EndColumn, nil}, {EndLine, EndColumn, EndLine, EndColumn, nil}, Buffer} | Output].
 
 prepend_warning(Line, Column, Msg, #spitfire_tokenizer{warnings=Warnings} = Scope) ->
   Scope#spitfire_tokenizer{warnings = [{{Line, Column}, Msg} | Warnings]}.

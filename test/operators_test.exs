@@ -2316,7 +2316,7 @@ defmodule Spitfire.OperatorsTest do
 
   defp spitfire_parse(code, _options \\ []) do
     case Spitfire.parse(code) do
-      {:ok, ast} -> {:ok, ast}
+      {:ok, ast} -> {:ok, Spitfire.TestHelpers.strip_range_metadata(ast)}
       {:error, _ast, _errors} -> {:error, :parse_error}
       {:error, :no_fuel_remaining} -> {:error, :no_fuel_remaining}
     end

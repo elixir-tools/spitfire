@@ -319,6 +319,8 @@ defmodule Spitfire do
   defp do_parse_expression(parser, {associativity, precedence}, is_list, is_map, is_top) do
     stop_before_stab_op? = Map.get(parser, :stop_before_stab_op?, false)
     stop_before_map_op? = Map.get(parser, :stop_before_map_op?, false)
+    stop_before_when_op? = Map.get(parser, :stop_before_when_op?, false)
+    prefix_start = current_meta(parser)
 
     prefix =
       case current_token_type(parser) do
@@ -371,6 +373,8 @@ defmodule Spitfire do
 
     case prefix do
       {left, parser} ->
+        parser = set_expression_start(parser, prefix_start)
+
         terminals =
           if is_top do
             @terminals
@@ -382,6 +386,7 @@ defmodule Spitfire do
 
         if is_valid do
           while (not stab_state_set?(parser) and not MapSet.member?(terminals, peek_token(parser))) &&
+                  (not stop_before_when_op? or peek_token_type(parser) != :when_op) &&
                   (current_token(parser) != :do and peek_token(parser) != :eol) &&
                   (not stop_before_map_op? or
                      (peek_token_type(parser) != :assoc_op and
@@ -496,6 +501,8 @@ defmodule Spitfire do
 
       nil ->
         meta = current_meta(parser)
+        end_meta = current_end_meta(parser)
+        range = build_range(meta, end_meta)
         ctype = current_token_type(parser)
         parser = put_error(parser, {meta, "unknown token: #{ctype}"})
 
@@ -509,7 +516,7 @@ defmodule Spitfire do
             _ -> next_token(parser)
           end
 
-        {{:__block__, [{:error, true} | meta], []}, parser}
+        {{:__block__, [{:error, true}, {:range, range} | meta], []}, parser}
     end
   end
 
@@ -520,15 +527,19 @@ defmodule Spitfire do
       cond do
         peek_token(parser) == :eof ->
           meta = current_meta(parser)
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
 
           parser = put_error(parser, {meta, "missing closing parentheses"})
 
-          {{:__block__, [{:error, true} | meta], []}, next_token(parser)}
+          {{:__block__, [{:error, true}, {:range, range} | meta], []}, next_token(parser)}
 
         peek_token(parser) == :")" ->
           parser = parser |> next_token() |> eat_eoe()
           closing_paren_meta = current_meta(parser)
-          {{:__block__, [parens: opening_paren_meta ++ [closing: closing_paren_meta]], []}, parser}
+          closing_paren_end_meta = current_end_meta(parser)
+          range = build_range(opening_paren_meta, closing_paren_end_meta)
+          {{:__block__, [parens: opening_paren_meta ++ [closing: closing_paren_meta], range: range], []}, parser}
 
         true ->
           orig_meta = current_meta(parser)
@@ -546,12 +557,14 @@ defmodule Spitfire do
 
           if current_token(parser) == :")" do
             closing_paren_meta = current_meta(parser)
+            closing_paren_end_meta = current_end_meta(parser)
             parser = Map.put(parser, :nesting, old_nesting)
+            range = build_range(opening_paren_meta, closing_paren_end_meta)
 
             if has_semicolon do
-              {{:__block__, [{:closing, closing_paren_meta} | opening_paren_meta], []}, parser}
+              {{:__block__, [{:closing, closing_paren_meta}, {:range, range} | opening_paren_meta], []}, parser}
             else
-              {{:__block__, [parens: opening_paren_meta ++ [closing: closing_paren_meta]], []}, parser}
+              {{:__block__, [parens: opening_paren_meta ++ [closing: closing_paren_meta], range: range], []}, parser}
             end
           else
             # Stop at -> to allow stab expressions
@@ -576,12 +589,14 @@ defmodule Spitfire do
                   |> eat_eoe()
 
                 closing_paren_meta = current_meta(parser)
+                closing_paren_end_meta = current_end_meta(parser)
 
                 ast =
                   case expression do
                     # unquote_splicing with one arg is wrapped in a block
                     {:unquote_splicing, _, [_]} ->
-                      {:__block__, [{:closing, current_meta(parser)} | orig_meta], [expression]}
+                      range = build_range(orig_meta, closing_paren_end_meta)
+                      {:__block__, [{:closing, current_meta(parser)}, {:range, range} | orig_meta], [expression]}
 
                     # not/! with one arg is wrapped in a block
                     {op, _, [_]} when op in [:not, :!] ->
@@ -591,18 +606,25 @@ defmodule Spitfire do
                       [expression]
 
                     {f, meta, a} ->
-                      {f, [parens: opening_paren_meta ++ [closing: closing_paren_meta]] ++ meta, a}
+                      range = build_range(orig_meta, closing_paren_end_meta)
+                      meta_without_range = Keyword.delete(meta, :range)
+
+                      {f,
+                       [parens: opening_paren_meta ++ [closing: closing_paren_meta], range: range] ++ meta_without_range,
+                       a}
 
                     [{key, _value} | _] = kw when is_atom(key) ->
                       if Map.get(parser, :stop_before_stab_op?, false) do
-                        {:__block__, [parens: opening_paren_meta ++ [closing: closing_paren_meta]], [kw]}
+                        range = build_range(orig_meta, closing_paren_end_meta)
+                        {:__block__, [parens: opening_paren_meta ++ [closing: closing_paren_meta], range: range], [kw]}
                       else
                         kw
                       end
 
                     [{{_, _, _}, _value} | _] = kw ->
                       if Map.get(parser, :stop_before_stab_op?, false) do
-                        {:__block__, [parens: opening_paren_meta ++ [closing: closing_paren_meta]], [kw]}
+                        range = build_range(orig_meta, closing_paren_end_meta)
+                        {:__block__, [parens: opening_paren_meta ++ [closing: closing_paren_meta], range: range], [kw]}
                       else
                         kw
                       end
@@ -701,41 +723,50 @@ defmodule Spitfire do
                         exprs
 
                       _ ->
-                        {:__block__, [{:closing, current_meta(parser)} | orig_meta], exprs}
+                        closing = current_meta(parser)
+                        closing_end = current_end_meta(parser)
+                        range = build_range(orig_meta, closing_end)
+                        {:__block__, [{:closing, closing}, {:range, range} | orig_meta], exprs}
                     end
 
                   {ast, parser}
                 else
                   if invalid_grouped_stab_trailing_comma? and peek_token(parser) == :"," do
                     meta = current_meta(parser)
+                    end_meta = current_end_meta(parser)
+                    range = build_range(meta, end_meta)
 
                     parser =
                       parser
                       |> put_error({meta, "syntax error"})
                       |> Map.put(:nesting, old_nesting)
 
-                    {{:__block__, [{:error, true} | meta], []}, next_token(parser)}
+                    {{:__block__, [{:error, true}, {:range, range} | meta], []}, next_token(parser)}
                   else
                     meta = current_meta(parser)
+                    end_meta = current_end_meta(parser)
+                    range = build_range(meta, end_meta)
 
                     parser =
                       parser
                       |> put_error({meta, "missing closing parentheses"})
                       |> Map.put(:nesting, old_nesting)
 
-                    {{:__block__, [{:error, true} | meta], []}, next_token(parser)}
+                    {{:__block__, [{:error, true}, {:range, range} | meta], []}, next_token(parser)}
                   end
                 end
 
               true ->
                 meta = current_meta(parser)
+                end_meta = current_end_meta(parser)
+                range = build_range(meta, end_meta)
 
                 parser =
                   parser
                   |> put_error({meta, "missing closing parentheses"})
                   |> Map.put(:nesting, old_nesting)
 
-                {{:__block__, [{:error, true} | meta], []}, next_token(parser)}
+                {{:__block__, [{:error, true}, {:range, range} | meta], []}, next_token(parser)}
             end
           end
       end
@@ -744,16 +775,18 @@ defmodule Spitfire do
 
   defp parse_unexpected_semicolon(parser) do
     meta = current_meta(parser)
+    end_meta = current_end_meta(parser)
+    range = build_range(meta, end_meta)
     parser = put_error(parser, {meta, "unexpected token: ;"})
     parser = parser |> next_token() |> eat_eol()
 
     case current_token_type(parser) do
       type when type in [:eof, :end, :block_identifier, :")", :"]", :"}", :">>"] ->
-        {{:__block__, [{:error, true} | meta], []}, parser}
+        {{:__block__, [{:error, true}, {:range, range} | meta], []}, parser}
 
       _ ->
         {expr, parser} = parse_expression(parser, @lowest, false, false, true)
-        {{:__block__, [{:error, true} | meta], [expr]}, parser}
+        {{:__block__, [{:error, true}, {:range, range} | meta], [expr]}, parser}
     end
   end
 
@@ -809,7 +842,16 @@ defmodule Spitfire do
       token = encode_literal(parser, token, meta)
       parser = parser |> next_token() |> eat_eoe()
 
-      {value, parser} = parse_expression(parser, @list_comma, false, false, false)
+      {value, parser} =
+        if Map.get(parser, :parsing_map_key, false) do
+          with_context(parser, %{stop_before_map_op?: true, stop_before_when_op?: false}, fn parser ->
+            parse_expression(parser, @list_comma, false, false, false)
+          end)
+        else
+          with_context(parser, %{stop_before_when_op?: false}, fn parser ->
+            parse_expression(parser, @list_comma, false, false, false)
+          end)
+        end
 
       {kvs, parser} =
         if stab_state_set?(parser), do: {[], parser}, else: parse_kw_list_continuation(parser)
@@ -1029,7 +1071,9 @@ defmodule Spitfire do
           {rhs, parser}
         end
 
-      ast = {token, meta, [rhs]}
+      end_meta = current_end_meta(parser)
+      range = build_range(meta, end_meta)
+      ast = {token, [{:range, range} | meta], [rhs]}
 
       {ast, parser}
     end
@@ -1077,7 +1121,9 @@ defmodule Spitfire do
       parser = parser |> next_token() |> eat_eoe()
       parser = Map.delete(parser, :inside_map_update_pairs)
       {rhs, parser} = parse_struct_type(parser)
-      {{token, meta, [rhs]}, parser}
+      end_meta = current_end_meta(parser)
+      range = build_range(meta, end_meta)
+      {{token, [{:range, range} | meta], [rhs]}, parser}
     end
   end
 
@@ -1092,8 +1138,10 @@ defmodule Spitfire do
       second_meta = [line: first_meta[:line], column: first_meta[:column] + 1]
 
       {rhs, parser} = parse_lone_identifier(parser)
+      end_meta = current_end_meta(parser)
+      range = build_range(second_meta, end_meta)
 
-      ast = {:/, second_meta, [first_slash, rhs]}
+      ast = {:/, [{:range, range} | second_meta], [first_slash, rhs]}
       {ast, parser}
     end
   end
@@ -1105,8 +1153,10 @@ defmodule Spitfire do
       parser = parser |> next_token() |> eat_eoe()
 
       {rhs, parser} = parse_lone_identifier(parser)
+      end_meta = current_end_meta(parser)
+      range = build_range(meta, end_meta)
 
-      ast = {:..., meta, [rhs]}
+      ast = {:..., [{:range, range} | meta], [rhs]}
       {ast, parser}
     end
   end
@@ -1119,8 +1169,10 @@ defmodule Spitfire do
       {encoder, parser} = Map.pop(parser, :literal_encoder)
       {rhs, parser} = parse_int(parser)
       parser = Map.put(parser, :literal_encoder, encoder)
+      end_meta = current_end_meta(parser)
+      range = build_range(meta, end_meta)
 
-      ast = {token, meta, [rhs]}
+      ast = {token, [{:range, range} | meta], [rhs]}
 
       {ast, parser}
     end
@@ -1139,6 +1191,7 @@ defmodule Spitfire do
     trace "parse_stab_expression", trace_meta(parser) do
       token = current_token(parser)
       meta = current_meta(parser)
+      arrow_meta = meta
 
       newlines =
         case current_newlines(parser) do
@@ -1166,8 +1219,17 @@ defmodule Spitfire do
 
       rhs = build_stab_rhs(exprs)
 
+      end_meta =
+        if exprs == [] do
+          [end_line: arrow_meta[:line], end_column: arrow_meta[:column] + 2]
+        else
+          current_end_meta(parser)
+        end
+
+      range = build_range(meta, end_meta)
+
       ast =
-        {token, newlines ++ meta, [[], rhs]}
+        {token, newlines ++ [{:range, range} | meta], [[], rhs]}
 
       parser = Map.put(parser, :nesting, old_nesting)
 
@@ -1206,6 +1268,7 @@ defmodule Spitfire do
         :-> ->
           token = current_token(parser)
           meta = current_meta(parser)
+          arrow_meta = meta
 
           newlines =
             case current_newlines(parser) do
@@ -1318,8 +1381,23 @@ defmodule Spitfire do
                 [lhs]
             end
 
+          range_start =
+            case ast_start_meta(lhs) do
+              [] -> arrow_meta
+              start_meta -> start_meta
+            end
+
+          end_meta =
+            if exprs == [] and not has_leading_semicolon do
+              [end_line: arrow_meta[:line], end_column: arrow_meta[:column] + 2]
+            else
+              current_end_meta(parser)
+            end
+
+          range = build_range(range_start, end_meta)
+
           ast =
-            {token, meta, [lhs, rhs]}
+            {token, [{:range, range} | meta], [lhs, rhs]}
 
           parser = Map.put(parser, :nesting, old_nesting)
 
@@ -1358,10 +1436,21 @@ defmodule Spitfire do
 
   defp parse_comma(parser, lhs) do
     trace "parse_comma", trace_meta(parser) do
-      parser = parser |> next_token() |> eat_eoe()
-      {exprs, parser} = parse_comma_list(parser, @comma)
+      lhs_start = expression_start(parser)
+      precedence = if Map.get(parser, :stop_before_stab_op?, false), do: @list_comma, else: @comma
 
-      {{:comma, [], [lhs | exprs]}, eat_eoe(parser)}
+      parser = parser |> next_token() |> eat_eoe()
+
+      {exprs, parser} =
+        if Map.get(parser, :stop_before_stab_op?, false) do
+          with_context(parser, %{stop_before_when_op?: true}, fn parser ->
+            parse_comma_list(parser, precedence)
+          end)
+        else
+          parse_comma_list(parser, precedence)
+        end
+
+      {{:comma, [], [lhs | exprs]}, set_expression_start(eat_eoe(parser), lhs_start)}
     end
   end
 
@@ -1370,6 +1459,7 @@ defmodule Spitfire do
       token = current_token(parser)
       meta = current_meta(parser)
       precedence = current_precedence(parser)
+      lhs_start = expression_start(parser)
 
       effective_precedence =
         if Map.get(parser, :parsing_map_key, false) do
@@ -1416,7 +1506,9 @@ defmodule Spitfire do
         case rhs do
           {:__block__, [{:error, true} | _], []} ->
             parser = put_error(pre_parser, {meta, "malformed right-hand side of #{token} operator"})
-            {{:__block__, [{:error, true} | meta], []}, parser}
+            end_meta = current_end_meta(parser)
+            range = build_range(lhs_start, end_meta)
+            {{:__block__, [{:error, true}, {:range, range} | meta], []}, parser}
 
           _ ->
             {rhs, parser}
@@ -1433,6 +1525,9 @@ defmodule Spitfire do
           parser
         end
 
+      end_meta = current_end_meta(parser)
+      range = build_range(lhs_start, end_meta)
+
       ast =
         case token do
           :"//" ->
@@ -1441,55 +1536,55 @@ defmodule Spitfire do
                 {:..//, lhs_meta, [left, middle, rhs]}
 
               _ ->
-                {token, newlines ++ meta, [lhs, rhs]}
+                {token, newlines ++ [{:range, range} | meta], [lhs, rhs]}
             end
 
           :"not in" ->
-            {:not, meta, [{:in, meta, [lhs, rhs]}]}
+            {:not, [{:range, range} | meta], [{:in, [{:range, range} | meta], [lhs, rhs]}]}
 
           :in ->
             case lhs do
               {op, _meta, [inner]} when op in [:!, :not] ->
-                in_ast = {:in, meta, [inner, rhs]}
-                {op, meta, [in_ast]}
+                in_ast = {:in, [{:range, range} | meta], [inner, rhs]}
+                {op, [{:range, range} | meta], [in_ast]}
 
               _ ->
-                {token, newlines ++ meta, [lhs, rhs]}
+                {token, newlines ++ [{:range, range} | meta], [lhs, rhs]}
             end
 
           :when ->
             case lhs do
               {:__block__, [{:parens, _} = paren_meta | _], []} ->
                 # () when ... - empty parens, keep parens meta
-                {token, [paren_meta | newlines ++ meta], [rhs]}
+                {token, [paren_meta | newlines ++ [{:range, range} | meta]], [rhs]}
 
               {:__block__, _, []} ->
                 # Empty block without parens
-                {token, newlines ++ meta, [rhs]}
+                {token, newlines ++ [{:range, range} | meta], [rhs]}
 
               {:__block__, [{:parens, _} = paren_meta | _], [[{key, _} | _] = kw]} when is_atom(key) ->
                 # (a: 1) when ... - preserve parens meta for stab
-                {token, [paren_meta | newlines ++ meta], [kw, rhs]}
+                {token, [paren_meta | newlines ++ [{:range, range} | meta]], [kw, rhs]}
 
               {:__block__, [{:parens, _} = paren_meta | _], [[{{_, _, _}, _} | _] = kw]} ->
                 # Parenthesized kw list with interpolated key
-                {token, [paren_meta | newlines ++ meta], [kw, rhs]}
+                {token, [paren_meta | newlines ++ [{:range, range} | meta]], [kw, rhs]}
 
               {:comma, [{:parens, _} = paren_meta | _], args} ->
-                {token, [paren_meta | newlines ++ meta], args ++ [rhs]}
+                {token, [paren_meta | newlines ++ [{:range, range} | meta]], args ++ [rhs]}
 
               {:comma, _, args} ->
-                {token, newlines ++ meta, args ++ [rhs]}
+                {token, newlines ++ [{:range, range} | meta], args ++ [rhs]}
 
               _ ->
-                {token, newlines ++ meta, [lhs, rhs]}
+                {token, newlines ++ [{:range, range} | meta], [lhs, rhs]}
             end
 
           _ ->
-            {token, newlines ++ meta, [lhs, rhs]}
+            {token, newlines ++ [{:range, range} | meta], [lhs, rhs]}
         end
 
-      {ast, parser}
+      {ast, set_expression_start(parser, lhs_start)}
     end
   end
 
@@ -1497,6 +1592,7 @@ defmodule Spitfire do
     trace "parse_pipe_op_in_map", trace_meta(parser) do
       token = current_token(parser)
       meta = current_meta(parser)
+      lhs_start = expression_start(parser)
 
       newlines =
         case current_newlines(parser) || peek_newlines(parser, :eol) do
@@ -1506,7 +1602,7 @@ defmodule Spitfire do
 
       rhs_parser = parser |> next_token() |> eat_eoe()
 
-      if rhs_has_binding_op?(rhs_parser) or
+      if (rhs_has_binding_op?(rhs_parser) and not rhs_has_assoc_op?(rhs_parser)) or
            (unmatched_expr?(lhs) and rhs_has_bare_comma?(rhs_parser)) do
         # When the RHS of `|` has low-precedence operators (::, when, <-, \\) or
         # the LHS is an unmatched_expr (do-end) and the RHS has no-parens commas,
@@ -1514,8 +1610,15 @@ defmodule Spitfire do
         parse_infix_expression(parser, lhs)
       else
         {pairs, pairs_parser} = parse_map_update_pairs(rhs_parser)
-        ast = {token, newlines ++ meta, [lhs, pairs]}
-        {ast, pairs_parser}
+
+        if low_precedence_assoc_pair?(pairs) do
+          parse_infix_expression(parser, lhs)
+        else
+          end_meta = current_end_meta(pairs_parser)
+          range = build_range(lhs_start, end_meta)
+          ast = {token, newlines ++ [{:range, range} | meta], [lhs, pairs]}
+          {ast, set_expression_start(pairs_parser, lhs_start)}
+        end
       end
     end
   end
@@ -1525,19 +1628,73 @@ defmodule Spitfire do
   @low_prec_map_op_types MapSet.new([:type_op, :when_op, :in_match_op])
 
   defp rhs_has_binding_op?(parser) do
-    scan_binding_op(eat_eoe(parser), 0)
+    scan_binding_op(eat_eoe(parser), 0, false)
   end
 
-  defp scan_binding_op(parser, nesting) do
+  defp rhs_has_assoc_op?(parser) do
+    scan_assoc_op(eat_eoe(parser), 0)
+  end
+
+  defp scan_binding_op(parser, nesting, saw_low_prec_op?) do
     token = peek_token(parser)
     token_type = peek_token_type(parser)
 
     cond do
+      token_type == :type_op and nesting == 0 ->
+        scan_binding_op(next_token(parser), nesting, saw_low_prec_op?)
+
       MapSet.member?(@low_prec_map_op_types, token_type) and nesting == 0 ->
         true
 
       token_type == :assoc_op and nesting == 0 ->
         false
+
+      token_type in [:kw_identifier, :kw_identifier_safe, :kw_identifier_unsafe] and nesting == 0 ->
+        false
+
+      token == :"}" and nesting == 0 ->
+        saw_low_prec_op?
+
+      token == :"," and nesting == 0 ->
+        saw_low_prec_op?
+
+      token == :eof ->
+        saw_low_prec_op?
+
+      token in [:"(", :"[", :"{", :"<<"] ->
+        scan_binding_op(next_token(parser), nesting + 1, saw_low_prec_op?)
+
+      token in [:")", :"]", :"}", :">>"] ->
+        scan_binding_op(next_token(parser), max(nesting - 1, 0), saw_low_prec_op?)
+
+      token == :do ->
+        skip_do_end_for_binding_op(next_token(parser), 1, nesting, saw_low_prec_op?)
+
+      true ->
+        scan_binding_op(next_token(parser), nesting, saw_low_prec_op?)
+    end
+  end
+
+  defp skip_do_end_for_binding_op(parser, 0, nesting, saw_low_prec_op?) do
+    scan_binding_op(parser, nesting, saw_low_prec_op?)
+  end
+
+  defp skip_do_end_for_binding_op(parser, depth, nesting, saw_low_prec_op?) do
+    case peek_token(parser) do
+      :end -> skip_do_end_for_binding_op(next_token(parser), depth - 1, nesting, saw_low_prec_op?)
+      :do -> skip_do_end_for_binding_op(next_token(parser), depth + 1, nesting, saw_low_prec_op?)
+      :eof -> saw_low_prec_op?
+      _ -> skip_do_end_for_binding_op(next_token(parser), depth, nesting, saw_low_prec_op?)
+    end
+  end
+
+  defp scan_assoc_op(parser, nesting) do
+    token = peek_token(parser)
+    token_type = peek_token_type(parser)
+
+    cond do
+      token_type == :assoc_op and nesting == 0 ->
+        true
 
       token_type in [:kw_identifier, :kw_identifier_safe, :kw_identifier_unsafe] and nesting == 0 ->
         false
@@ -1552,30 +1709,42 @@ defmodule Spitfire do
         false
 
       token in [:"(", :"[", :"{", :"<<"] ->
-        scan_binding_op(next_token(parser), nesting + 1)
+        scan_assoc_op(next_token(parser), nesting + 1)
 
       token in [:")", :"]", :"}", :">>"] ->
-        scan_binding_op(next_token(parser), max(nesting - 1, 0))
+        scan_assoc_op(next_token(parser), max(nesting - 1, 0))
 
       token == :do ->
-        skip_do_end_for_binding_op(next_token(parser), 1, nesting)
+        skip_do_end_for_assoc_op(next_token(parser), 1, nesting)
 
       true ->
-        scan_binding_op(next_token(parser), nesting)
+        scan_assoc_op(next_token(parser), nesting)
     end
   end
 
-  defp skip_do_end_for_binding_op(parser, 0, nesting) do
-    scan_binding_op(parser, nesting)
+  defp skip_do_end_for_assoc_op(parser, 0, nesting) do
+    scan_assoc_op(parser, nesting)
   end
 
-  defp skip_do_end_for_binding_op(parser, depth, nesting) do
+  defp skip_do_end_for_assoc_op(parser, depth, nesting) do
     case peek_token(parser) do
-      :end -> skip_do_end_for_binding_op(next_token(parser), depth - 1, nesting)
-      :do -> skip_do_end_for_binding_op(next_token(parser), depth + 1, nesting)
+      :end -> skip_do_end_for_assoc_op(next_token(parser), depth - 1, nesting)
+      :do -> skip_do_end_for_assoc_op(next_token(parser), depth + 1, nesting)
       :eof -> false
-      _ -> skip_do_end_for_binding_op(next_token(parser), depth, nesting)
+      _ -> skip_do_end_for_assoc_op(next_token(parser), depth, nesting)
     end
+  end
+
+  @low_prec_assoc_ops MapSet.new([:"::", :when, :<-, :\\])
+
+  defp low_precedence_assoc_pair?(pairs) do
+    Enum.any?(pairs, fn
+      {{op, meta, _args}, _value} when is_list(meta) ->
+        Keyword.has_key?(meta, :assoc) and MapSet.member?(@low_prec_assoc_ops, op)
+
+      _ ->
+        false
+    end)
   end
 
   defp rhs_has_bare_comma?(parser) do
@@ -1692,6 +1861,8 @@ defmodule Spitfire do
   defp parse_access_expression(parser, lhs) do
     trace "parse_access_expression", trace_meta(parser) do
       meta = current_meta(parser)
+      lhs_start = ast_start_meta(lhs)
+      lhs_start = if lhs_start == [], do: expression_start(parser), else: lhs_start
 
       # Capture newlines before eating them
       newlines =
@@ -1716,11 +1887,13 @@ defmodule Spitfire do
         end
 
       closing = current_meta(parser)
-      meta = extra_meta ++ newlines ++ [{:closing, closing} | meta]
+      end_meta = current_end_meta(parser)
+      range = build_range(lhs_start, end_meta)
+      meta = extra_meta ++ newlines ++ [{:closing, closing}, {:range, range} | meta]
 
       ast = {{:., meta, [Access, :get]}, meta, [lhs, rhs]}
 
-      {ast, parser}
+      {ast, set_expression_start(parser, lhs_start)}
     end
   end
 
@@ -1728,7 +1901,9 @@ defmodule Spitfire do
     trace "parse_range_expression", trace_meta(parser) do
       token = current_token(parser)
       meta = current_meta(parser)
-      {{token, meta, []}, parser}
+      end_meta = current_end_meta(parser)
+      range = build_range(meta, end_meta)
+      {{token, [{:range, range} | meta], []}, parser}
     end
   end
 
@@ -1736,6 +1911,7 @@ defmodule Spitfire do
     trace "parse_range_expression (with lhs)", trace_meta(parser) do
       token = current_token(parser)
       meta = current_meta(parser)
+      lhs_start = expression_start(parser)
       precedence = current_precedence(parser)
 
       newlines =
@@ -1754,10 +1930,16 @@ defmodule Spitfire do
       if not inside_range and peek_token_skip_eol(parser) == :ternary_op do
         parser = parser |> eat_eoe_at(1) |> next_token() |> next_token() |> eat_eoe()
         {rrhs, parser} = parse_expression(parser, precedence, false, false, false)
+        end_meta = current_end_meta(parser)
+        range = build_range(lhs_start, end_meta)
 
-        {{:..//, newlines ++ meta, [lhs, rhs, rrhs]}, eat_eoe(parser)}
+        {{:..//, newlines ++ [{:range, range} | meta], [lhs, rhs, rrhs]},
+         set_expression_start(eat_eoe(parser), lhs_start)}
       else
-        {{token, newlines ++ meta, [lhs, rhs]}, eat_eoe(parser)}
+        end_meta = current_end_meta(parser)
+        range = build_range(lhs_start, end_meta)
+
+        {{token, newlines ++ [{:range, range} | meta], [lhs, rhs]}, set_expression_start(eat_eoe(parser), lhs_start)}
       end
     end
   end
@@ -1822,7 +2004,10 @@ defmodule Spitfire do
           {rhs, parser}
         end
 
-      ast = {:/, second_meta, [first_slash, rhs]}
+      end_meta = current_end_meta(parser)
+      range = build_range(second_meta, end_meta)
+
+      ast = {:/, [{:range, range} | second_meta], [first_slash, rhs]}
       {ast, parser}
     end
   end
@@ -1864,6 +2049,8 @@ defmodule Spitfire do
   defp parse_do_block(%{current_token: {:do, meta}} = parser, lhs) do
     trace "parse_do_block", trace_meta(parser) do
       do_meta = current_meta(parser)
+      lhs_start = ast_start_meta(lhs)
+      lhs_start = if lhs_start == [], do: expression_start(parser), else: lhs_start
       type = encode_literal(parser, :do, meta)
 
       old_nesting = parser.nesting
@@ -1941,12 +2128,12 @@ defmodule Spitfire do
           []
         end
 
-      {parser, end_meta} =
+      {parser, end_meta, end_position_meta} =
         if peek_token_eat_eoe(parser) == :end do
           parser = parser |> next_token() |> eat_eoe()
-          {parser, current_meta(parser)}
+          {parser, current_meta(parser), current_end_meta(parser)}
         else
-          {put_error(parser, {do_meta, "missing `end` for do block"}), do_meta}
+          {put_error(parser, {do_meta, "missing `end` for do block"}), do_meta, do_meta}
         end
 
       exprs = exprs ++ extra_exprs
@@ -1965,16 +2152,19 @@ defmodule Spitfire do
       ast =
         case lhs do
           {token, meta, nil} ->
-            {token, [do: do_meta, end: end_meta] ++ meta, [exprs]}
+            range = build_range(lhs_start, end_position_meta)
+            meta = Keyword.delete(meta, :range)
+            {token, [do: do_meta, end: end_meta, range: range] ++ meta, [exprs]}
 
           {token, meta, args} when is_list(args) ->
             # Remove no_parens when attaching do-block
-            meta = Keyword.delete(meta, :no_parens)
-            {token, [do: do_meta, end: end_meta] ++ meta, args ++ [exprs]}
+            meta = Keyword.drop(meta, [:no_parens, :range])
+            range = build_range(lhs_start, end_position_meta)
+            {token, [do: do_meta, end: end_meta, range: range] ++ meta, args ++ [exprs]}
         end
 
       parser = Map.put(parser, :nesting, old_nesting)
-      {ast, parser}
+      {ast, set_expression_start(parser, lhs_start)}
     end
   end
 
@@ -1983,6 +2173,8 @@ defmodule Spitfire do
       token = current_token(parser)
       precedence = current_precedence(parser)
       meta = current_meta(parser)
+      lhs_start = ast_start_meta(lhs)
+      lhs_start = if lhs_start == [], do: expression_start(parser), else: lhs_start
 
       case peek_token_type(parser) do
         # if the next token is an open brace, we are in a multi alias situation `alias Foo.{Bar, Baz}`
@@ -2017,10 +2209,14 @@ defmodule Spitfire do
               newlines ++ [{:closing, current_meta(parser)} | dot_meta]
             end
 
-          multis =
-            {{:., dot_meta, [lhs, :{}]}, outer_meta, multis}
+          end_meta = current_end_meta(parser)
+          range = build_range(lhs_start, end_meta)
+          outer_meta_with_range = put_range(outer_meta, range)
 
-          {multis, parser}
+          multis =
+            {{:., put_range(dot_meta, range), [lhs, :{}]}, outer_meta_with_range, multis}
+
+          {multis, set_expression_start(parser, lhs_start)}
 
         # if the next token is an alias, then we are in a dot chain of aliases, eg: __MODULE__.Foo
         :alias ->
@@ -2029,7 +2225,11 @@ defmodule Spitfire do
           {{:__aliases__, ameta, aliases}, parser} = parse_alias(parser)
 
           last = ameta[:last]
-          {{:__aliases__, [{:last, last} | meta], [lhs | aliases]}, parser}
+          end_meta = current_end_meta(parser)
+          range = build_range(lhs_start, end_meta)
+
+          {{:__aliases__, [{:last, last} | put_range(meta, range)], [lhs | aliases]},
+           set_expression_start(parser, lhs_start)}
 
         # if the next token is a bracket_identifier, then we know that the whole dot expression needs to be used as an argument for the access expression. eg, foo.bar[:baz]
         :bracket_identifier ->
@@ -2041,20 +2241,24 @@ defmodule Spitfire do
             |> current_meta()
             |> push_delimiter(token_meta)
 
-          rhs = {{token, meta, [lhs, rhs]}, [no_parens: true] ++ ident_meta, []}
+          end_meta = current_end_meta(parser)
+          range = build_range(lhs_start, end_meta)
+          rhs = {{token, put_range(meta, range), [lhs, rhs]}, [{:no_parens, true} | put_range(ident_meta, range)], []}
 
           parser = next_token(parser)
           {ast, parser} = parse_access_expression(parser, rhs)
 
-          {ast, eat_eoe(parser)}
+          {ast, set_expression_start(eat_eoe(parser), lhs_start)}
 
         :paren_identifier ->
           parser = next_token(parser)
           {{rhs, next_meta, args}, parser} = parse_expression(parser, precedence, false, false, false)
 
           args = if args == nil, do: [], else: args
-          ast = {{token, meta, [lhs, rhs]}, next_meta, args}
-          {ast, parser}
+          end_meta = current_end_meta(parser)
+          range = build_range(lhs_start, end_meta)
+          ast = {{token, put_range(meta, range), [lhs, rhs]}, put_range(next_meta, range), args}
+          {ast, set_expression_start(parser, lhs_start)}
 
         type when type in [:identifier, :do_identifier, :op_identifier] ->
           parser = next_token(parser)
@@ -2069,13 +2273,17 @@ defmodule Spitfire do
           lone? = type != :op_identifier && MapSet.member?(@peeks, peek_token(parser))
 
           if lone? do
-            ast = {{token, meta, [lhs, rhs_name]}, [no_parens: true] ++ ident_meta, []}
+            end_meta = current_end_meta(parser)
+            range = build_range(lhs_start, end_meta)
+
+            ast =
+              {{token, put_range(meta, range), [lhs, rhs_name]}, [{:no_parens, true} | put_range(ident_meta, range)], []}
 
             # Handle trailing do-block
             if parser.nesting == 0 && peek_token(parser) == :do do
               parse_do_block(next_token(parser), ast)
             else
-              {ast, parser}
+              {ast, set_expression_start(parser, lhs_start)}
             end
           else
             # No-parens call with args
@@ -2109,7 +2317,9 @@ defmodule Spitfire do
             parser = pop_nesting(parser)
 
             # Handle trailing do-block
-            dot_call = {{token, meta, [lhs, rhs_name]}, ident_meta, args}
+            end_meta = current_end_meta(parser)
+            range = build_range(lhs_start, end_meta)
+            dot_call = {{token, put_range(meta, range), [lhs, rhs_name]}, put_range(ident_meta, range), args}
 
             cond do
               parser.nesting == 0 && current_token(parser) == :do ->
@@ -2120,7 +2330,7 @@ defmodule Spitfire do
 
               true ->
                 # NOTE(doorgan): we don't add ambiguous_op for dot calls, only for regular identifier calls
-                {dot_call, parser}
+                {dot_call, set_expression_start(parser, lhs_start)}
             end
           end
 
@@ -2128,9 +2338,11 @@ defmodule Spitfire do
           parser = next_token(parser)
           next_meta = current_meta(parser)
           {rhs, parser} = parse_expression(parser, @lowest, false, false, false)
-          ast = {{token, meta, [lhs, rhs]}, next_meta, []}
+          end_meta = current_end_meta(parser)
+          range = build_range(lhs_start, end_meta)
+          ast = {{token, put_range(meta, range), [lhs, rhs]}, put_range(next_meta, range), []}
 
-          {ast, parser}
+          {ast, set_expression_start(parser, lhs_start)}
       end
     end
   end
@@ -2271,10 +2483,15 @@ defmodule Spitfire do
       {parser, meta} =
         case current_token(parser) do
           :end ->
-            {parser, [{:closing, current_meta(parser)} | meta]}
+            closing_meta = current_meta(parser)
+            end_meta = current_end_meta(parser)
+            range = build_range(meta, end_meta)
+            {parser, [{:closing, closing_meta}, {:range, range} | meta]}
 
           _ ->
-            {put_error(parser, {meta, "missing closing end for anonymous function"}), meta}
+            end_meta = current_end_meta(parser)
+            range = build_range(meta, end_meta)
+            {put_error(parser, {meta, "missing closing end for anonymous function"}), [{:range, range} | meta]}
         end
 
       {{:fn, newlines ++ meta, exprs}, parser}
@@ -2284,23 +2501,34 @@ defmodule Spitfire do
   defp parse_dot_call_expression(parser, lhs) do
     trace "parse_dot_call_expression", trace_meta(parser) do
       meta = current_meta(parser)
+      lhs_start = ast_start_meta(lhs)
+      lhs_start = if lhs_start == [], do: expression_start(parser), else: lhs_start
       parser = next_token(parser)
       newlines = get_newlines(parser)
 
       parser = eat_eoe(parser)
 
-      if peek_token(parser) == :")" do
+      if peek_token_skip_eoe(parser) == :")" do
+        parser =
+          while peek_token(parser) in [:eol, :";"] <- parser do
+            next_token(parser)
+          end
+
         parser = next_token(parser)
-        closing = [closing: current_meta(parser)]
-        ast = {{:., meta, [lhs]}, newlines ++ closing ++ meta, []}
-        {ast, parser}
+        closing = current_meta(parser)
+        end_meta = current_end_meta(parser)
+        range = build_range(lhs_start, end_meta)
+        ast = {{:., put_range(meta, range), [lhs]}, newlines ++ [{:closing, closing} | put_range(meta, range)], []}
+        {ast, set_expression_start(parser, lhs_start)}
       else
         {pairs, parser} = parse_comma_list(parser |> next_token() |> eat_eoe())
         parser = parser |> next_token() |> eat_eoe()
-        closing = [closing: current_meta(parser)]
-        ast = {{:., meta, [lhs]}, newlines ++ closing ++ meta, pairs}
+        closing = current_meta(parser)
+        end_meta = current_end_meta(parser)
+        range = build_range(lhs_start, end_meta)
+        ast = {{:., put_range(meta, range), [lhs]}, newlines ++ [{:closing, closing} | put_range(meta, range)], pairs}
 
-        {ast, parser}
+        {ast, set_expression_start(parser, lhs_start)}
       end
     end
   end
@@ -2323,6 +2551,7 @@ defmodule Spitfire do
     trace "parse_atom (#{type})", trace_meta(parser) do
       meta = current_meta(parser)
       {args, parser} = parse_interpolation(parser, tokens)
+      range = build_range(meta, current_end_meta(parser))
 
       binary_to_atom_op =
         case type do
@@ -2332,7 +2561,8 @@ defmodule Spitfire do
 
       delimiter_meta = push_delimiter(meta, token_meta)
 
-      {{{:., meta, [:erlang, binary_to_atom_op]}, delimiter_meta, [{:<<>>, meta, args}, :utf8]}, parser}
+      {{{:., put_range(meta, range), [:erlang, binary_to_atom_op]}, put_range(delimiter_meta, range),
+        [{:<<>>, put_range(meta, range), args}, :utf8]}, parser}
     end
   end
 
@@ -2344,14 +2574,14 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_int(%{current_token: {:int, {_, _, int} = meta, _}} = parser) do
+  defp parse_int(%{current_token: {:int, {_, _, _, _, int} = meta, _}} = parser) do
     trace "parse_int", trace_meta(parser) do
       int = encode_literal(parser, int, meta)
       {int, parser}
     end
   end
 
-  defp parse_float(%{current_token: {:flt, {_, _, float} = meta, _}} = parser) do
+  defp parse_float(%{current_token: {:flt, {_, _, _, _, float} = meta, _}} = parser) do
     trace "parse_float", trace_meta(parser) do
       float = encode_literal(parser, float, meta)
       {float, parser}
@@ -2385,7 +2615,10 @@ defmodule Spitfire do
           meta
         end
 
-      {{:<<>>, [{:delimiter, ~s|"""|} | meta], args}, parser}
+      end_meta = current_end_meta(parser)
+      range = build_range(meta, end_meta)
+
+      {{:<<>>, [{:delimiter, ~s|"""|}, {:range, range} | meta], args}, parser}
     end
   end
 
@@ -2393,61 +2626,19 @@ defmodule Spitfire do
     trace "parse_string (list_heredoc w/interpolation)", trace_meta(parser) do
       meta = current_meta(parser)
 
-      args =
-        for token <- tokens do
-          case token do
-            token when is_binary(token) ->
-              token
+      {args, parser} =
+        Enum.map_reduce(tokens, parser, fn
+          token, parser when is_binary(token) ->
+            {token, parser}
 
-            {{line, col, _}, {cline, ccol, _}, tokens} ->
-              meta = [line: line, column: col]
-              # construct a new parser
-              ast =
-                if tokens == [] do
-                  {:__block__, [], []}
-                else
-                  parser =
-                    %{
-                      tokens: tokens ++ [:eof],
-                      current_token: nil,
-                      peek_token: nil,
-                      nesting: 0,
-                      fuel: 150,
-                      errors: [],
-                      literal_encoder: parser.literal_encoder
-                    }
-                    |> next_token()
-                    |> next_token()
+          {{line, col, _, _, _}, {cline, ccol, _, _, _}, tokens}, parser ->
+            meta = [line: line, column: col]
+            range = build_range(meta, end_line: cline, end_column: ccol + 1)
+            {ast, parser} = parse_interpolation_ast(parser, tokens)
 
-                  initial_meta = current_meta(parser)
-                  parser = eat_eoe(parser)
-
-                  if current_token(parser) == :eof do
-                    {:__block__, initial_meta, []}
-                  else
-                    {exprs, _parser} =
-                      while2 current_token(parser) != :eof <- parser do
-                        {ast, parser} = parse_expression(parser, @lowest, false, false, true)
-
-                        parser =
-                          if peek_token(parser) in [:eol, :";", :eof] do
-                            next_token(parser)
-                          else
-                            parser
-                          end
-
-                        ast = push_eoe(ast, current_eoe(parser))
-                        {ast, eat_eoe(parser)}
-                      end
-
-                    build_block_nr(exprs)
-                  end
-                end
-
-              {{:., meta, [Kernel, :to_string]}, [from_interpolation: true, closing: [line: cline, column: ccol]] ++ meta,
-               [ast]}
-          end
-        end
+            {{{:., meta, [Kernel, :to_string]},
+              [from_interpolation: true, closing: [line: cline, column: ccol], range: range] ++ meta, [ast]}, parser}
+        end)
 
       extra_meta =
         if indentation != nil do
@@ -2456,7 +2647,10 @@ defmodule Spitfire do
           []
         end
 
-      {{{:., meta, [List, :to_charlist]}, [{:delimiter, ~s|'''|} | extra_meta ++ meta], [args]}, parser}
+      range = build_range(meta, current_end_meta(parser))
+
+      {{{:., put_range(meta, range), [List, :to_charlist]},
+        [{:delimiter, ~s|'''|} | extra_meta ++ put_range(meta, range)], [args]}, parser}
     end
   end
 
@@ -2472,12 +2666,14 @@ defmodule Spitfire do
       meta = current_meta(parser)
 
       {args, parser} = parse_interpolation(parser, tokens)
+      end_meta = current_end_meta(parser)
+      range = build_range(meta, end_meta)
 
-      {{:<<>>, [{:delimiter, "\""} | meta], args}, parser}
+      {{:<<>>, [{:delimiter, "\""}, {:range, range} | meta], args}, parser}
     end
   end
 
-  defp parse_string(%{current_token: {:list_string, meta, [string]}} = parser) do
+  defp parse_string(%{current_token: {:list_string, meta, [string]}} = parser) when is_binary(string) do
     trace "parse_string (list_string)", trace_meta(parser) do
       string = encode_literal(parser, String.to_charlist(string), meta)
       {string, parser}
@@ -2488,67 +2684,27 @@ defmodule Spitfire do
     trace "parse_string (list_string w/interpolation)", trace_meta(parser) do
       meta = current_meta(parser)
 
-      args =
-        for token <- tokens do
-          case token do
-            token when is_binary(token) ->
-              token
+      {args, parser} =
+        Enum.map_reduce(tokens, parser, fn
+          token, parser when is_binary(token) ->
+            {token, parser}
 
-            {{line, col, _}, {cline, ccol, _}, tokens} ->
-              meta = [line: line, column: col]
-              # construct a new parser
-              ast =
-                if tokens == [] do
-                  {:__block__, [], []}
-                else
-                  parser =
-                    %{
-                      tokens: tokens ++ [:eof],
-                      current_token: nil,
-                      peek_token: nil,
-                      nesting: 0,
-                      fuel: 150,
-                      errors: [],
-                      literal_encoder: parser.literal_encoder
-                    }
-                    |> next_token()
-                    |> next_token()
+          {{line, col, _, _, _}, {cline, ccol, _, _, _}, tokens}, parser ->
+            meta = [line: line, column: col]
+            range = build_range(meta, end_line: cline, end_column: ccol + 1)
+            {ast, parser} = parse_interpolation_ast(parser, tokens)
 
-                  initial_meta = current_meta(parser)
-                  parser = eat_eoe(parser)
+            {{{:., meta, [Kernel, :to_string]},
+              [from_interpolation: true, closing: [line: cline, column: ccol], range: range] ++ meta, [ast]}, parser}
+        end)
 
-                  if current_token(parser) == :eof do
-                    {:__block__, initial_meta, []}
-                  else
-                    {exprs, _parser} =
-                      while2 current_token(parser) != :eof <- parser do
-                        {ast, parser} = parse_expression(parser, @lowest, false, false, true)
+      range = build_range(meta, current_end_meta(parser))
 
-                        parser =
-                          if peek_token(parser) in [:eol, :";", :eof] do
-                            next_token(parser)
-                          else
-                            parser
-                          end
-
-                        ast = push_eoe(ast, current_eoe(parser))
-                        {ast, eat_eoe(parser)}
-                      end
-
-                    build_block_nr(exprs)
-                  end
-                end
-
-              {{:., meta, [Kernel, :to_string]}, [from_interpolation: true, closing: [line: cline, column: ccol]] ++ meta,
-               [ast]}
-          end
-        end
-
-      {{{:., meta, [List, :to_charlist]}, [{:delimiter, "'"} | meta], [args]}, parser}
+      {{{:., put_range(meta, range), [List, :to_charlist]}, [{:delimiter, "'"} | put_range(meta, range)], [args]}, parser}
     end
   end
 
-  defp parse_char(%{current_token: {:char, {_, _, _token} = meta, num}} = parser) do
+  defp parse_char(%{current_token: {:char, {_, _, _, _, _token} = meta, num}} = parser) do
     trace "parse_char", trace_meta(parser) do
       char = encode_literal(parser, num, meta)
       {char, parser}
@@ -2568,7 +2724,10 @@ defmodule Spitfire do
           meta
         end
 
-      ast = {token, Keyword.put(meta, :delimiter, delimiter), [{:<<>>, bs_meta, args}, mods]}
+      end_meta = current_end_meta(parser)
+      range = build_range(meta, end_meta)
+
+      ast = {token, [{:range, range}, {:delimiter, delimiter} | meta], [{:<<>>, bs_meta, args}, mods]}
       {ast, parser}
     end
   end
@@ -2592,8 +2751,10 @@ defmodule Spitfire do
         end
 
       aliases = [alias | aliases]
+      end_meta = current_end_meta(parser)
+      range = build_range(meta, end_meta)
 
-      {{:__aliases__, [{:last, Process.get(:alias_last_meta)} | meta], aliases}, parser}
+      {{:__aliases__, [{:last, Process.get(:alias_last_meta)}, {:range, range} | meta], aliases}, parser}
     end
   after
     Process.delete(:alias_last_meta)
@@ -2608,7 +2769,10 @@ defmodule Spitfire do
 
       cond do
         current_token(parser) == :">>" ->
-          {{:<<>>, newlines ++ [{:closing, current_meta(parser)} | meta], []}, parser}
+          closing = current_meta(parser)
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
+          {{:<<>>, newlines ++ [{:range, range}, {:closing, closing} | meta], []}, parser}
 
         current_token(parser) in [:end, :"}", :")", :"]"] ->
           # if the current token is the wrong kind of ending delimiter, we revert to the previous parser
@@ -2623,7 +2787,11 @@ defmodule Spitfire do
             |> put_in([:peek_token], parser.current_token)
             |> update_in([:tokens], &[parser.peek_token | &1])
 
-          {{:<<>>, [{:closing, current_meta(parser)} | meta], []}, parser}
+          closing = current_meta(parser)
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
+
+          {{:<<>>, [{:range, range}, {:closing, closing} | meta], []}, parser}
 
         true ->
           old_comma_list_parsers = Process.get(:comma_list_parsers)
@@ -2633,9 +2801,11 @@ defmodule Spitfire do
             :">>" ->
               parser = eat_eol_at(parser, 1)
               parser = next_token(parser)
+              end_meta = current_end_meta(parser)
+              range = build_range(meta, end_meta)
 
-              {{:<<>>, newlines ++ [{:closing, current_meta(parser)} | meta], wrap_trailing_bitstring_keywords(pairs)},
-               eat_eol(parser)}
+              {{:<<>>, newlines ++ [{:range, range}, {:closing, current_meta(parser)} | meta],
+                wrap_trailing_bitstring_keywords(pairs)}, eat_eol(parser)}
 
             _ ->
               all_pairs = pairs |> Enum.reverse() |> Enum.zip(Process.get(:comma_list_parsers))
@@ -2665,8 +2835,10 @@ defmodule Spitfire do
               parser = put_error(parser, {meta, "missing closing brackets for bitstring"})
 
               {pairs, _} = pairs |> Enum.reverse() |> Enum.unzip()
+              end_meta = current_end_meta(parser)
+              range = build_range(meta, end_meta)
 
-              {{:<<>>, newlines ++ [{:closing, current_meta(parser)} | meta],
+              {{:<<>>, newlines ++ [{:range, range}, {:closing, current_meta(parser)} | meta],
                 wrap_trailing_bitstring_keywords(List.wrap(pairs))}, parser}
           end
       end
@@ -2705,19 +2877,23 @@ defmodule Spitfire do
         current_token(parser) == :"}" ->
           closing = current_meta(parser)
           parser = Map.put(parser, :nesting, old_nesting)
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
 
           extra =
             if newlines do
-              [{:newlines, newlines}, {:closing, closing}]
+              [{:newlines, newlines}, {:closing, closing}, {:range, range}]
             else
-              [{:closing, closing}]
+              [{:closing, closing}, {:range, range}]
             end
 
           {{:%{}, extra ++ meta, []}, parser}
 
         peek_token(parser) == :eof ->
           parser = put_error(parser, {meta, "missing closing brace for map"})
-          {{:%{}, meta, []}, parser}
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
+          {{:%{}, [{:range, range} | meta], []}, parser}
 
         true ->
           # Clear inside_map_update_pairs so nested maps (e.g., %{outer | key: %{inner | k => v}})
@@ -2740,12 +2916,14 @@ defmodule Spitfire do
 
           closing = current_meta(parser)
           parser = Map.put(parser, :nesting, old_nesting)
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
 
           extra =
             if newlines do
-              [{:newlines, newlines}, {:closing, closing}]
+              [{:newlines, newlines}, {:closing, closing}, {:range, range}]
             else
-              [{:closing, closing}]
+              [{:closing, closing}, {:range, range}]
             end
 
           {{:%{}, extra ++ meta, pairs}, parser}
@@ -2972,7 +3150,9 @@ defmodule Spitfire do
            peek_token(parser) == :";" or
            peek in [:stab_op, :do, :end, :block_identifier] or
            (is_binary_op?(peek) and peek not in [:dual_op, :ternary_op]) do
-        {{:..., current_meta(parser), []}, parser}
+        end_meta = current_end_meta(parser)
+        range = build_range(current_meta(parser), end_meta)
+        {{:..., [{:range, range} | current_meta(parser)], []}, parser}
       else
         meta = current_meta(parser)
         parser = next_token(parser)
@@ -2992,7 +3172,10 @@ defmodule Spitfire do
             {rhs, parser}
           end
 
-        {{:..., meta, [rhs]}, parser}
+        end_meta = current_end_meta(parser)
+        range = build_range(meta, end_meta)
+
+        {{:..., [{:range, range} | meta], [rhs]}, parser}
       end
     end
   end
@@ -3059,7 +3242,14 @@ defmodule Spitfire do
 
           if current_token(parser) == :"}" do
             closing = current_meta(parser)
-            ast = {:%, meta, [type, {:%{}, newlines ++ [{:closing, closing} | brace_meta], []}]}
+            end_meta = current_end_meta(parser)
+            range = build_range(meta, end_meta)
+            map_range = build_range(brace_meta, end_meta)
+
+            ast =
+              {:%, [{:range, range} | meta],
+               [type, {:%{}, newlines ++ [{:range, map_range}, {:closing, closing} | brace_meta], []}]}
+
             parser = Map.put(parser, :nesting, old_nesting)
             {ast, parser}
           else
@@ -3077,7 +3267,14 @@ defmodule Spitfire do
               end
 
             closing = current_meta(parser)
-            ast = {:%, meta, [type, {:%{}, newlines ++ [{:closing, closing} | brace_meta], pairs}]}
+            end_meta = current_end_meta(parser)
+            range = build_range(meta, end_meta)
+            map_range = build_range(brace_meta, end_meta)
+
+            ast =
+              {:%, [{:range, range} | meta],
+               [type, {:%{}, newlines ++ [{:range, map_range}, {:closing, closing} | brace_meta], pairs}]}
+
             parser = Map.put(parser, :nesting, old_nesting)
             {ast, parser}
           end
@@ -3104,7 +3301,9 @@ defmodule Spitfire do
                 {parser, brace_meta}
             end
 
-          ast = {:%, meta, [type, {:%{}, closing_meta, pairs}]}
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
+          ast = {:%, [{:range, range} | meta], [type, {:%{}, closing_meta, pairs}]}
           parser = Map.put(parser, :nesting, old_nesting)
           {ast, parser}
 
@@ -3114,7 +3313,9 @@ defmodule Spitfire do
               do: put_error(parser, {current_meta(parser), "missing opening brace for struct %#{struct_name}"}),
               else: parser
 
-          {{:%, meta, [type, {:%{}, [], []}]}, parser}
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
+          {{:%, [{:range, range} | meta], [type, {:%{}, [], []}]}, parser}
       end
     end
   end
@@ -3133,12 +3334,14 @@ defmodule Spitfire do
         current_token(parser) == :"}" ->
           closing = current_meta(parser)
           parser = Map.put(parser, :nesting, old_nesting)
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
 
           extra =
             if newlines do
-              [{:newlines, newlines}, {:closing, closing}]
+              [{:newlines, newlines}, {:closing, closing}, {:range, range}]
             else
-              [{:closing, closing}]
+              [{:closing, closing}, {:range, range}]
             end
 
           {{:{}, extra ++ meta, []}, parser}
@@ -3157,7 +3360,9 @@ defmodule Spitfire do
             |> update_in([:tokens], &[parser.peek_token | &1])
 
           parser = put_in(parser.nesting, old_nesting)
-          {{:{}, meta, []}, parser}
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
+          {{:{}, [{:range, range} | meta], []}, parser}
 
         true ->
           old_comma_list_parsers = Process.get(:comma_list_parsers)
@@ -3208,12 +3413,14 @@ defmodule Spitfire do
           else
             closing = current_meta(parser)
             parser = Map.put(parser, :nesting, old_nesting)
+            end_meta = current_end_meta(parser)
+            range = build_range(meta, end_meta)
 
             extra =
               if newlines do
-                [{:newlines, newlines}, {:closing, closing}]
+                [{:newlines, newlines}, {:closing, closing}, {:range, range}]
               else
-                [{:closing, closing}]
+                [{:closing, closing}, {:range, range}]
               end
 
             {{:{}, extra ++ meta, List.wrap(pairs)}, parser}
@@ -3314,17 +3521,22 @@ defmodule Spitfire do
       cond do
         peek_token(parser) == :eof ->
           closing = current_meta(parser)
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
           parser = put_error(parser, {closing, "missing closing parentheses"})
-          {{token, newlines ++ [{:closing, closing} | meta], []}, parser}
+          {{token, newlines ++ [{:range, range}, {:closing, closing} | meta], []}, parser}
 
         peek_token(parser) == :")" ->
           parser = next_token(parser)
           closing = current_meta(parser)
-          ast = {token, newlines ++ [{:closing, closing} | meta], []}
+          end_meta = current_end_meta(parser)
+          range = build_range(meta, end_meta)
+          ast = {token, newlines ++ [{:range, range}, {:closing, closing} | meta], []}
 
           if peek_token(parser) == :do and parser.nesting == 0 do
             parser = next_token(parser)
-            parse_do_block(parser, ast)
+            ast_no_range = {token, newlines ++ [{:closing, closing} | meta], []}
+            parse_do_block(parser, ast_no_range)
           else
             {ast, parser}
           end
@@ -3341,11 +3553,14 @@ defmodule Spitfire do
           if current_token(parser) == :")" do
             parser = Map.put(parser, :nesting, old_nesting)
             closing = current_meta(parser)
-            ast = {token, newlines ++ [{:closing, closing} | meta], []}
+            end_meta = current_end_meta(parser)
+            range = build_range(meta, end_meta)
+            ast = {token, newlines ++ [{:range, range}, {:closing, closing} | meta], []}
 
             if peek_token(parser) == :do and parser.nesting == 0 do
               parser = next_token(parser)
-              parse_do_block(parser, ast)
+              ast_no_range = {token, newlines ++ [{:closing, closing} | meta], []}
+              parse_do_block(parser, ast_no_range)
             else
               {ast, parser}
             end
@@ -3360,19 +3575,24 @@ defmodule Spitfire do
               :")" ->
                 parser = next_token(parser)
                 closing = current_meta(parser)
+                end_meta = current_end_meta(parser)
+                range = build_range(meta, end_meta)
 
-                ast = {token, newlines ++ [{:closing, closing} | meta], List.wrap(pairs)}
+                ast = {token, newlines ++ [{:range, range}, {:closing, closing} | meta], List.wrap(pairs)}
 
                 if peek_token(parser) == :do and parser.nesting == 0 do
                   parser = next_token(parser)
-                  parse_do_block(parser, ast)
+                  ast_no_range = {token, newlines ++ [{:closing, closing} | meta], List.wrap(pairs)}
+                  parse_do_block(parser, ast_no_range)
                 else
                   {ast, parser}
                 end
 
               _ ->
+                end_meta = current_end_meta(parser)
+                range = build_range(meta, end_meta)
                 parser = put_error(parser, {error_meta, "missing closing parentheses for function invocation"})
-                {{token, newlines ++ meta, List.wrap(pairs)}, parser}
+                {{token, newlines ++ [{:range, range} | meta], List.wrap(pairs)}, parser}
             end
           end
       end
@@ -3412,6 +3632,8 @@ defmodule Spitfire do
 
         args = [front | args]
         parser = pop_nesting(parser)
+        end_meta = current_end_meta(parser)
+        range = build_range(meta, end_meta)
 
         {ast, parser} =
           cond do
@@ -3424,9 +3646,9 @@ defmodule Spitfire do
             true ->
               meta =
                 if identifier == :op_identifier && match?([_], args) do
-                  [{:ambiguous_op, nil} | meta]
+                  [{:ambiguous_op, nil}, {:range, range} | meta]
                 else
-                  meta
+                  [{:range, range} | meta]
                 end
 
               {{token, meta, args}, parser}
@@ -3441,7 +3663,9 @@ defmodule Spitfire do
   defp parse_do_identifier(%{current_token: {:do_identifier, _, token}} = parser) do
     trace "parse_do_identifier - nesting[#{parser.nesting}]", trace_meta(parser) do
       meta = current_meta(parser)
+      end_meta = current_end_meta(parser)
       parser = next_token(parser)
+      range = build_range(meta, end_meta)
 
       # if nesting is 0, that means we are not currently an argument for a function call
       # and can assume we are a "lone do_identifier" and parse the block
@@ -3452,7 +3676,7 @@ defmodule Spitfire do
       if parser.nesting == 0 do
         parse_do_block(parser, {token, meta, []})
       else
-        {{token, meta, nil}, parser}
+        {{token, [{:range, range} | meta], nil}, parser}
       end
     end
   end
@@ -3461,6 +3685,8 @@ defmodule Spitfire do
     trace "parse_call_expression", trace_meta(parser) do
       # this might be wrong, but its how Code.string_to_quoted works
       {_, meta, _} = lhs
+      lhs_start = ast_start_meta(lhs)
+      lhs_start = if lhs_start == [], do: expression_start(parser), else: lhs_start
 
       newlines = get_newlines(parser)
 
@@ -3468,12 +3694,16 @@ defmodule Spitfire do
         peek_token(parser) == :eof ->
           parser = put_error(parser, {meta, "missing closing parentheses for function invocation"})
           closing = current_meta(parser)
-          {{lhs, newlines ++ [{:closing, closing} | meta], []}, parser}
+          end_meta = current_end_meta(parser)
+          range = build_range(lhs_start, end_meta)
+          {{lhs, newlines ++ [{:closing, closing} | put_range(meta, range)], []}, set_expression_start(parser, lhs_start)}
 
         peek_token(parser) == :")" ->
           parser = next_token(parser)
           closing = current_meta(parser)
-          {{lhs, newlines ++ [{:closing, closing} | meta], []}, parser}
+          end_meta = current_end_meta(parser)
+          range = build_range(lhs_start, end_meta)
+          {{lhs, newlines ++ [{:closing, closing} | put_range(meta, range)], []}, set_expression_start(parser, lhs_start)}
 
         true ->
           {pairs, parser} =
@@ -3494,8 +3724,11 @@ defmodule Spitfire do
             end
 
           closing = current_meta(parser)
+          end_meta = current_end_meta(parser)
+          range = build_range(lhs_start, end_meta)
 
-          {{lhs, newlines ++ [{:closing, closing} | meta], List.wrap(pairs)}, parser}
+          {{lhs, newlines ++ [{:closing, closing} | put_range(meta, range)], List.wrap(pairs)},
+           set_expression_start(parser, lhs_start)}
       end
     end
   end
@@ -3507,7 +3740,10 @@ defmodule Spitfire do
         |> current_meta()
         |> push_delimiter(token_meta)
 
-      {{token, meta, nil}, parser}
+      end_meta = current_end_meta(parser)
+      range = build_range(meta, end_meta)
+
+      {{token, [{:range, range} | meta], nil}, parser}
     end
   end
 
@@ -3561,7 +3797,10 @@ defmodule Spitfire do
             parse_lone_identifier(parser)
         end
 
-      {{token, meta, [rhs]}, parser}
+      end_meta = current_end_meta(parser)
+      range = build_range(meta, end_meta)
+
+      {{token, [{:range, range} | meta], [rhs]}, parser}
     end
   end
 
@@ -3601,69 +3840,70 @@ defmodule Spitfire do
 
   defp parse_interpolation(parser, tokens) do
     trace "parse_interpolation", trace_meta(parser) do
-      args =
-        for token <- tokens do
-          case token do
-            token when is_binary(token) ->
-              token
+      {args, parser} =
+        Enum.map_reduce(tokens, parser, fn
+          token, parser when is_binary(token) ->
+            {token, parser}
 
-            {{line, col, _}, {cline, ccol, _}, tokens} ->
-              meta = [line: line, column: col]
+          {{line, col, _, _, _}, {cline, ccol, _, _, _}, tokens}, parser ->
+            meta = [line: line, column: col]
+            range = build_range(meta, end_line: cline, end_column: ccol + 1)
 
-              # construct a new parser
-              ast =
-                if tokens == [] do
-                  {:__block__, [], []}
-                else
-                  parser =
-                    %{
-                      tokens: tokens ++ [:eof],
-                      current_token: nil,
-                      errors: [],
-                      peek_token: nil,
-                      nesting: 0,
-                      fuel: 150,
-                      literal_encoder: parser.literal_encoder
-                    }
-                    |> next_token()
-                    |> next_token()
+            {ast, parser} = parse_interpolation_ast(parser, tokens)
 
-                  initial_meta = current_meta(parser)
-                  parser = eat_eoe(parser)
-
-                  if current_token(parser) == :eof do
-                    {:__block__, initial_meta, []}
-                  else
-                    {exprs, _parser} =
-                      while2 current_token(parser) != :eof <- parser do
-                        {ast, parser} = parse_expression(parser, @lowest, false, false, true)
-
-                        parser =
-                          if peek_token(parser) in [:eol, :";", :eof] do
-                            next_token(parser)
-                          else
-                            parser
-                          end
-
-                        ast = push_eoe(ast, current_eoe(parser))
-                        {ast, eat_eoe(parser)}
-                      end
-
-                    build_block_nr(exprs)
-                  end
-                end
-
-              {:"::", meta,
-               [
-                 {{:., meta, [Kernel, :to_string]},
-                  [from_interpolation: true, closing: [line: cline, column: ccol]] ++ meta, [ast]},
-                 {:binary, meta, nil}
-               ]}
-          end
-        end
+            {{:"::", put_range(meta, range),
+              [
+                {{:., meta, [Kernel, :to_string]},
+                 [from_interpolation: true, closing: [line: cline, column: ccol], range: range] ++ meta, [ast]},
+                {:binary, meta, nil}
+              ]}, parser}
+        end)
 
       {args, parser}
     end
+  end
+
+  defp parse_interpolation_ast(outer_parser, tokens) do
+    parser =
+      %{
+        tokens: tokens ++ [:eof],
+        current_token: nil,
+        errors: [],
+        peek_token: nil,
+        nesting: 0,
+        fuel: 150,
+        literal_encoder: outer_parser.literal_encoder
+      }
+      |> next_token()
+      |> next_token()
+
+    initial_meta = current_meta(parser)
+
+    parser = eat_eoe(parser)
+
+    ast =
+      if current_token(parser) == :eof do
+        {:__block__, initial_meta, []}
+      else
+        {exprs, _parser} =
+          while2 current_token(parser) != :eof <- parser do
+            {ast, parser} = parse_expression(parser, @lowest, false, false, true)
+
+            parser =
+              if peek_token(parser) in [:eol, :";", :eof] do
+                next_token(parser)
+              else
+                parser
+              end
+
+            ast = push_eoe(ast, current_eoe(parser))
+            {ast, eat_eoe(parser)}
+          end
+
+        build_block_nr(exprs)
+      end
+
+    {ast, outer_parser}
   end
 
   defp new(code, opts) do
@@ -3994,15 +4234,15 @@ defmodule Spitfire do
     token
   end
 
-  defp current_meta(%{current_token: {:sigil, {line, col, _}, _token, _tokens, _mods, _, _delimiter}}) do
+  defp current_meta(%{current_token: {:sigil, {line, col, _, _, _}, _token, _tokens, _mods, _, _delimiter}}) do
     [line: line, column: col]
   end
 
-  defp current_meta(%{current_token: {:bin_heredoc, {line, col, _}, _indent, _tokens}}) do
+  defp current_meta(%{current_token: {:bin_heredoc, {line, col, _, _, _}, _indent, _tokens}}) do
     [line: line, column: col]
   end
 
-  defp current_meta(%{current_token: {:list_heredoc, {line, col, _}, _indent, _tokens}}) do
+  defp current_meta(%{current_token: {:list_heredoc, {line, col, _, _, _}, _indent, _tokens}}) do
     [line: line, column: col]
   end
 
@@ -4011,16 +4251,88 @@ defmodule Spitfire do
     []
   end
 
-  defp current_meta(%{current_token: {_token, {line, col, _}, _}}) do
+  defp current_meta(%{current_token: {_token, {line, col, _, _, _}, _}}) do
     [line: line, column: col]
   end
 
-  defp current_meta(%{current_token: {_token, {line, col, _}}}) do
+  defp current_meta(%{current_token: {_token, {line, col, _, _, _}}}) do
     [line: line, column: col]
   end
 
   defp current_meta(_) do
     []
+  end
+
+  defp current_end_meta(%{
+         current_token: {:sigil, {_line, _col, end_line, end_col, _}, _token, _tokens, _mods, _, _delimiter}
+       }) do
+    [end_line: end_line, end_column: end_col]
+  end
+
+  defp current_end_meta(%{current_token: {:bin_heredoc, {_line, _col, end_line, end_col, _}, _indent, _tokens}}) do
+    [end_line: end_line, end_column: end_col]
+  end
+
+  defp current_end_meta(%{current_token: {:list_heredoc, {_line, _col, end_line, end_col, _}, _indent, _tokens}}) do
+    [end_line: end_line, end_column: end_col]
+  end
+
+  defp current_end_meta(%{current_token: {token, _}})
+       when token in [:fake_closing_brace, :fake_closing_bracket, :fake_closing_brackets] do
+    []
+  end
+
+  defp current_end_meta(%{current_token: {_token, {_line, _col, end_line, end_col, _}, _}}) do
+    [end_line: end_line, end_column: end_col]
+  end
+
+  defp current_end_meta(%{current_token: {_token, {_line, _col, end_line, end_col, _}}}) do
+    [end_line: end_line, end_column: end_col]
+  end
+
+  defp current_end_meta(_) do
+    []
+  end
+
+  defp put_range(meta, range) do
+    [{:range, range} | Keyword.delete(meta, :range)]
+  end
+
+  defp ast_start_meta([first | _]), do: ast_start_meta(first)
+  defp ast_start_meta([]), do: []
+
+  defp ast_start_meta({_, meta, _}) when is_list(meta) do
+    case Keyword.get(meta, :range) do
+      %{start: {line, column}} when is_integer(line) and is_integer(column) ->
+        [line: line, column: column]
+
+      _ ->
+        line = Keyword.get(meta, :line)
+        column = Keyword.get(meta, :column)
+
+        if is_integer(line) and is_integer(column) do
+          [line: line, column: column]
+        else
+          []
+        end
+    end
+  end
+
+  defp ast_start_meta(_), do: []
+
+  defp expression_start(parser) do
+    Map.get(parser, :expression_start, current_meta(parser))
+  end
+
+  defp set_expression_start(parser, meta) do
+    Map.put(parser, :expression_start, meta)
+  end
+
+  defp build_range(start_meta, end_meta) do
+    %{
+      start: {Keyword.get(start_meta, :line), Keyword.get(start_meta, :column)},
+      end: {Keyword.get(end_meta, :end_line), Keyword.get(end_meta, :end_column)}
+    }
   end
 
   if @trace? do
@@ -4029,16 +4341,16 @@ defmodule Spitfire do
     end
   end
 
-  defp current_eoe(%{current_token: {token, {line, col, newlines}}})
+  defp current_eoe(%{current_token: {token, {line, col, _, _, newlines}}})
        when token in [:eol, :";"] and is_integer(newlines) do
     [newlines: newlines, line: line, column: col]
   end
 
-  defp current_eoe(%{current_token: {token, {line, col, _}, _}}) when token in [:eol, :";"] do
+  defp current_eoe(%{current_token: {token, {line, col, _, _, _}, _}}) when token in [:eol, :";"] do
     [line: line, column: col]
   end
 
-  defp current_eoe(%{current_token: {token, {line, col, _}}}) when token in [:eol, :";"] do
+  defp current_eoe(%{current_token: {token, {line, col, _, _, _}}}) when token in [:eol, :";"] do
     [line: line, column: col]
   end
 
@@ -4046,15 +4358,16 @@ defmodule Spitfire do
     nil
   end
 
-  defp peek_eoe(%{peek_token: {token, {line, col, newlines}}}) when token in [:eol, :";"] and is_integer(newlines) do
+  defp peek_eoe(%{peek_token: {token, {line, col, _, _, newlines}}})
+       when token in [:eol, :";"] and is_integer(newlines) do
     [newlines: newlines, line: line, column: col]
   end
 
-  defp peek_eoe(%{peek_token: {token, {line, col, _}, _}}) when token in [:eol, :";"] do
+  defp peek_eoe(%{peek_token: {token, {line, col, _, _, _}, _}}) when token in [:eol, :";"] do
     [line: line, column: col]
   end
 
-  defp peek_eoe(%{peek_token: {token, {line, col, _}}}) when token in [:eol, :";"] do
+  defp peek_eoe(%{peek_token: {token, {line, col, _, _, _}}}) when token in [:eol, :";"] do
     [line: line, column: col]
   end
 
@@ -4085,12 +4398,12 @@ defmodule Spitfire do
     :in_op
   ]
 
-  defp current_newlines(%{current_token: {token, {_line, _col, newlines}, _}})
+  defp current_newlines(%{current_token: {token, {_line, _col, _, _, newlines}, _}})
        when token in @newline_carrying_tokens and is_integer(newlines) do
     newlines
   end
 
-  defp current_newlines(%{current_token: {token, {_line, _col, newlines}}})
+  defp current_newlines(%{current_token: {token, {_line, _col, _, _, newlines}}})
        when token in @newline_carrying_tokens and is_integer(newlines) do
     newlines
   end
@@ -4099,7 +4412,7 @@ defmodule Spitfire do
     nil
   end
 
-  defp peek_newlines(%{peek_token: {:eol, {_line, _col, newlines}}}) when is_integer(newlines) do
+  defp peek_newlines(%{peek_token: {:eol, {_line, _col, _, _, newlines}}}) when is_integer(newlines) do
     newlines
   end
 
@@ -4107,7 +4420,7 @@ defmodule Spitfire do
     nil
   end
 
-  defp peek_newlines(%{peek_token: {token, {_line, _col, newlines}}}, token) when is_integer(newlines) do
+  defp peek_newlines(%{peek_token: {token, {_line, _col, _, _, newlines}}}, token) when is_integer(newlines) do
     newlines
   end
 
@@ -4131,10 +4444,23 @@ defmodule Spitfire do
     %{parser | nesting: nesting + 1}
   end
 
-  defp encode_literal(%{literal_encoder: encoder} = parser, literal, {line, col, _}) when is_function(encoder) do
-    meta = additional_meta(literal, parser) ++ [line: line, column: col]
+  defp encode_literal(%{literal_encoder: encoder} = parser, literal, {line, col, end_line, end_col, _})
+       when is_function(encoder) do
+    start_meta = [line: line, column: col]
+    extra_meta = additional_meta(literal, parser)
 
-    case parser.literal_encoder.(literal, meta) do
+    end_meta =
+      literal
+      |> literal_end_meta(parser)
+      |> case do
+        [] -> [end_line: end_line, end_column: end_col]
+        meta -> meta
+      end
+
+    range = build_range(start_meta, end_meta)
+    meta = extra_meta ++ [range: range, line: line, column: col]
+
+    case encoder.(literal, meta) do
       {:ok, ast} ->
         ast
 
@@ -4147,6 +4473,23 @@ defmodule Spitfire do
   defp encode_literal(_parser, literal, _) do
     literal
   end
+
+  defp literal_end_meta(literal, parser) when is_list(literal) do
+    cond do
+      current_token_type(parser) in [:list_string, :list_heredoc] ->
+        current_end_meta(parser)
+
+      current_token(parser) == :"]" ->
+        current_end_meta(parser)
+
+      true ->
+        parser
+        |> next_token()
+        |> current_end_meta()
+    end
+  end
+
+  defp literal_end_meta(_literal, parser), do: current_end_meta(parser)
 
   defp additional_meta(_literal, %{current_token: {:list_string, _, _}}) do
     [delimiter: "'"]
@@ -4161,7 +4504,7 @@ defmodule Spitfire do
   end
 
   defp additional_meta(literal, parser) when is_list(literal) do
-    parser = next_token(parser)
+    parser = if current_token(parser) == :"]", do: parser, else: next_token(parser)
     closing = current_meta(parser)
     [closing: closing]
   end
@@ -4291,9 +4634,32 @@ defmodule Spitfire do
         expr
 
       _ ->
-        {:__block__, [], exprs}
+        {:__block__, block_range_meta(exprs), exprs}
     end
   end
+
+  defp block_range_meta([first | _] = exprs) do
+    with start_meta when start_meta != [] <- ast_start_meta(first),
+         end_meta when end_meta != [] <- ast_end_meta(List.last(exprs)) do
+      [range: build_range(start_meta, end_meta)]
+    else
+      _ -> []
+    end
+  end
+
+  defp block_range_meta([]), do: []
+
+  defp ast_end_meta({_, meta, _}) when is_list(meta) do
+    case Keyword.get(meta, :range) do
+      %{end: {line, column}} when is_integer(line) and is_integer(column) ->
+        [end_line: line, end_column: column]
+
+      _ ->
+        []
+    end
+  end
+
+  defp ast_end_meta(_), do: []
 
   # Code taken from Code.string_to_quoted_with_comments in Elixir core
   # Check it out here: https://github.com/elixir-lang/elixir/blob/12f62e49ca2399a15976d2051a2d7743dae48449/lib/elixir/lib/code.ex#L1327
@@ -4318,7 +4684,7 @@ defmodule Spitfire do
   defp next_eol_count([?\r, ?\n | rest], count), do: next_eol_count(rest, count + 1)
   defp next_eol_count(_, count), do: count
 
-  defp previous_eol_count([{token, {_, _, count}} | _]) when token in [:eol, :",", :";"] and count > 0 do
+  defp previous_eol_count([{token, {_, _, _, _, count}} | _]) when token in [:eol, :",", :";"] and count > 0 do
     count
   end
 
@@ -4342,13 +4708,14 @@ defmodule Spitfire do
       Enum.map_reduce(terminators, column, fn {start, _, _}, column ->
         atom = :spitfire_tokenizer.terminator(start)
 
-        {{atom, {line, column, nil}}, column + length(Atom.to_charlist(atom))}
+        {{atom, {line, column, line, column + length(Atom.to_charlist(atom)), nil}},
+         column + length(Atom.to_charlist(atom))}
       end)
 
     Enum.reverse(tokens, terminators)
   end
 
-  defp push_delimiter(meta, {_, _, delimiter}) when is_integer(delimiter) do
+  defp push_delimiter(meta, {_, _, _, _, delimiter}) when is_integer(delimiter) do
     [{:delimiter, "#{[delimiter]}"} | meta]
   end
 

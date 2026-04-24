@@ -7,32 +7,32 @@ defmodule SpitfireTest do
     test "semicolons" do
       code = "res = Foo.Bar.run(1, 2, 3); IO.inspect(res)"
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       res = Foo.Bar.run(1, 2, 3);
       IO.inspect(res)
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       fn one -> IO.inspect(one); one end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       def foo, do: IO.inspect("bob"); "bob"
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       foo do: IO.inspect("bob"); "bob"
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses valid elixir" do
@@ -48,7 +48,7 @@ defmodule SpitfireTest do
       end
       """
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "access syntax" do
@@ -70,7 +70,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -81,7 +81,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       foo do
@@ -91,7 +91,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "type syntax" do
@@ -122,7 +122,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -131,14 +131,14 @@ defmodule SpitfireTest do
       ^foo
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       ^
       foo
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses numbers" do
@@ -146,13 +146,13 @@ defmodule SpitfireTest do
       111_111
       """
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = """
       1.4
       """
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses strings" do
@@ -160,7 +160,7 @@ defmodule SpitfireTest do
       "foobar"
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       """
@@ -168,7 +168,7 @@ defmodule SpitfireTest do
       """
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses charlists" do
@@ -176,7 +176,7 @@ defmodule SpitfireTest do
       'foobar'
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S"""
       '''
@@ -184,13 +184,13 @@ defmodule SpitfireTest do
       '''
       """
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       'foo#{alice}bar'
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       'foo#{
@@ -198,7 +198,7 @@ defmodule SpitfireTest do
       }bar'
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S"""
       '''
@@ -206,7 +206,7 @@ defmodule SpitfireTest do
       '''
       """
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S"""
       '''
@@ -216,7 +216,7 @@ defmodule SpitfireTest do
       '''
       """
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses atoms" do
@@ -224,25 +224,25 @@ defmodule SpitfireTest do
       :foobar
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~s'''
       :","
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       :"foo#{}"
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       :"foo#{bar}"
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses left stab" do
@@ -250,7 +250,7 @@ defmodule SpitfireTest do
       apple <- apples
       """
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     # these tests do not test against Code.string_to_quoted because these code fragments parse as errors
@@ -260,7 +260,7 @@ defmodule SpitfireTest do
       # -> bar
       # """
 
-      # assert Spitfire.parse!(code) == [
+      # assert spitfire_parse!(code) == [
       #          {:->, [line: 1, column: 1],
       #           [[], {:bar, [{:end_of_expression, [newlines: 1, line: 1, column: 7]}, line: 1, column: 4], nil}]}
       #        ]
@@ -269,13 +269,13 @@ defmodule SpitfireTest do
       # -> :ok
       # """
 
-      # assert Spitfire.parse!(code) == [{:->, [line: 1, column: 1], [[], :ok]}]
+      # assert spitfire_parse!(code) == [{:->, [line: 1, column: 1], [[], :ok]}]
 
       # code = """
       # foo -> bar
       # """
 
-      # assert Spitfire.parse!(code) == [
+      # assert spitfire_parse!(code) == [
       #          {:->, [line: 1, column: 5],
       #           [
       #             [{:foo, [line: 1, column: 1], nil}],
@@ -287,7 +287,7 @@ defmodule SpitfireTest do
       # foo, bar, baz -> bar
       # """
 
-      # assert Spitfire.parse!(code) == [
+      # assert spitfire_parse!(code) == [
       #          {:->, [line: 1, column: 15],
       #           [
       #             [
@@ -308,7 +308,7 @@ defmodule SpitfireTest do
       # # if we get a prefix comma operator, that means we might need to backtrack and then
       # # parse a comma list. if we hit the operator, it means that we are not actually in an
       # # existing comma list, like a list or a map
-      # assert Spitfire.parse!(code) == [
+      # assert spitfire_parse!(code) == [
       #          {:->, [newlines: 1, line: 1, column: 19],
       #           [
       #             [
@@ -331,7 +331,7 @@ defmodule SpitfireTest do
         bar
       """
 
-      assert Spitfire.parse!(code) ==
+      assert spitfire_parse!(code) ==
                [
                  {:->, [newlines: 1, line: 1, column: 5],
                   [
@@ -372,7 +372,7 @@ defmodule SpitfireTest do
         :ok
       '''
 
-      assert Spitfire.parse!(code) == [
+      assert spitfire_parse!(code) == [
                {:->, [newlines: 1, line: 1, column: 6],
                 [[{:^, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}], :ok]}
              ]
@@ -382,7 +382,7 @@ defmodule SpitfireTest do
         :ok
       '''
 
-      assert Spitfire.parse!(code) == [
+      assert spitfire_parse!(code) == [
                {:->, [newlines: 1, line: 1, column: 6],
                 [[{:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}], :ok]}
              ]
@@ -418,7 +418,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -432,7 +432,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -448,7 +448,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -459,7 +459,7 @@ defmodule SpitfireTest do
       bob
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses lists" do
@@ -488,7 +488,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -523,7 +523,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -534,7 +534,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses pattern matching in list" do
@@ -548,7 +548,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -587,7 +587,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -619,7 +619,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -683,18 +683,18 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
     test "parses ambiguous map update" do
       code = ~S'%{a do :ok end | b c, d => e}'
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'%{a do :ok end | b c, d => e, f => g}'
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses structs" do
@@ -734,7 +734,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -886,7 +886,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -894,7 +894,7 @@ defmodule SpitfireTest do
       bad_code = ~S'!(left) in right'
       good_code = ~S'!(left in right)'
 
-      assert Spitfire.parse!(bad_code) ==
+      assert spitfire_parse!(bad_code) ==
                {
                  :!,
                  [line: 1, column: 9],
@@ -918,7 +918,7 @@ defmodule SpitfireTest do
                  ]
                }
 
-      assert Spitfire.parse!(good_code) ==
+      assert spitfire_parse!(good_code) ==
                {
                  :!,
                  [line: 1, column: 1],
@@ -954,7 +954,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -1034,7 +1034,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -1047,7 +1047,7 @@ defmodule SpitfireTest do
       )
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       (min_line = line(meta)
@@ -1055,14 +1055,14 @@ defmodule SpitfireTest do
       Enum.any?(comments, fn %{line: line} -> line > min_line and line < max_line end))
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       (foo -> bar
        baz -> boo)
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "when syntax inside normal expression" do
@@ -1070,19 +1070,19 @@ defmodule SpitfireTest do
       match?(x when is_nil(x), x)
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "when syntax inside keyword list" do
       code = ~S'[a: b when c]'
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "in_match_op inside keyword list" do
       code = ~S'[a: b <- c]'
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "case expr" do
@@ -1123,7 +1123,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -1139,7 +1139,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -1227,7 +1227,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -1264,22 +1264,22 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
     test "parses nested stab expressions" do
-      assert Spitfire.parse(~s'fn :a -> 1; :b -> 2 end') == s2q(~s'fn :a -> 1; :b -> 2 end')
-      assert Spitfire.parse(~s'fn x -> fn y -> x + y end end') == s2q(~s'fn x -> fn y -> x + y end end')
-      assert Spitfire.parse(~s'fn x, y -> x + y end') == s2q(~s'fn x, y -> x + y end')
+      assert spitfire_parse(~s'fn :a -> 1; :b -> 2 end') == s2q(~s'fn :a -> 1; :b -> 2 end')
+      assert spitfire_parse(~s'fn x -> fn y -> x + y end end') == s2q(~s'fn x -> fn y -> x + y end end')
+      assert spitfire_parse(~s'fn x, y -> x + y end') == s2q(~s'fn x, y -> x + y end')
 
-      assert Spitfire.parse(~s'fn {:ok, x} -> x; {:error, _} -> nil end') ==
+      assert spitfire_parse(~s'fn {:ok, x} -> x; {:error, _} -> nil end') ==
                s2q(~s'fn {:ok, x} -> x; {:error, _} -> nil end')
 
-      assert Spitfire.parse(~s'fn a -> fn b -> fn c -> a + b + c end end end') ==
+      assert spitfire_parse(~s'fn a -> fn b -> fn c -> a + b + c end end end') ==
                s2q(~s'fn a -> fn b -> fn c -> a + b + c end end end')
 
-      assert Spitfire.parse(~s'fn x -> Enum.map(x, fn y -> y * 2 end) end') ==
+      assert spitfire_parse(~s'fn x -> Enum.map(x, fn y -> y * 2 end) end') ==
                s2q(~s'fn x -> Enum.map(x, fn y -> y * 2 end) end')
     end
 
@@ -1292,7 +1292,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       fn
@@ -1303,7 +1303,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       case x do
@@ -1316,7 +1316,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       cond do
@@ -1329,7 +1329,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       receive do
@@ -1343,7 +1343,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       try do
@@ -1356,7 +1356,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses match operator" do
@@ -1367,27 +1367,27 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
     test "parses nil" do
       code = "nil"
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses booleans" do
       code = "false"
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = "true"
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses right stab argument with parens" do
       code = "if true do (x, y) -> x end"
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parses cond expression" do
@@ -1403,7 +1403,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -1416,7 +1416,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "when operator" do
@@ -1479,7 +1479,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -1501,7 +1501,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -1525,7 +1525,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -1548,7 +1548,7 @@ defmodule SpitfireTest do
       end)
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "big test" do
@@ -1631,7 +1631,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "function def with case expression with anon function inside" do
@@ -1648,7 +1648,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "case expression with anon function inside" do
@@ -1663,7 +1663,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "not really sure" do
@@ -1737,7 +1737,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "lonely parens" do
@@ -1749,7 +1749,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "multi line for clause" do
@@ -1764,17 +1764,17 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "ambiguous op" do
       code = "@all_info -1"
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "range op" do
       code = ".."
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "range operator precedence and nested ranges" do
@@ -1789,7 +1789,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -1806,7 +1806,7 @@ defmodule SpitfireTest do
         ]
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "from ecto repo" do
@@ -1816,7 +1816,7 @@ defmodule SpitfireTest do
       ]
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "big with" do
@@ -1830,13 +1830,13 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "bitstrings" do
       code = ~S'<<?., char, rest::binary>>'
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       <<
@@ -1846,7 +1846,7 @@ defmodule SpitfireTest do
       >>
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "anonymous function typespecs" do
@@ -1854,13 +1854,13 @@ defmodule SpitfireTest do
       @spec start_link((-> term), GenServer.options()) :: on_start
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       @spec get(agent, (state -> a), timeout) :: a when a: var
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "rescue with def" do
@@ -1870,7 +1870,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "multiple block identifiers" do
@@ -1886,7 +1886,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "starts with a comment" do
@@ -1895,7 +1895,7 @@ defmodule SpitfireTest do
       some_code = :foo
       """
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "default args" do
@@ -1905,7 +1905,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "literal encoder" do
@@ -1950,7 +1950,7 @@ defmodule SpitfireTest do
       encoder = fn l, m -> {:ok, {:__literal__, m, [l]}} end
 
       for code <- codes do
-        assert Spitfire.parse(code, literal_encoder: encoder) ==
+        assert spitfire_parse(code, literal_encoder: encoder) ==
                  Code.string_to_quoted(code,
                    literal_encoder: encoder,
                    columns: true,
@@ -1987,7 +1987,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -1996,7 +1996,7 @@ defmodule SpitfireTest do
       "foo#{alice}bar"
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       "foo#{
@@ -2004,13 +2004,13 @@ defmodule SpitfireTest do
       }bar"
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       "foo#{}bar"
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       """
@@ -2018,7 +2018,7 @@ defmodule SpitfireTest do
       """
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       """
@@ -2028,13 +2028,13 @@ defmodule SpitfireTest do
       """
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       "#{foo}"
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "end of expression metadata" do
@@ -2063,7 +2063,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -2078,7 +2078,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -2091,7 +2091,7 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -2115,7 +2115,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "unquote_splicing" do
@@ -2140,14 +2140,14 @@ defmodule SpitfireTest do
       ]
 
       for code <- codes do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
     test "line and column opt" do
       code = "foo"
 
-      assert Spitfire.parse(code, line: 12, column: 7) == s2q(code, line: 12, column: 7)
+      assert spitfire_parse(code, line: 12, column: 7) == s2q(code, line: 12, column: 7)
     end
 
     test "ellipsis_op ..." do
@@ -2158,19 +2158,19 @@ defmodule SpitfireTest do
         ]
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       ... + 1 * 2
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
 
       code = ~S'''
       @type fun :: (... -> any())
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "blocks inside an anon function as a parameter" do
@@ -2184,7 +2184,7 @@ defmodule SpitfireTest do
       end
       """
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "parens on a macro with a do block on the right side of a match operator" do
@@ -2202,8 +2202,8 @@ defmodule SpitfireTest do
               end
             """
           ] do
-        # code |> Spitfire.parse!() |> Macro.to_string() |> IO.puts()
-        assert Spitfire.parse(code) == s2q(code)
+        # code |> spitfire_parse!() |> Macro.to_string() |> IO.puts()
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -2215,7 +2215,7 @@ defmodule SpitfireTest do
             ~S|['➡️': x]|,
             ~S|foo.'➡️'|
           ] do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -2228,7 +2228,7 @@ defmodule SpitfireTest do
             :erlang.'=<'(left, right)
             """
           ] do
-        assert Spitfire.parse(code) == s2q(code)
+        assert spitfire_parse(code) == s2q(code)
       end
     end
 
@@ -2239,87 +2239,87 @@ defmodule SpitfireTest do
       end |> c ** d >>> e
       '''
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     test "when in bracketless kw list" do
       code = ~S'with a <- b, do: c when a'
 
-      assert Spitfire.parse(code) == s2q(code)
+      assert spitfire_parse(code) == s2q(code)
     end
 
     # These were found by property tests but were not triggering reliably
     # We have them here to make sure they don't regress
     test "property test regression cases" do
       # Prefix operators in struct types
-      assert Spitfire.parse("%?0{}") == s2q("%?0{}")
-      assert Spitfire.parse("%^@_{}") == s2q("%^@_{}")
-      assert Spitfire.parse("%-..{}") == s2q("%-..{}")
-      assert Spitfire.parse("%!:c{}") == s2q("%!:c{}")
-      assert Spitfire.parse("%~a<>{}") == s2q("%~a<>{}")
-      assert Spitfire.parse("%!A{}") == s2q("%!A{}")
-      assert Spitfire.parse("%@A{}") == s2q("%@A{}")
-      assert Spitfire.parse("%@:rd{}") == s2q("%@:rd{}")
-      assert Spitfire.parse("%!0{}") == s2q("%!0{}")
+      assert spitfire_parse("%?0{}") == s2q("%?0{}")
+      assert spitfire_parse("%^@_{}") == s2q("%^@_{}")
+      assert spitfire_parse("%-..{}") == s2q("%-..{}")
+      assert spitfire_parse("%!:c{}") == s2q("%!:c{}")
+      assert spitfire_parse("%~a<>{}") == s2q("%~a<>{}")
+      assert spitfire_parse("%!A{}") == s2q("%!A{}")
+      assert spitfire_parse("%@A{}") == s2q("%@A{}")
+      assert spitfire_parse("%@:rd{}") == s2q("%@:rd{}")
+      assert spitfire_parse("%!0{}") == s2q("%!0{}")
 
       # Nested module attributes
-      assert Spitfire.parse("%@@u{}") == s2q("%@@u{}")
+      assert spitfire_parse("%@@u{}") == s2q("%@@u{}")
 
       # Quoted atoms
-      assert Spitfire.parse(~s(%:""{})) == s2q(~s(%:""{}))
+      assert spitfire_parse(~s(%:""{})) == s2q(~s(%:""{}))
 
       # Range operator in struct types
-      assert Spitfire.parse("%..{}") == s2q("%..{}")
+      assert spitfire_parse("%..{}") == s2q("%..{}")
 
       # Char tokens after module attributes in struct types
-      assert Spitfire.parse("%@?w{}") == s2q("%@?w{}")
+      assert spitfire_parse("%@?w{}") == s2q("%@?w{}")
 
       # Empty char list after module attributes in struct types
-      assert Spitfire.parse("%@''{}") == s2q(~s(%@''{}))
+      assert spitfire_parse("%@''{}") == s2q(~s(%@''{}))
 
       # Float in struct types
-      assert Spitfire.parse("%0.0{}") == s2q("%0.0{}")
+      assert spitfire_parse("%0.0{}") == s2q("%0.0{}")
 
       # Bin strings after module attributes in struct types
-      assert Spitfire.parse(~s(%@"foo"{})) == s2q(~s(%@"foo"{}))
+      assert spitfire_parse(~s(%@"foo"{})) == s2q(~s(%@"foo"{}))
 
       # Capture operator in struct types
-      assert Spitfire.parse("%&0{}") == s2q("%&0{}")
+      assert spitfire_parse("%&0{}") == s2q("%&0{}")
 
       # Boolean literals in struct types
-      assert Spitfire.parse("%false{}") == s2q("%false{}")
-      assert Spitfire.parse("%true{}") == s2q("%true{}")
+      assert spitfire_parse("%false{}") == s2q("%false{}")
+      assert spitfire_parse("%true{}") == s2q("%true{}")
 
       # Struct arg inside struct arg
-      assert Spitfire.parse("%%{}{}") == s2q("%%{}{}")
-      assert Spitfire.parse("%+[]{}") == s2q("%+[]{}")
+      assert spitfire_parse("%%{}{}") == s2q("%%{}{}")
+      assert spitfire_parse("%+[]{}") == s2q("%+[]{}")
 
       # In-match operator (<-) in map keys - should be part of key, not wrap it
-      assert Spitfire.parse("%{s\\\\r => 1}") == s2q("%{s\\\\r => 1}")
+      assert spitfire_parse("%{s\\\\r => 1}") == s2q("%{s\\\\r => 1}")
 
       # Fn args with semicolon/newline trivia
-      assert Spitfire.parse("fn ;\n -> :ok end") == s2q("fn ;\n -> :ok end")
-      assert Spitfire.parse("fn ; -> :ok end") == s2q("fn ; -> :ok end")
+      assert spitfire_parse("fn ;\n -> :ok end") == s2q("fn ;\n -> :ok end")
+      assert spitfire_parse("fn ; -> :ok end") == s2q("fn ; -> :ok end")
 
       # Struct type with dot-call target
-      assert Spitfire.parse("%e.(){}") == s2q("%e.(){}")
-      assert Spitfire.parse("%e.(1){}") == s2q("%e.(1){}")
-      assert Spitfire.parse("%e.(a, b){}") == s2q("%e.(a, b){}")
+      assert spitfire_parse("%e.(){}") == s2q("%e.(){}")
+      assert spitfire_parse("%e.(1){}") == s2q("%e.(1){}")
+      assert spitfire_parse("%e.(a, b){}") == s2q("%e.(a, b){}")
 
       # with/else stab body with leading semicolon after newline
-      assert Spitfire.parse("with x <- 1 do :ok else _ -> \n;a end") ==
+      assert spitfire_parse("with x <- 1 do :ok else _ -> \n;a end") ==
                s2q("with x <- 1 do :ok else _ -> \n;a end")
 
       # Ellipsis + ternary edge cases (newline and semicolon-separated)
-      assert Spitfire.parse("x...\n//y") == s2q("x...\n//y")
-      assert Spitfire.parse("x...;//y") == s2q("x...;//y")
-      assert Spitfire.parse("x...\n;//y") == s2q("x...\n;//y")
-      assert Spitfire.parse("x...\n;\n//y") == s2q("x...\n;\n//y")
-      assert Spitfire.parse("x...\n;\n# comment\n//y") == s2q("x...\n;\n# comment\n//y")
+      assert spitfire_parse("x...\n//y") == s2q("x...\n//y")
+      assert spitfire_parse("x...;//y") == s2q("x...;//y")
+      assert spitfire_parse("x...\n;//y") == s2q("x...\n;//y")
+      assert spitfire_parse("x...\n;\n//y") == s2q("x...\n;\n//y")
+      assert spitfire_parse("x...\n;\n# comment\n//y") == s2q("x...\n;\n# comment\n//y")
       # Ellipsis followed by infix operators that should not be consumed as RHS
-      assert Spitfire.parse("x...<-y") == s2q("x...<-y")
-      assert Spitfire.parse("x...::y") == s2q("x...::y")
-      assert Spitfire.parse("x... when y") == s2q("x... when y")
+      assert spitfire_parse("x...<-y") == s2q("x...<-y")
+      assert spitfire_parse("x...::y") == s2q("x...::y")
+      assert spitfire_parse("x... when y") == s2q("x... when y")
     end
   end
 
@@ -2329,7 +2329,7 @@ defmodule SpitfireTest do
     test "unknown prefix operator" do
       code = "foo $bar, baz"
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error, {:foo, [line: 1, column: 1], [{:__block__, [error: true, line: 1, column: 5], []}]},
                 [{[line: 1, column: 5], "unknown token: %"}]}
     end
@@ -2338,7 +2338,7 @@ defmodule SpitfireTest do
       code = "x...//y"
 
       assert {:error, _} = s2q(code)
-      assert {:error, _ast, errors} = Spitfire.parse(code)
+      assert {:error, _ast, errors} = spitfire_parse(code)
 
       assert Enum.any?(errors, fn {_meta, message} ->
                String.contains?(
@@ -2350,10 +2350,10 @@ defmodule SpitfireTest do
 
     # https://github.com/elixir-lang/expert/issues/461
     test "fn -> followed by closing delimiter does not hang" do
-      assert {:error, _ast, _errors} = Spitfire.parse("fn ->)")
-      assert {:error, _ast, _errors} = Spitfire.parse("fn ->")
-      assert {:error, _ast, _errors} = Spitfire.parse("Enum.map(fn ->)")
-      assert {:error, _ast, _errors} = Spitfire.parse("fn ->\n)")
+      assert {:error, _ast, _errors} = spitfire_parse("fn ->)")
+      assert {:error, _ast, _errors} = spitfire_parse("fn ->")
+      assert {:error, _ast, _errors} = spitfire_parse("Enum.map(fn ->)")
+      assert {:error, _ast, _errors} = spitfire_parse("fn ->\n)")
     end
 
     test "missing bitstring brackets" do
@@ -2362,7 +2362,7 @@ defmodule SpitfireTest do
       :ok
       """
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error,
                 {:<<>>,
                  [
@@ -2379,7 +2379,7 @@ defmodule SpitfireTest do
     test "missing closing parentheses" do
       code = "1 * (2 + 3"
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {
                  :error,
                  {{:*, [line: 1, column: 3], [1, {:__block__, [error: true, line: 1, column: 3], []}]},
@@ -2394,7 +2394,7 @@ defmodule SpitfireTest do
     test "missing closing list bracket" do
       code = "([1, 2 ++ [4])"
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error, [1, {:++, [line: 1, column: 8], [2, [4]]}],
                 [{[line: 1, column: 2], "missing closing bracket for list"}]}
 
@@ -2403,21 +2403,21 @@ defmodule SpitfireTest do
       :ok
       """
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error, {:__block__, [], [[1], :ok]}, [{[line: 1, column: 1], "missing closing bracket for list"}]}
 
       code = """
       [1, 2, 3,,
       """
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error, [1, 2, 3], [{[line: 1, column: 1], "missing closing bracket for list"}]}
     end
 
     test "missing closing tuple brace" do
       code = "({1, 2 ++ [4])"
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error, {1, {:++, [line: 1, column: 8], [2, [4]]}},
                 [{[line: 1, column: 2], "missing closing brace for tuple"}]}
 
@@ -2426,7 +2426,7 @@ defmodule SpitfireTest do
       :ok
       """
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error,
                 {:__block__, [],
                  [
@@ -2442,14 +2442,14 @@ defmodule SpitfireTest do
 
       code = "fn x -> %{a: {1,"
 
-      assert {:error, _ast, errors} = Spitfire.parse(code)
+      assert {:error, _ast, errors} = spitfire_parse(code)
       assert {[line: 1, column: 14], "missing closing brace for tuple"} in errors
     end
 
     test "missing closing map brace" do
       code = ~S'foo(%{alice: "bob")'
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error,
                 {:foo, [{:closing, [line: 1, column: 19]}, line: 1, column: 1],
                  [{:%{}, [{:closing, [line: 1, column: 14]}, line: 1, column: 5], [alice: "bob"]}]},
@@ -2459,14 +2459,14 @@ defmodule SpitfireTest do
     test "missing comma in list" do
       code = ~S'[:foo :bar, :baz]'
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error, [:foo, :baz], [{[line: 1, column: 7], "syntax error"}]}
     end
 
     test "missing comma in map" do
       code = ~S'%{foo: :bar baz: :boo}'
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error, {:%{}, [{:closing, [line: 1, column: 22]}, line: 1, column: 1], [foo: :bar]},
                 [
                   {[line: 1, column: 13], "syntax error"},
@@ -2477,7 +2477,7 @@ defmodule SpitfireTest do
     test "missing comma in tuple" do
       code = ~S'{:foo :bar, :baz}'
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error, {:foo, :baz}, [{[line: 1, column: 7], "syntax error"}]}
     end
 
@@ -2488,7 +2488,7 @@ defmodule SpitfireTest do
         :ok
       '''
 
-      assert Spitfire.parse(code) == {
+      assert spitfire_parse(code) == {
                :error,
                {
                  :foo,
@@ -2541,7 +2541,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert Spitfire.parse(code) == {
+      assert spitfire_parse(code) == {
                :error,
                {
                  :bar,
@@ -2598,7 +2598,7 @@ defmodule SpitfireTest do
       bar(two)
       '''
 
-      assert Spitfire.parse(code) == {
+      assert spitfire_parse(code) == {
                :error,
                {
                  :__block__,
@@ -2634,7 +2634,7 @@ defmodule SpitfireTest do
       bar(two)
       '''
 
-      assert Spitfire.parse(code) == {
+      assert spitfire_parse(code) == {
                :error,
                {:foo, [{:line, 1}, {:column, 1}],
                 [
@@ -2657,7 +2657,7 @@ defmodule SpitfireTest do
       send(pid, new_list)
       '''
 
-      assert Spitfire.parse(code) == {
+      assert spitfire_parse(code) == {
                :error,
                {
                  :=,
@@ -2724,7 +2724,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert {:error, _ast, _} = result = Spitfire.parse(code)
+      assert {:error, _ast, _} = result = spitfire_parse(code)
 
       assert result ==
                {
@@ -2822,7 +2822,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert {:error, _ast, _} = result = Spitfire.parse(code)
+      assert {:error, _ast, _} = result = spitfire_parse(code)
 
       assert result ==
                {
@@ -2926,7 +2926,7 @@ defmodule SpitfireTest do
       <% end %>
       '''
 
-      assert {:error, _ast, _errors} = Spitfire.parse(code)
+      assert {:error, _ast, _errors} = spitfire_parse(code)
     end
 
     test "doesn't drop the cursor node" do
@@ -2939,7 +2939,7 @@ defmodule SpitfireTest do
           bar: Foo.Bar.load(state.foo, state.baz)}
         '''
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error,
                 {:__block__, [],
                  [
@@ -2996,7 +2996,7 @@ defmodule SpitfireTest do
       end
       '''
 
-      assert {:error, _ast, _} = result = Spitfire.parse(code)
+      assert {:error, _ast, _} = result = spitfire_parse(code)
 
       assert result == {
                :error,
@@ -3080,7 +3080,7 @@ defmodule SpitfireTest do
       end
       """
 
-      assert {:error, _ast, _} = result = Spitfire.parse(code)
+      assert {:error, _ast, _} = result = spitfire_parse(code)
 
       assert result == {
                :error,
@@ -3120,36 +3120,36 @@ defmodule SpitfireTest do
       foo, do: IO.inspect("bob"); "bob"
       '''
 
-      assert {:error, _ast, errors} = Spitfire.parse(code)
+      assert {:error, _ast, errors} = spitfire_parse(code)
       assert Enum.any?(errors, fn {_, msg} -> String.contains?(msg, ",") end)
     end
 
     test "semicolon in list/tuple/map" do
-      assert {:error, _, errors} = Spitfire.parse("[;]")
+      assert {:error, _, errors} = spitfire_parse("[;]")
       assert Enum.any?(errors, fn {_, msg} -> msg == "unexpected token: ;" end)
 
-      assert {:error, _, errors} = Spitfire.parse("{;}")
+      assert {:error, _, errors} = spitfire_parse("{;}")
       assert Enum.any?(errors, fn {_, msg} -> msg == "unexpected token: ;" end)
 
-      assert {:error, _, errors} = Spitfire.parse("%{;}")
+      assert {:error, _, errors} = spitfire_parse("%{;}")
       assert Enum.any?(errors, fn {_, msg} -> msg == "unexpected token: ;" end)
     end
 
     test "semicolon in parentheses is valid empty block" do
-      assert {:ok, {:__block__, _, []}} = Spitfire.parse("(;)")
+      assert {:ok, {:__block__, _, []}} = spitfire_parse("(;)")
     end
 
     test "leading semicolon is skipped" do
-      assert {:ok, {:foo, _, nil}} = Spitfire.parse("; foo")
+      assert {:ok, {:foo, _, nil}} = spitfire_parse("; foo")
     end
 
     test "semicolon as statement separator is valid" do
-      assert {:ok, _} = Spitfire.parse("foo\n; bar")
-      assert {:ok, _} = Spitfire.parse("foo\n\n; bar")
+      assert {:ok, _} = spitfire_parse("foo\n; bar")
+      assert {:ok, _} = spitfire_parse("foo\n\n; bar")
 
-      assert {:ok, 1} = Spitfire.parse("(1;)")
-      assert {:ok, 1} = Spitfire.parse("(1;\n)")
-      assert {:ok, 1} = Spitfire.parse("(1\n;)")
+      assert {:ok, 1} = spitfire_parse("(1;)")
+      assert {:ok, 1} = spitfire_parse("(1;\n)")
+      assert {:ok, 1} = spitfire_parse("(1\n;)")
 
       code = ~S"""
       defmodule MyModule do
@@ -3158,23 +3158,23 @@ defmodule SpitfireTest do
       end
       """
 
-      assert {:ok, _} = Spitfire.parse(code)
+      assert {:ok, _} = spitfire_parse(code)
     end
 
     test "unexpected expression after keyword list" do
-      assert {:error, _ast, errors} = Spitfire.parse(~S|foo(a: 1, b)|)
+      assert {:error, _ast, errors} = spitfire_parse(~S|foo(a: 1, b)|)
 
       assert Enum.any?(errors, fn {_, msg} ->
                String.contains?(msg, "unexpected expression after keyword list")
              end)
 
-      assert {:error, _ast, errors} = Spitfire.parse(~S|foo(a: 1, :bar)|)
+      assert {:error, _ast, errors} = spitfire_parse(~S|foo(a: 1, :bar)|)
 
       assert Enum.any?(errors, fn {_, msg} ->
                String.contains?(msg, "unexpected expression after keyword list")
              end)
 
-      assert {:error, _ast, errors} = Spitfire.parse(~S|@tag foo: bar, baz|)
+      assert {:error, _ast, errors} = spitfire_parse(~S|@tag foo: bar, baz|)
 
       assert Enum.any?(errors, fn {_, msg} ->
                String.contains?(msg, "unexpected expression after keyword list")
@@ -3183,7 +3183,7 @@ defmodule SpitfireTest do
 
     test "__cursor__ after keyword list does not crash" do
       code = ~S|foo(a: 1, __cursor__())|
-      assert {:ok, {:foo, _, [[{:a, 1}, {:__cursor__, _, []}]]}} = Spitfire.parse(code)
+      assert {:ok, {:foo, _, [[{:a, 1}, {:__cursor__, _, []}]]}} = spitfire_parse(code)
     end
 
     test "weird characters" do
@@ -3191,25 +3191,25 @@ defmodule SpitfireTest do
       [«]
       """
 
-      assert {:error, _ast, [{[line: 1, column: 1], "missing closing bracket for list"}]} = Spitfire.parse(code)
+      assert {:error, _ast, [{[line: 1, column: 1], "missing closing bracket for list"}]} = spitfire_parse(code)
 
       code = """
       {«}
       """
 
-      assert {:error, _ast, [{[line: 1, column: 1], "missing closing brace for tuple"}]} = Spitfire.parse(code)
+      assert {:error, _ast, [{[line: 1, column: 1], "missing closing brace for tuple"}]} = spitfire_parse(code)
 
       code = """
       %{«}
       """
 
-      assert {:error, _ast, [{[line: 1, column: 1], "missing closing brace for map"}]} = Spitfire.parse(code)
+      assert {:error, _ast, [{[line: 1, column: 1], "missing closing brace for map"}]} = spitfire_parse(code)
 
       code = """
       («)
       """
 
-      assert {:error, _ast, [{[line: 1, column: 1], "missing closing parentheses"}]} = Spitfire.parse(code)
+      assert {:error, _ast, [{[line: 1, column: 1], "missing closing parentheses"}]} = spitfire_parse(code)
 
       code = """
       defp foo(«) do
@@ -3217,13 +3217,13 @@ defmodule SpitfireTest do
       end
       """
 
-      assert {:error, _ast, [{[line: 1, column: 9], "missing closing parentheses"}]} = Spitfire.parse(code)
+      assert {:error, _ast, [{[line: 1, column: 9], "missing closing parentheses"}]} = spitfire_parse(code)
 
       code = """
       foo(«)
       """
 
-      assert {:error, _ast, [{[line: 1, column: 4], "missing closing parentheses"}]} = Spitfire.parse(code)
+      assert {:error, _ast, [{[line: 1, column: 4], "missing closing parentheses"}]} = spitfire_parse(code)
     end
 
     test "missing braces for struct" do
@@ -3238,7 +3238,7 @@ defmodule SpitfireTest do
                  {:x, [line: 1, column: 8], nil}
                ]},
               [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} ==
-               Spitfire.parse("%Foo = x")
+               spitfire_parse("%Foo = x")
 
       assert {:error,
               {:%, [line: 1, column: 1],
@@ -3247,7 +3247,7 @@ defmodule SpitfireTest do
                  {:%{}, [], []}
                ]},
               [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} ==
-               Spitfire.parse("%Foo")
+               spitfire_parse("%Foo")
 
       assert {:error,
               {:=, [line: 1, column: 10],
@@ -3260,7 +3260,7 @@ defmodule SpitfireTest do
                  {:x, [line: 1, column: 12], nil}
                ]},
               [{[line: 1, column: 6], "missing opening brace for struct %Foo.Bar"}]} ==
-               Spitfire.parse("%Foo.Bar = x")
+               spitfire_parse("%Foo.Bar = x")
 
       assert {:error,
               {:=, [line: 1, column: 13],
@@ -3273,7 +3273,7 @@ defmodule SpitfireTest do
                  {:x, [line: 1, column: 15], nil}
                ]},
               [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} ==
-               Spitfire.parse("%Foo a: 42} = x")
+               spitfire_parse("%Foo a: 42} = x")
 
       assert {:error,
               {:%, [line: 1, column: 1],
@@ -3284,7 +3284,7 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 2], "missing opening brace for struct %Foo"},
                 {[line: 1, column: 9], "missing closing brace for struct %Foo"}
-              ]} == Spitfire.parse("%Foo a: 1")
+              ]} == spitfire_parse("%Foo a: 1")
 
       assert {:error,
               {:%, [line: 1, column: 1],
@@ -3293,7 +3293,7 @@ defmodule SpitfireTest do
                  {:%{}, [closing: [line: 1, column: 16], line: 1, column: 6], [a: 1, b: 2]}
                ]},
               [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} ==
-               Spitfire.parse("%Foo a: 1, b: 2}")
+               spitfire_parse("%Foo a: 1, b: 2}")
 
       assert {:error,
               {:%, [line: 1, column: 1],
@@ -3303,7 +3303,7 @@ defmodule SpitfireTest do
                   [{:|, [line: 1, column: 8], [{:x, [line: 1, column: 6], nil}, [a: 1]]}]}
                ]},
               [{[line: 1, column: 2], "missing opening brace for struct %Foo"}]} ==
-               Spitfire.parse("%Foo x | a: 1}")
+               spitfire_parse("%Foo x | a: 1}")
 
       assert {:error,
               {:%, [line: 1, column: 1],
@@ -3314,7 +3314,7 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 2], "missing opening brace for struct %Foo"},
                 {[line: 1, column: 13], "missing closing brace for struct %Foo"}
-              ]} == Spitfire.parse("%Foo x | a: 1")
+              ]} == spitfire_parse("%Foo x | a: 1")
 
       assert {:error,
               {:foo, [closing: [line: 1, column: 15], line: 1, column: 1],
@@ -3326,7 +3326,7 @@ defmodule SpitfireTest do
                   ]}
                ]},
               [{[line: 1, column: 6], "missing opening brace for struct %Bar"}]} ==
-               Spitfire.parse("foo(%Bar a: 1})")
+               spitfire_parse("foo(%Bar a: 1})")
 
       assert {:error,
               {:|>, [line: 1, column: 3],
@@ -3339,7 +3339,7 @@ defmodule SpitfireTest do
                   ]}
                ]},
               [{[line: 1, column: 7], "missing opening brace for struct %Foo"}]} ==
-               Spitfire.parse("x |> %Foo a: 1}")
+               spitfire_parse("x |> %Foo a: 1}")
 
       # Nested structs
       assert {:error,
@@ -3359,7 +3359,7 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 16], "missing opening brace for struct %Inner"},
                 {[line: 1, column: 26], "missing closing brace for struct %Outer"}
-              ]} == Spitfire.parse("%Outer{inner: %Inner a: 1}")
+              ]} == spitfire_parse("%Outer{inner: %Inner a: 1}")
 
       assert {:error,
               {:%, [line: 1, column: 1],
@@ -3376,7 +3376,7 @@ defmodule SpitfireTest do
                   ]}
                ]},
               [{[line: 1, column: 2], "missing opening brace for struct %Outer"}]} ==
-               Spitfire.parse("%Outer inner: %Inner{a: 1}}")
+               spitfire_parse("%Outer inner: %Inner{a: 1}}")
 
       assert {:error,
               {:%, [line: 1, column: 1],
@@ -3395,7 +3395,7 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 2], "missing opening brace for struct %Outer"},
                 {[line: 1, column: 16], "missing opening brace for struct %Inner"}
-              ]} == Spitfire.parse("%Outer inner: %Inner a: 1}}")
+              ]} == spitfire_parse("%Outer inner: %Inner a: 1}}")
 
       # Module attribute struct
       assert {:error,
@@ -3407,7 +3407,7 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 3], "missing opening brace for struct %@foo"},
                 {[line: 1, column: 10], "missing closing brace for struct %@foo"}
-              ]} == Spitfire.parse("%@foo a: 1")
+              ]} == spitfire_parse("%@foo a: 1")
 
       # __MODULE__ struct
       assert {:error,
@@ -3419,27 +3419,27 @@ defmodule SpitfireTest do
               [
                 {[line: 1, column: 2], "missing opening brace for struct %__MODULE__"},
                 {[line: 1, column: 16], "missing closing brace for struct %__MODULE__"}
-              ]} == Spitfire.parse("%__MODULE__ a: 1")
+              ]} == spitfire_parse("%__MODULE__ a: 1")
     end
 
     test "stray closing delimiter after identifier" do
       assert {:error, {:__block__, [], [{:x, _, nil}, {:__block__, [error: true, line: 1, column: 3], []}]},
-              [{[line: 1, column: 3], "unknown token: ]"}]} = Spitfire.parse("x ]")
+              [{[line: 1, column: 3], "unknown token: ]"}]} = spitfire_parse("x ]")
 
       assert {:error, {:__block__, [], [{:x, _, nil}, {:__block__, [error: true, line: 1, column: 3], []}]},
-              [{[line: 1, column: 3], "unknown token: }"}]} = Spitfire.parse("x }")
+              [{[line: 1, column: 3], "unknown token: }"}]} = spitfire_parse("x }")
 
       assert {:error, {:__block__, [], [{:x, _, nil}, {:__block__, [error: true, line: 1, column: 3], []}]},
-              [{[line: 1, column: 3], "unknown token: )"}]} = Spitfire.parse("x )")
+              [{[line: 1, column: 3], "unknown token: )"}]} = spitfire_parse("x )")
 
       assert {:error, {:__block__, [], [{:@, _, [{:x, _, nil}]}, {:__block__, [error: true, line: 1, column: 4], []}]},
-              [{[line: 1, column: 4], "unknown token: ]"}]} = Spitfire.parse("@x ]")
+              [{[line: 1, column: 4], "unknown token: ]"}]} = spitfire_parse("@x ]")
 
       assert {:error, {:__block__, [], [1, {:__block__, [error: true, line: 1, column: 3], []}]},
-              [{[line: 1, column: 3], "unknown token: ]"}]} = Spitfire.parse("1 ]")
+              [{[line: 1, column: 3], "unknown token: ]"}]} = spitfire_parse("1 ]")
 
       assert {:error, _ast, [{[line: 1, column: 3], "unknown token: ]"}, {[line: 1, column: 5], "unknown token: }"}]} =
-               Spitfire.parse("x ] }")
+               spitfire_parse("x ] }")
 
       code = """
       x]
@@ -3453,7 +3453,7 @@ defmodule SpitfireTest do
                  {:x, _, nil},
                  {:__block__, [end_of_expression: _, error: true, line: 1, column: 2], []},
                  {:=, _, [{:foo, _, nil}, {{:., _, [{:__aliases__, _, [:Foo]}, :bar]}, _, [42]}]}
-               ]}, [{[line: 1, column: 2], "unknown token: ]"}]} = Spitfire.parse(code)
+               ]}, [{[line: 1, column: 2], "unknown token: ]"}]} = spitfire_parse(code)
     end
 
     test "stray closing delimiter after complete expression" do
@@ -3462,23 +3462,23 @@ defmodule SpitfireTest do
                [
                  {:foo, [closing: [line: 1, column: 5], line: 1, column: 1], []},
                  {:__block__, [error: true, line: 1, column: 6], []}
-               ]}, [{[line: 1, column: 6], "unknown token: }"}]} = Spitfire.parse("foo()}")
+               ]}, [{[line: 1, column: 6], "unknown token: }"}]} = spitfire_parse("foo()}")
 
       assert {:error, {:__block__, [], [[1, 2], {:__block__, [error: true, line: 1, column: 7], []}]},
-              [{[line: 1, column: 7], "unknown token: }"}]} = Spitfire.parse("[1, 2]}")
+              [{[line: 1, column: 7], "unknown token: }"}]} = spitfire_parse("[1, 2]}")
 
       assert {:error,
               {:__block__, [],
                [
                  {:%{}, [closing: [line: 1, column: 7], line: 1, column: 1], [a: 1]},
                  {:__block__, [error: true, line: 1, column: 8], []}
-               ]}, [{[line: 1, column: 8], "unknown token: )"}]} = Spitfire.parse("%{a: 1})")
+               ]}, [{[line: 1, column: 8], "unknown token: )"}]} = spitfire_parse("%{a: 1})")
     end
 
     test "stab expressions with capture between followed by fn" do
       # This case is very contrived and was found by fuzzing tokens, trying to
       # reproduce a real world crash for which we didn't have a repro case.
-      assert Spitfire.parse("a -> b &0 c -> d fn e f -> g end end") ==
+      assert spitfire_parse("a -> b &0 c -> d fn e f -> g end end") ==
                {:error,
                 [
                   {:->, [line: 1, column: 3], [[{:a, [line: 1, column: 1], nil}], nil]},
@@ -3511,7 +3511,7 @@ defmodule SpitfireTest do
       code = ~S'(a, b -> c, d)'
 
       # Comma expressions are not allowed in stab bodies - this is a syntax error
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error,
                 [
                   {:->, [line: 1, column: 7],
@@ -3525,7 +3525,7 @@ defmodule SpitfireTest do
     test "fn stab cannot have comma expression in body" do
       code = ~S'fn x -> a, b end'
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error,
                 {:fn, [closing: [line: 1, column: 14], line: 1, column: 1],
                  [
@@ -3540,7 +3540,7 @@ defmodule SpitfireTest do
     test "errors on invalid map update" do
       code = ~S'%{a do :ok end | b c, d => e, f => g, h i, j => k}'
 
-      assert Spitfire.parse(code) ==
+      assert spitfire_parse(code) ==
                {:error,
                 {:%{}, [closing: [line: 1, column: 50], line: 1, column: 1],
                  [
@@ -3557,7 +3557,7 @@ defmodule SpitfireTest do
     end
 
     test "stab expression with fn and stray closing delimiter does not exhaust fuel" do
-      assert Spitfire.parse("a -> b -> fn} -> c") ==
+      assert spitfire_parse("a -> b -> fn} -> c") ==
                {:error,
                 [
                   {:->, [line: 1, column: 3], [[{:a, [line: 1, column: 1], nil}], nil]},
@@ -3586,9 +3586,9 @@ defmodule SpitfireTest do
         :foo
       '''
 
-      assert {:ok, _ast, comments} = Spitfire.parse_with_comments(code)
+      assert {:ok, _ast, comments} = spitfire_parse_with_comments(code)
       assert [%{line: 1, text: "# hello"}, %{line: 2, text: "# world"}] = comments
-      assert Spitfire.parse_with_comments(code) == s2qwc(code)
+      assert spitfire_parse_with_comments(code) == s2qwc(code)
     end
 
     test "returns the same comments as string_to_quoted_with_comments" do
@@ -3604,7 +3604,7 @@ defmodule SpitfireTest do
         # Some more comments!
       '''
 
-      assert Spitfire.parse_with_comments(code) == s2qwc(code)
+      assert spitfire_parse_with_comments(code) == s2qwc(code)
     end
   end
 
@@ -3620,7 +3620,7 @@ defmodule SpitfireTest do
                [
                  {:some_value, [line: 1, column: 5], nil},
                  {:__cursor__, [closing: [line: 2, column: 12], line: 2, column: 1], []}
-               ]}} = Spitfire.container_cursor_to_quoted(code)
+               ]}} = spitfire_container_cursor_to_quoted(code)
     end
 
     test "more complex example" do
@@ -3650,7 +3650,7 @@ defmodule SpitfireTest do
                         ]
                       ]}
                  ]
-               ]}} = Spitfire.container_cursor_to_quoted(code)
+               ]}} = spitfire_container_cursor_to_quoted(code)
     end
 
     test "ending on kw list" do
@@ -3683,7 +3683,7 @@ defmodule SpitfireTest do
                         ]
                       ]}
                  ]
-               ]}} = Spitfire.container_cursor_to_quoted(code)
+               ]}} = spitfire_container_cursor_to_quoted(code)
     end
 
     test "ending inside a -> expression" do
@@ -3769,7 +3769,7 @@ defmodule SpitfireTest do
                     }
                   ]
                 ]
-              }} = Spitfire.container_cursor_to_quoted(code)
+              }} = spitfire_container_cursor_to_quoted(code)
     end
   end
 
@@ -3781,27 +3781,27 @@ defmodule SpitfireTest do
       code = ~S|:"abc#{foo}"|
 
       # atom_unsafe -> :binary_to_atom
-      assert {:ok, {{:., _, [:erlang, :binary_to_atom]}, _, _}} = Spitfire.parse(code)
+      assert {:ok, {{:., _, [:erlang, :binary_to_atom]}, _, _}} = spitfire_parse(code)
 
       # atom_safe -> :binary_to_existing_atom
       assert {:ok, {{:., _, [:erlang, :binary_to_existing_atom]}, _, _}} =
-               Spitfire.parse(code, existing_atoms_only: true)
+               spitfire_parse(code, existing_atoms_only: true)
     end
 
     test "kw_identifier_safe token is parsed to :binary_to_existing_atom" do
       # in list
       code = ~S|["abc#{foo}": 1]|
-      assert {:ok, [{{{:., _, [:erlang, :binary_to_atom]}, _, _}, 1}]} = Spitfire.parse(code)
+      assert {:ok, [{{{:., _, [:erlang, :binary_to_atom]}, _, _}, 1}]} = spitfire_parse(code)
 
       assert {:ok, [{{{:., _, [:erlang, :binary_to_existing_atom]}, _, _}, 1}]} =
-               Spitfire.parse(code, existing_atoms_only: true)
+               spitfire_parse(code, existing_atoms_only: true)
 
       # in map
       code = ~S|%{"abc#{foo}": 1}|
-      assert {:ok, {:%{}, _, [{{{:., _, [:erlang, :binary_to_atom]}, _, _}, 1}]}} = Spitfire.parse(code)
+      assert {:ok, {:%{}, _, [{{{:., _, [:erlang, :binary_to_atom]}, _, _}, 1}]}} = spitfire_parse(code)
 
       assert {:ok, {:%{}, _, [{{{:., _, [:erlang, :binary_to_existing_atom]}, _, _}, 1}]}} =
-               Spitfire.parse(code, existing_atoms_only: true)
+               spitfire_parse(code, existing_atoms_only: true)
 
       # multiple items in bracketless kw list
       code = ~S|foo("a#{b}": 1, "c#{d}": 2)|
@@ -3814,7 +3814,7 @@ defmodule SpitfireTest do
                    {{{:., _, [:erlang, :binary_to_existing_atom]}, _, _}, 2}
                  ]
                ]}} =
-               Spitfire.parse(code, existing_atoms_only: true)
+               spitfire_parse(code, existing_atoms_only: true)
     end
   end
 
@@ -3830,6 +3830,30 @@ defmodule SpitfireTest do
       code,
       Keyword.merge([columns: true, token_metadata: true, emit_warnings: false], opts)
     )
+  end
+
+  defp spitfire_parse(code, opts \\ []) do
+    code
+    |> Spitfire.parse(opts)
+    |> Spitfire.TestHelpers.strip_parse_result_range_metadata()
+  end
+
+  defp spitfire_parse!(code, opts \\ []) do
+    code
+    |> Spitfire.parse!(opts)
+    |> Spitfire.TestHelpers.strip_range_metadata()
+  end
+
+  defp spitfire_parse_with_comments(code, opts \\ []) do
+    code
+    |> Spitfire.parse_with_comments(opts)
+    |> Spitfire.TestHelpers.strip_parse_result_range_metadata()
+  end
+
+  defp spitfire_container_cursor_to_quoted(code, opts \\ []) do
+    code
+    |> Spitfire.container_cursor_to_quoted(opts)
+    |> Spitfire.TestHelpers.strip_parse_result_range_metadata()
   end
 
   def print(ast) do

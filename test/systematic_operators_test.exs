@@ -582,6 +582,9 @@ defmodule Spitfire.SystematicOperatorsTest do
       {:ok, expected} ->
         case Spitfire.parse(code) do
           {:ok, actual} ->
+            actual = Spitfire.TestHelpers.strip_range_metadata(actual)
+            expected = Spitfire.TestHelpers.strip_range_metadata(expected)
+
             if actual != expected, do: {code, expected, actual}
 
           {:error, _} ->

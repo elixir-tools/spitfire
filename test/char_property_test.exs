@@ -1659,7 +1659,8 @@ defmodule Spitfire.CharPropertyTest do
                 """
               end
 
-            assert elixir_ast == spitfire_ast, msg
+            assert Spitfire.TestHelpers.strip_range_metadata(elixir_ast) ==
+                     Spitfire.TestHelpers.strip_range_metadata(spitfire_ast), msg
 
           {:error, _spitfire_ast, _errors} ->
             msg =
