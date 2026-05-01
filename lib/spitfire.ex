@@ -2159,6 +2159,8 @@ defmodule Spitfire do
       {exprs, parser} =
         with_context(parser, %{stop_before_stab_op?: true}, fn parser ->
           while2 current_token(parser) not in [:end, :eof] <- parser do
+            parser = consume_fuel(parser)
+
             {ast, parser} =
               case Map.get(parser, :stab_state) do
                 %{ast: lhs} ->
