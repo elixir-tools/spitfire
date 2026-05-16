@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.12](https://github.com/elixir-tools/spitfire/compare/v0.3.11...v0.3.12) (2026-05-16)
+
+
+### Bug Fixes
+
+* don't crash on charlist with pure interpolation ([#133](https://github.com/elixir-tools/spitfire/issues/133)) ([7ca4ccb](https://github.com/elixir-tools/spitfire/commit/7ca4ccb374610e8ad65d87454f3154ae7044dd6a)), closes [#132](https://github.com/elixir-tools/spitfire/issues/132)
+
 ## [0.3.11](https://github.com/elixir-tools/spitfire/compare/v0.3.10...v0.3.11) (2026-04-23)
 
 
