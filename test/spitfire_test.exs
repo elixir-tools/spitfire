@@ -200,6 +200,18 @@ defmodule SpitfireTest do
 
       assert Spitfire.parse(code) == s2q(code)
 
+      code = ~S'''
+      '#{alice}'
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = ~S'''
+      defmodule D, do: '#{alice}'
+      '''
+
+      assert Spitfire.parse(code) == s2q(code)
+
       code = ~S"""
       '''
       foo#{alice}bar

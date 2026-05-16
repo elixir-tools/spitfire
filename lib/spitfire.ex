@@ -2477,7 +2477,7 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_string(%{current_token: {:list_string, meta, [string]}} = parser) do
+  defp parse_string(%{current_token: {:list_string, meta, [string]}} = parser) when is_binary(string) do
     trace "parse_string (list_string)", trace_meta(parser) do
       string = encode_literal(parser, String.to_charlist(string), meta)
       {string, parser}
