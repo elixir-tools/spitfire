@@ -2341,6 +2341,14 @@ defmodule SpitfireTest do
     test "caret inside match in lhs of left stab as righs of => op" do
       assert Spitfire.parse("%{x^i<-a => 1}") == s2q("%{x^i<-a => 1}")
     end
+
+    test "empty parens call as function" do
+      codes = ["().(\n)", "().()"]
+
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
+      end
+    end
   end
 
   describe "code with errors" do

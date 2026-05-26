@@ -2322,8 +2322,10 @@ defmodule Spitfire do
 
       parser = eat_eoe(parser)
 
-      if peek_token(parser) == :")" do
-        parser = next_token(parser)
+      if peek_token(parser) == :")" ||
+           (peek_token(parser) in [:eol, :";"] and
+              peek_token_skip_eoe(parser) == :")") do
+        parser = parser |> next_token() |> eat_eoe()
         closing = [closing: current_meta(parser)]
         ast = {{:., meta, [lhs]}, newlines ++ closing ++ meta, []}
         {ast, parser}
