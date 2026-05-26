@@ -1091,6 +1091,11 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
     end
 
+
+    test "default arg with literal" do
+      assert Spitfire.parse("fn a, 0\\\\0 -> :ok end") == s2q("fn a, 0\\\\0 -> :ok end")
+    end
+
     test "in_match_op inside keyword list" do
       code = ~S'[a: b <- c]'
 

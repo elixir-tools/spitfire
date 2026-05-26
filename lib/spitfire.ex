@@ -1361,7 +1361,13 @@ defmodule Spitfire do
       parser = parser |> next_token() |> eat_eoe()
       {exprs, parser} = parse_comma_list(parser, @comma)
 
-      {{:comma, [], [lhs | exprs]}, eat_eoe(parser)}
+      lhs =
+        case lhs do
+          {:comma, _, args} -> args
+          _ -> [lhs]
+        end
+
+      {{:comma, [], lhs ++ exprs}, eat_eoe(parser)}
     end
   end
 
@@ -1486,7 +1492,18 @@ defmodule Spitfire do
             end
 
           _ ->
-            {token, newlines ++ meta, [lhs, rhs]}
+            if token == :\\ and Map.get(parser, :stop_before_stab_op?, false) do
+              case lhs do
+                {:comma, comma_meta, args} when args != [] ->
+                  {last, init} = List.pop_at(args, -1)
+                  {:comma, comma_meta, init ++ [{token, newlines ++ meta, [last, rhs]}]}
+
+                _ ->
+                  {token, newlines ++ meta, [lhs, rhs]}
+              end
+            else
+              {token, newlines ++ meta, [lhs, rhs]}
+            end
         end
 
       {ast, parser}
