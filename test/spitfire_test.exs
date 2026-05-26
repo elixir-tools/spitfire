@@ -1091,7 +1091,6 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
     end
 
-
     test "default arg with literal" do
       assert Spitfire.parse("fn a, 0\\\\0 -> :ok end") == s2q("fn a, 0\\\\0 -> :ok end")
     end
@@ -2337,6 +2336,10 @@ defmodule SpitfireTest do
       assert Spitfire.parse("x...<-y") == s2q("x...<-y")
       assert Spitfire.parse("x...::y") == s2q("x...::y")
       assert Spitfire.parse("x... when y") == s2q("x... when y")
+    end
+
+    test "caret inside match in lhs of left stab as righs of => op" do
+      assert Spitfire.parse("%{x^i<-a => 1}") == s2q("%{x^i<-a => 1}")
     end
   end
 

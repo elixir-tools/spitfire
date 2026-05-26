@@ -3430,17 +3430,34 @@ defmodule Spitfire do
 
         parser = push_nesting(parser)
 
-        # In maps, cap precedence at assoc_op for arguments to prevent => from being consumed
-        rest_precedence = if Map.get(parser, :parsing_map_key, false), do: {:left, 18}, else: @lowest
-        {first_arg, parser} = parse_expression(parser, rest_precedence, false, false, false)
+        rest_precedence = @lowest
+
+        {first_arg, parser} =
+          if Map.get(parser, :parsing_map_key, false) do
+            with_context(parser, %{stop_before_map_op?: true}, fn parser ->
+              parse_expression(parser, rest_precedence, false, false, false)
+            end)
+          else
+            parse_expression(parser, rest_precedence, false, false, false)
+          end
 
         front = first_arg
 
         {args, parser} =
-          while2 peek_token(parser) == :"," and not stab_state_set?(parser) <- parser do
-            parser = parser |> next_token() |> next_token()
-            {arg, parser} = parse_expression(parser, rest_precedence, false, false, false)
-            {arg, parser}
+          if Map.get(parser, :parsing_map_key, false) do
+            with_context(parser, %{stop_before_map_op?: true}, fn parser ->
+              while2 peek_token(parser) == :"," and not stab_state_set?(parser) <- parser do
+                parser = parser |> next_token() |> next_token()
+                {arg, parser} = parse_expression(parser, rest_precedence, false, false, false)
+                {arg, parser}
+              end
+            end)
+          else
+            while2 peek_token(parser) == :"," and not stab_state_set?(parser) <- parser do
+              parser = parser |> next_token() |> next_token()
+              {arg, parser} = parse_expression(parser, rest_precedence, false, false, false)
+              {arg, parser}
+            end
           end
 
         args = [front | args]
