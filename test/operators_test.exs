@@ -1727,6 +1727,16 @@ defmodule Spitfire.OperatorsTest do
       code = "%{map | a => b}"
       assert spitfire_parse(code) == s2q(code)
     end
+
+    test "parenthesized low-precedence op as map update key" do
+      code = "%{x | (0\\\\e) => 1}"
+      assert spitfire_parse(code) == s2q(code)
+    end
+
+    test "non-parenthesized low-precedence op as normal pipe in map" do
+      code = "%{x | 0\\\\e => 1}"
+      assert spitfire_parse(code) == s2q(code)
+    end
   end
 
   describe "precedence boundaries: | vs ::" do

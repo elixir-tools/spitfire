@@ -1525,7 +1525,15 @@ defmodule Spitfire do
   @low_prec_map_op_types MapSet.new([:type_op, :when_op, :in_match_op])
 
   defp rhs_has_binding_op?(parser) do
-    scan_binding_op(eat_eoe(parser), 0)
+    parser = eat_eoe(parser)
+
+    case current_token_type(parser) do
+      type when type in [:"(", :"[", :"{", :"<<"] ->
+        scan_binding_op(next_token(parser), 1)
+
+      _ ->
+        scan_binding_op(parser, 0)
+    end
   end
 
   defp scan_binding_op(parser, nesting) do
@@ -1579,7 +1587,15 @@ defmodule Spitfire do
   end
 
   defp rhs_has_bare_comma?(parser) do
-    rhs_scan_comma_before_assoc(eat_eoe(parser), 0, false)
+    parser = eat_eoe(parser)
+
+    case current_token_type(parser) do
+      type when type in [:"(", :"[", :"{", :"<<"] ->
+        rhs_scan_comma_before_assoc(next_token(parser), 1, false)
+
+      _ ->
+        rhs_scan_comma_before_assoc(parser, 0, false)
+    end
   end
 
   defp rhs_scan_comma_before_assoc(parser, nesting, saw_do_end) do
