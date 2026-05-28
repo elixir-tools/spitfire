@@ -3005,7 +3005,7 @@ defmodule Spitfire do
       # or binary operators (except :dual_op)
       if MapSet.member?(@terminals_with_comma, peek_token(parser)) or
            peek_token(parser) == :";" or
-           peek in [:stab_op, :do, :end, :block_identifier] or
+           peek in [:., :dot_call_op, :stab_op, :do, :end, :block_identifier] or
            (is_binary_op?(peek) and peek not in [:dual_op, :ternary_op]) do
         {{:..., current_meta(parser), []}, parser}
       else

@@ -2352,6 +2352,9 @@ defmodule SpitfireTest do
     test "struct with module attribute and empty parens" do
       assert Spitfire.parse(~S'%@(){}') == s2q(~S'%@(){}')
     end
+    test "ellipsis dot and division operator" do
+      assert Spitfire.parse("x....//y") == s2q("x....//y")
+    end
   end
 
   describe "code with errors" do
