@@ -2355,6 +2355,10 @@ defmodule SpitfireTest do
     test "ellipsis dot and division operator" do
       assert Spitfire.parse("x....//y") == s2q("x....//y")
     end
+    test "comma and in-match operator interaction in fn args" do
+      assert Spitfire.parse("fn a, n<-i -> :ok end") == s2q("fn a, n<-i -> :ok end")
+      assert Spitfire.parse("fn (a, n<-i) -> :ok end") == s2q("fn (a, n<-i) -> :ok end")
+    end
   end
 
   describe "code with errors" do

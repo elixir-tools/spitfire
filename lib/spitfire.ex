@@ -1374,6 +1374,7 @@ defmodule Spitfire do
   defp parse_infix_expression(parser, lhs) do
     trace "parse_infix_expression", trace_meta(parser) do
       token = current_token(parser)
+      token_type = current_token_type(parser)
       meta = current_meta(parser)
       precedence = current_precedence(parser)
 
@@ -1492,17 +1493,29 @@ defmodule Spitfire do
             end
 
           _ ->
-            if token == :\\ and Map.get(parser, :stop_before_stab_op?, false) do
-              case lhs do
-                {:comma, comma_meta, args} when args != [] ->
-                  {last, init} = List.pop_at(args, -1)
-                  {:comma, comma_meta, init ++ [{token, newlines ++ meta, [last, rhs]}]}
+            cond do
+              token_type == :in_match_op ->
+                case lhs do
+                  {:comma, comma_meta, args} when args != [] ->
+                    {last, init} = List.pop_at(args, -1)
+                    {:comma, comma_meta, init ++ [{token, newlines ++ meta, [last, rhs]}]}
 
-                _ ->
-                  {token, newlines ++ meta, [lhs, rhs]}
-              end
-            else
-              {token, newlines ++ meta, [lhs, rhs]}
+                  _ ->
+                    {token, newlines ++ meta, [lhs, rhs]}
+                end
+
+              token == :\\ and Map.get(parser, :stop_before_stab_op?, false) ->
+                case lhs do
+                  {:comma, comma_meta, args} when args != [] ->
+                    {last, init} = List.pop_at(args, -1)
+                    {:comma, comma_meta, init ++ [{token, newlines ++ meta, [last, rhs]}]}
+
+                  _ ->
+                    {token, newlines ++ meta, [lhs, rhs]}
+                end
+
+              true ->
+                {token, newlines ++ meta, [lhs, rhs]}
             end
         end
 
