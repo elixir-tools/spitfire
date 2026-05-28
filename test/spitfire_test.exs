@@ -2359,6 +2359,9 @@ defmodule SpitfireTest do
       assert Spitfire.parse("fn a, n<-i -> :ok end") == s2q("fn a, n<-i -> :ok end")
       assert Spitfire.parse("fn (a, n<-i) -> :ok end") == s2q("fn (a, n<-i) -> :ok end")
     end
+    test "map update with nil value" do
+      assert Spitfire.parse("%{x | nil}") == s2q("%{x | nil}")
+    end
   end
 
   describe "code with errors" do

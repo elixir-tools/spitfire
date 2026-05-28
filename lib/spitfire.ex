@@ -1729,7 +1729,6 @@ defmodule Spitfire do
         end
 
       pairs = [first | items]
-      pairs = Enum.reject(pairs, &is_nil/1)
 
       {pairs, parser}
     end)
