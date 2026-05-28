@@ -1390,10 +1390,18 @@ defmodule Spitfire do
       # we save this in case the next expression is an error
       pre_parser = parser
 
+      nl_base = current_newlines(parser) || peek_newlines(parser, :eol)
+
+      after_nl = peek_newlines(parser)
+
       newlines =
-        case current_newlines(parser) || peek_newlines(parser, :eol) do
-          nil -> []
-          nl -> [newlines: nl]
+        case nl_base do
+          nil ->
+            []
+
+          nl ->
+            cap = if is_nil(after_nl), do: nl, else: min(nl, after_nl)
+            [newlines: cap]
         end
 
       parser = parser |> next_token() |> eat_eoe()

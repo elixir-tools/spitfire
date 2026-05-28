@@ -2349,18 +2349,56 @@ defmodule SpitfireTest do
         assert Spitfire.parse(code) == s2q(code)
       end
     end
+
     test "struct with module attribute and empty parens" do
       assert Spitfire.parse(~S'%@(){}') == s2q(~S'%@(){}')
     end
+
     test "ellipsis dot and division operator" do
       assert Spitfire.parse("x....//y") == s2q("x....//y")
     end
+
     test "comma and in-match operator interaction in fn args" do
       assert Spitfire.parse("fn a, n<-i -> :ok end") == s2q("fn a, n<-i -> :ok end")
       assert Spitfire.parse("fn (a, n<-i) -> :ok end") == s2q("fn (a, n<-i) -> :ok end")
     end
+
     test "map update with nil value" do
       assert Spitfire.parse("%{x | nil}") == s2q("%{x | nil}")
+    end
+
+    test "newlines metadata in match expressions" do
+      assert Spitfire.parse("foo()\n\n=\ne") == s2q("foo()\n\n=\ne")
+      assert Spitfire.parse("foo \n\n=\n bar") == s2q("foo \n\n=\n bar")
+      assert Spitfire.parse("foo do :ok end \n\n=\ne") == s2q("foo do :ok end \n\n=\ne")
+
+      assert Spitfire.parse("foo do :ok end \n\n=\ne do :error end") ==
+               s2q("foo do :ok end \n\n=\ne do :error end")
+    end
+
+    test "newlines on match with rhs on same line" do
+      assert Spitfire.parse("t\n\n=r") == s2q("t\n\n=r")
+      assert Spitfire.parse("x + t\n\n=r * y") == s2q("x + t\n\n=r * y")
+      assert Spitfire.parse("foo \n\n= bar") == s2q("foo \n\n= bar")
+      assert Spitfire.parse("foo()\n\n= bar") == s2q("foo()\n\n= bar")
+    end
+
+    test "newlines on match in non-top-level contexts" do
+      assert Spitfire.parse(~S'"\#{t\n\n=r}"') == s2q(~S'"\#{t\n\n=r}"')
+      assert Spitfire.parse(~S"'\#{t\n\n=r}'") == s2q(~S"'\#{t\n\n=r}'")
+      assert Spitfire.parse("t\n\n=r do :ok end") == s2q("t\n\n=r do :ok end")
+      assert Spitfire.parse("foo do t\n\n=r end") == s2q("foo do t\n\n=r end")
+      assert Spitfire.parse("fn x when t\n\n=r -> 1 end") == s2q("fn x when t\n\n=r -> 1 end")
+      assert Spitfire.parse("<<a::t\n\n=r>>") == s2q("<<a::t\n\n=r>>")
+    end
+
+    test "newlines on bracket access" do
+      assert Spitfire.parse("@foo[\n\n0]") == s2q("@foo[\n\n0]")
+      assert Spitfire.parse("@foo[\n0]") == s2q("@foo[\n0]")
+    end
+
+    test "newlines on match with rhs multiple lines away" do
+      assert Spitfire.parse("t\n\n=\n\nr") == s2q("t\n\n=\n\nr")
     end
   end
 
