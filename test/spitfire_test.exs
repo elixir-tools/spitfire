@@ -2400,6 +2400,10 @@ defmodule SpitfireTest do
     test "newlines on match with rhs multiple lines away" do
       assert Spitfire.parse("t\n\n=\n\nr") == s2q("t\n\n=\n\nr")
     end
+
+    test "@.. range operator in attribute context" do
+      assert Spitfire.parse("A.w%@..{}") == s2q("A.w%@..{}")
+    end
   end
 
   describe "code with errors" do

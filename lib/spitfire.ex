@@ -3572,14 +3572,21 @@ defmodule Spitfire do
     end
   end
 
-  defp parse_lone_identifier(%{current_token: {_type, token_meta, token}} = parser) do
+  defp parse_lone_identifier(%{current_token: {type, token_meta, token}} = parser) do
     trace "parse_lone_identifier", trace_meta(parser) do
       meta =
         parser
         |> current_meta()
         |> push_delimiter(token_meta)
 
-      {{token, meta, nil}, parser}
+      context =
+        if type in [:identifier, :bracket_identifier, :op_identifier, :paren_identifier] do
+          nil
+        else
+          []
+        end
+
+      {{token, meta, context}, parser}
     end
   end
 
