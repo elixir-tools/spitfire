@@ -1091,7 +1091,7 @@ defmodule Spitfire do
 
       second_meta = [line: first_meta[:line], column: first_meta[:column] + 1]
 
-      {rhs, parser} = parse_lone_identifier(parser)
+      {rhs, parser} = parse_struct_type(parser)
 
       ast = {:/, second_meta, [first_slash, rhs]}
       {ast, parser}

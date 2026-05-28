@@ -2404,6 +2404,10 @@ defmodule SpitfireTest do
     test "@.. range operator in attribute context" do
       assert Spitfire.parse("A.w%@..{}") == s2q("A.w%@..{}")
     end
+
+    test "// operator in struct argument" do
+      assert Spitfire.parse("%//@s{}") == s2q("%//@s{}")
+    end
   end
 
   describe "code with errors" do
