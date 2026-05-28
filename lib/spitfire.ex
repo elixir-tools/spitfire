@@ -1146,6 +1146,7 @@ defmodule Spitfire do
           nl -> [newlines: nl]
         end
 
+      has_leading_semicolon = peek_token_skip_eol(parser) == :";"
       parser = eat_at(parser, [:eol, :";"], 1)
       old_nesting = parser.nesting
       parser = Map.put(parser, :nesting, 0)
@@ -1164,6 +1165,7 @@ defmodule Spitfire do
           {ast, parser}
         end
 
+      exprs = if has_leading_semicolon, do: [nil | exprs], else: exprs
       rhs = build_stab_rhs(exprs)
 
       ast =

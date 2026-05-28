@@ -2408,6 +2408,11 @@ defmodule SpitfireTest do
     test "// operator in struct argument" do
       assert Spitfire.parse("%//@s{}") == s2q("%//@s{}")
     end
+
+    test "semicolon separated arrow in try body" do
+      assert Spitfire.parse("try do ->;n after :ok end") ==
+               s2q("try do ->;n after :ok end")
+    end
   end
 
   describe "code with errors" do
