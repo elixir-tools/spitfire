@@ -3609,6 +3609,9 @@ defmodule Spitfire do
           :at_op ->
             parse_lone_module_attr(parser)
 
+          :"(" ->
+            parse_grouped_expression(parser)
+
           _ ->
             parse_lone_identifier(parser)
         end

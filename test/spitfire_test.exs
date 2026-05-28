@@ -2349,6 +2349,9 @@ defmodule SpitfireTest do
         assert Spitfire.parse(code) == s2q(code)
       end
     end
+    test "struct with module attribute and empty parens" do
+      assert Spitfire.parse(~S'%@(){}') == s2q(~S'%@(){}')
+    end
   end
 
   describe "code with errors" do
