@@ -2413,6 +2413,11 @@ defmodule SpitfireTest do
       assert Spitfire.parse("try do ->;n after :ok end") ==
                s2q("try do ->;n after :ok end")
     end
+
+    test "semicolon separated arrows in case clause" do
+      assert Spitfire.parse("case x do ->; -> :ok end") ==
+               s2q("case x do ->; -> :ok end")
+    end
   end
 
   describe "code with errors" do
