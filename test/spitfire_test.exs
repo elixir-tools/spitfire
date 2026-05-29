@@ -2431,6 +2431,10 @@ defmodule SpitfireTest do
     test "empty parens call with newline" do
       assert Spitfire.parse("foo()(\n)") == s2q("foo()(\n)")
     end
+
+    test "struct with dynamic module via call + access" do
+      assert Spitfire.parse("%x.l[a]{}") == s2q("%x.l[a]{}")
+    end
   end
 
   describe "code with errors" do

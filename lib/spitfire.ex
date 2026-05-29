@@ -3035,7 +3035,7 @@ defmodule Spitfire do
 
             {{:__aliases__, [{:last, last} | lhs_meta], lhs_aliases ++ aliases}, parser}
 
-          type when type in [:identifier, :do_identifier, :op_identifier] ->
+          type when type in [:identifier, :do_identifier, :op_identifier, :paren_identifier] ->
             parser = next_token(parser)
             %{current_token: {_, token_meta, rhs_name}} = parser
 
@@ -3061,6 +3061,18 @@ defmodule Spitfire do
               ast = {{token, meta, [lhs, rhs_name]}, [no_parens: true] ++ ident_meta, []}
               {ast, parser}
             end
+
+          :bracket_identifier ->
+            parser = next_token(parser)
+            %{current_token: {_, token_meta, rhs_name}} = parser
+
+            ident_meta =
+              parser
+              |> current_meta()
+              |> push_delimiter(token_meta)
+
+            ast = {{token, meta, [lhs, rhs_name]}, [no_parens: true] ++ ident_meta, []}
+            {ast, parser}
 
           _ ->
             parser = next_token(parser)
