@@ -3601,26 +3601,31 @@ defmodule Spitfire do
           {{lhs, newlines ++ [{:closing, closing} | meta], []}, parser}
 
         true ->
-          {pairs, parser} =
-            parser
-            |> next_token()
-            |> eat_eoe()
-            |> parse_comma_list()
+          parser = parser |> next_token() |> eat_eoe()
 
-          parser = eat_eoe_at(parser, 1)
+          if current_token(parser) == :")" do
+            closing = current_meta(parser)
+            parser = next_token(parser)
 
-          parser =
-            case peek_token(parser) do
-              :")" ->
-                next_token(parser)
+            {{lhs, newlines ++ [{:closing, closing} | meta], []}, parser}
+          else
+            {pairs, parser} = parse_comma_list(parser)
 
-              _ ->
-                put_error(parser, {meta, "missing closing parentheses for function invocation"})
-            end
+            parser = eat_eoe_at(parser, 1)
 
-          closing = current_meta(parser)
+            parser =
+              case peek_token(parser) do
+                :")" ->
+                  next_token(parser)
 
-          {{lhs, newlines ++ [{:closing, closing} | meta], List.wrap(pairs)}, parser}
+                _ ->
+                  put_error(parser, {meta, "missing closing parentheses for function invocation"})
+              end
+
+            closing = current_meta(parser)
+
+            {{lhs, newlines ++ [{:closing, closing} | meta], List.wrap(pairs)}, parser}
+          end
       end
     end
   end

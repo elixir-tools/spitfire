@@ -2427,6 +2427,10 @@ defmodule SpitfireTest do
     test "at with alias dot alias" do
       assert Spitfire.parse("@A.A") == s2q("@A.A")
     end
+
+    test "empty parens call with newline" do
+      assert Spitfire.parse("foo()(\n)") == s2q("foo()(\n)")
+    end
   end
 
   describe "code with errors" do
