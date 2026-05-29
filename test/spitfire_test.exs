@@ -2372,8 +2372,7 @@ defmodule SpitfireTest do
       assert Spitfire.parse("foo \n\n=\n bar") == s2q("foo \n\n=\n bar")
       assert Spitfire.parse("foo do :ok end \n\n=\ne") == s2q("foo do :ok end \n\n=\ne")
 
-      assert Spitfire.parse("foo do :ok end \n\n=\ne do :error end") ==
-               s2q("foo do :ok end \n\n=\ne do :error end")
+      assert Spitfire.parse("foo do :ok end \n\n=\ne do :error end") == s2q("foo do :ok end \n\n=\ne do :error end")
     end
 
     test "newlines on match with rhs on same line" do
@@ -2410,13 +2409,15 @@ defmodule SpitfireTest do
     end
 
     test "semicolon separated arrow in try body" do
-      assert Spitfire.parse("try do ->;n after :ok end") ==
-               s2q("try do ->;n after :ok end")
+      assert Spitfire.parse("try do ->;n after :ok end") == s2q("try do ->;n after :ok end")
     end
 
     test "semicolon separated arrows in case clause" do
-      assert Spitfire.parse("case x do ->; -> :ok end") ==
-               s2q("case x do ->; -> :ok end")
+      assert Spitfire.parse("case x do ->; -> :ok end") == s2q("case x do ->; -> :ok end")
+    end
+
+    test "semicolon separated arrows in case clause with arg in second" do
+      assert Spitfire.parse("case x do 1 -> ;e-> end") == s2q("case x do 1 -> ;e-> end")
     end
   end
 

@@ -388,106 +388,112 @@ defmodule Spitfire do
                         peek_token(parser) != :"=>")) &&
                   calc_prec(parser, associativity, precedence) <- {left, parser} do
             parser = consume_fuel(parser)
-            peek_token_type = peek_token_type(parser)
 
-            case peek_token_type do
-              :match_op ->
-                parse_infix_expression(next_token(parser), left)
+            if stop_before_stab_op? and current_token_type(parser) == :stab_op do
+              parser = Map.put(parser, :stab_state, %{ast: left})
+              {left, parser}
+            else
+              peek_token_type = peek_token_type(parser)
 
-              :when_op ->
-                parse_infix_expression(next_token(parser), left)
-
-              :pipe_op when is_map ->
-                # When already inside map pairs (not first), treat | as infix operator
-                if Map.get(parser, :inside_map_update_pairs, false) or Map.get(parser, :in_map_pairs, false) do
+              case peek_token_type do
+                :match_op ->
                   parse_infix_expression(next_token(parser), left)
-                else
-                  parse_pipe_op_in_map(next_token(parser), left)
-                end
 
-              :pipe_op ->
-                parse_infix_expression(next_token(parser), left)
+                :when_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :type_op ->
-                parse_infix_expression(next_token(parser), left)
+                :pipe_op when is_map ->
+                  # When already inside map pairs (not first), treat | as infix operator
+                  if Map.get(parser, :inside_map_update_pairs, false) or Map.get(parser, :in_map_pairs, false) do
+                    parse_infix_expression(next_token(parser), left)
+                  else
+                    parse_pipe_op_in_map(next_token(parser), left)
+                  end
 
-              :dual_op ->
-                parse_infix_expression(next_token(parser), left)
+                :pipe_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :mult_op ->
-                parse_infix_expression(next_token(parser), left)
+                :type_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :power_op ->
-                parse_infix_expression(next_token(parser), left)
+                :dual_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :"[" ->
-                parse_access_expression(next_token(parser), left)
+                :mult_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :concat_op ->
-                parse_infix_expression(next_token(parser), left)
+                :power_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :assoc_op ->
-                parse_assoc_op(next_token(parser), left)
+                :"[" ->
+                  parse_access_expression(next_token(parser), left)
 
-              :arrow_op ->
-                parse_infix_expression(next_token(parser), left)
+                :concat_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :ternary_op ->
-                parse_infix_expression(next_token(parser), left)
+                :assoc_op ->
+                  parse_assoc_op(next_token(parser), left)
 
-              :or_op ->
-                parse_infix_expression(next_token(parser), left)
+                :arrow_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :and_op ->
-                parse_infix_expression(next_token(parser), left)
+                :ternary_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :comp_op ->
-                parse_infix_expression(next_token(parser), left)
+                :or_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :rel_op ->
-                parse_infix_expression(next_token(parser), left)
+                :and_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :in_op ->
-                parse_infix_expression(next_token(parser), left)
+                :comp_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :xor_op ->
-                parse_infix_expression(next_token(parser), left)
+                :rel_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :in_match_op ->
-                parse_infix_expression(next_token(parser), left)
+                :in_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :range_op ->
-                in_range = Map.get(parser, :in_range, false)
-                parse_range_expression(next_token(parser), left, in_range)
+                :xor_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :stab_op when not stop_before_stab_op? ->
-                parse_stab_expression(next_token(parser), left)
+                :in_match_op ->
+                  parse_infix_expression(next_token(parser), left)
 
-              :dot_call_op ->
-                parse_dot_call_expression(next_token(parser), left)
+                :range_op ->
+                  in_range = Map.get(parser, :in_range, false)
+                  parse_range_expression(next_token(parser), left, in_range)
 
-              :"(" ->
-                parse_call_expression(next_token(parser), left)
+                :stab_op when not stop_before_stab_op? ->
+                  parse_stab_expression(next_token(parser), left)
 
-              :. ->
-                parse_dot_expression(next_token(parser), left)
+                :dot_call_op ->
+                  parse_dot_call_expression(next_token(parser), left)
 
-              :"," when is_top ->
-                parse_comma(next_token(parser), left)
+                :"(" ->
+                  parse_call_expression(next_token(parser), left)
 
-              :do when parser.nesting != 0 ->
-                {left, next_token(parser)}
+                :. ->
+                  parse_dot_expression(next_token(parser), left)
 
-              :do ->
-                parse_do_block(next_token(parser), left)
+                :"," when is_top ->
+                  parse_comma(next_token(parser), left)
 
-              _ when stop_before_stab_op? and peek_token_type == :stab_op ->
-                parser = Map.put(parser, :stab_state, %{ast: left})
-                # this will be ignored on the return
-                {left, parser}
+                :do when parser.nesting != 0 ->
+                  {left, next_token(parser)}
 
-              _ ->
-                {left, parser}
+                :do ->
+                  parse_do_block(next_token(parser), left)
+
+                _ when stop_before_stab_op? and peek_token_type == :stab_op ->
+                  parser = Map.put(parser, :stab_state, %{ast: left})
+                  # this will be ignored on the return
+                  {left, parser}
+
+                _ ->
+                  {left, parser}
+              end
             end
           end
         else
@@ -1931,7 +1937,7 @@ defmodule Spitfire do
       {exprs, {_, parser}} =
         while2 peek_token_eat_eoe(parser) not in [:end, :eof] <- {type, parser} do
           {exprs, parser} =
-            while2 peek_token_eat_eoe(parser) not in [:end, :block_identifier, :eof] <- parser do
+            while2 peek_token_eat_eoe(parser) not in [:end, :block_identifier, :eof] or stab_state_set?(parser) <- parser do
               {ast, parser} =
                 case Map.get(parser, :stab_state) do
                   %{ast: lhs} ->
