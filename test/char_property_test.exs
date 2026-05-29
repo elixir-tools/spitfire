@@ -1161,7 +1161,9 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii in contexts" do
     @tag :property
     property "grammar trees round-trip through Spitfire in all contexts" do
-      check all {context, code} <- all_contexts_gen(), max_runs: max_runs_or_default(250_000) do
+      check all {context, code} <- all_contexts_gen(),
+                max_runs: max_runs_or_default(250_000),
+                max_shrinking_steps: max_shrinking_steps_or_default() do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1171,7 +1173,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii standalone" do
     @tag :property
     property "standalone expressions" do
-      check all({context, code} <- context_standalone(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_standalone(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1186,7 +1192,8 @@ defmodule Spitfire.CharPropertyTest do
                   context_bitstring(),
                   context_bitstring_positional_then_kw_data()
                 ]),
-              max_runs: max_runs_or_default(100)
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
             ) do
         run_comparison(context, code, current_mode())
       end
@@ -1196,7 +1203,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii before_do" do
     @tag :property
     property "before do block" do
-      check all({context, code} <- context_before_do(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_before_do(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1205,7 +1216,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii after_do" do
     @tag :property
     property "after do block" do
-      check all({context, code} <- context_after_do(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_after_do(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1227,7 +1242,11 @@ defmodule Spitfire.CharPropertyTest do
           context_fn_multi_arg_with_arrow()
         ])
 
-      check all({context, code} <- fn_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- fn_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1236,7 +1255,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii inside_do" do
     @tag :property
     property "inside do block" do
-      check all({context, code} <- context_inside_do(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_inside_do(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1253,7 +1276,11 @@ defmodule Spitfire.CharPropertyTest do
           context_no_parens_call()
         ])
 
-      check all({context, code} <- call_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- call_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1271,7 +1298,8 @@ defmodule Spitfire.CharPropertyTest do
                   context_bracket_at_access(),
                   context_bracket_at_access_kw_data_value()
                 ]),
-              max_runs: max_runs_or_default(100)
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
             ) do
         run_comparison(context, code, current_mode())
       end
@@ -1295,7 +1323,11 @@ defmodule Spitfire.CharPropertyTest do
           context_parens()
         ])
 
-      check all({context, code} <- container_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- container_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1304,7 +1336,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii interpolation" do
     @tag :property
     property "inside string interpolation" do
-      check all({context, code} <- context_interpolation(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_interpolation(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1319,7 +1355,11 @@ defmodule Spitfire.CharPropertyTest do
           context_after_assignment()
         ])
 
-      check all({context, code} <- op_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- op_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1328,7 +1368,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii struct_arg" do
     @tag :property
     property "inside struct arg" do
-      check all({context, code} <- context_struct_arg(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_struct_arg(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1337,7 +1381,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii between_do_blocks" do
     @tag :property
     property "between do blocks" do
-      check all({context, code} <- context_between_do_blocks(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_between_do_blocks(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1353,7 +1401,11 @@ defmodule Spitfire.CharPropertyTest do
           context_ternary_third()
         ])
 
-      check all({context, code} <- ternary_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- ternary_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1369,7 +1421,11 @@ defmodule Spitfire.CharPropertyTest do
           context_map_update_value()
         ])
 
-      check all({context, code} <- map_update_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- map_update_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1378,7 +1434,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii after_parens_call" do
     @tag :property
     property "after parens call" do
-      check all({context, code} <- context_after_parens_call(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_after_parens_call(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1387,7 +1447,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii no_parens_call_middle" do
     @tag :property
     property "inside no parens call middle" do
-      check all({context, code} <- context_no_parens_call_middle(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_no_parens_call_middle(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1404,7 +1468,11 @@ defmodule Spitfire.CharPropertyTest do
           context_after_dot()
         ])
 
-      check all({context, code} <- dot_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- dot_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1413,7 +1481,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii between_operators" do
     @tag :property
     property "between operators" do
-      check all({context, code} <- context_between_operators(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_between_operators(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1433,7 +1505,11 @@ defmodule Spitfire.CharPropertyTest do
           context_after_not()
         ])
 
-      check all({context, code} <- unary_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- unary_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1448,7 +1524,11 @@ defmodule Spitfire.CharPropertyTest do
           context_interpolated_keyword()
         ])
 
-      check all({context, code} <- interp_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- interp_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1457,7 +1537,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii charlist_interpolation" do
     @tag :property
     property "inside charlist interpolation" do
-      check all({context, code} <- context_charlist_interpolation(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_charlist_interpolation(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1472,7 +1556,11 @@ defmodule Spitfire.CharPropertyTest do
           context_charlist_heredoc_interpolation()
         ])
 
-      check all({context, code} <- heredoc_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- heredoc_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1487,7 +1575,11 @@ defmodule Spitfire.CharPropertyTest do
           context_sigil_heredoc_interpolation()
         ])
 
-      check all({context, code} <- sigil_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- sigil_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1496,7 +1588,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii fn_when" do
     @tag :property
     property "inside fn when guard" do
-      check all({context, code} <- context_fn_when(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_fn_when(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1512,7 +1608,11 @@ defmodule Spitfire.CharPropertyTest do
           context_def_when()
         ])
 
-      check all({context, code} <- def_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- def_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1531,7 +1631,11 @@ defmodule Spitfire.CharPropertyTest do
           context_no_parens_call_kw_value()
         ])
 
-      check all({context, code} <- kv_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- kv_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1556,7 +1660,11 @@ defmodule Spitfire.CharPropertyTest do
           context_receive_clause_lhs()
         ])
 
-      check all({context, code} <- stab_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- stab_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1573,7 +1681,11 @@ defmodule Spitfire.CharPropertyTest do
           context_nested_no_parens_call()
         ])
 
-      check all({context, code} <- args_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- args_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1591,7 +1703,11 @@ defmodule Spitfire.CharPropertyTest do
           context_with_else_body()
         ])
 
-      check all({context, code} <- comp_contexts, max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- comp_contexts,
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1600,7 +1716,11 @@ defmodule Spitfire.CharPropertyTest do
   describe "ascii bitstring specs" do
     @tag :property
     property "inside bitstring segment spec" do
-      check all({context, code} <- context_bitstring_segment_spec(), max_runs: max_runs_or_default(100)) do
+      check all(
+              {context, code} <- context_bitstring_segment_spec(),
+              max_runs: max_runs_or_default(100),
+              max_shrinking_steps: max_shrinking_steps_or_default()
+            ) do
         run_comparison(context, code, current_mode())
       end
     end
@@ -1742,6 +1862,14 @@ defmodule Spitfire.CharPropertyTest do
 
   defp max_runs_or_default(default) do
     case System.get_env("PROPERTY_MAX_RUNS") do
+      nil -> default
+      "" -> default
+      str -> String.to_integer(str)
+    end
+  end
+
+  defp max_shrinking_steps_or_default(default \\ 200) do
+    case System.get_env("PROPERTY_MAX_SHRINKING_STEPS") do
       nil -> default
       "" -> default
       str -> String.to_integer(str)
