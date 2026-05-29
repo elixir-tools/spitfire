@@ -1651,6 +1651,9 @@ defmodule Spitfire do
     token_type = peek_token_type(parser)
 
     cond do
+      token == nil or token == :eof ->
+        false
+
       nesting == 0 and
           (token_type == :assoc_op or token == :"," or token == :"}" or token == :eof) ->
         scan_binding_op(parser, nesting)

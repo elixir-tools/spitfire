@@ -2566,6 +2566,13 @@ defmodule SpitfireTest do
                 [{[line: 1, column: 14], "missing closing brace for map"}]}
     end
 
+    test "map update with malformed nested tuples does not hang" do
+      code = ~S(%{x | +@s ul{l{0})
+
+      assert {:error, _ast, errors} = Spitfire.parse(code)
+      assert {[line: 1, column: 13], "missing closing brace for tuple"} in errors
+    end
+
     test "missing comma in list" do
       code = ~S'[:foo :bar, :baz]'
 
