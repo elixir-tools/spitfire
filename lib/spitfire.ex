@@ -3738,6 +3738,9 @@ defmodule Spitfire do
           :"(" ->
             parse_grouped_expression(parser)
 
+          :"{" ->
+            parse_tuple_literal(parser)
+
           _ ->
             parse_lone_identifier(parser)
         end
