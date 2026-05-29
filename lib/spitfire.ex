@@ -1577,6 +1577,19 @@ defmodule Spitfire do
       type when type in [:"(", :"[", :"{", :"<<"] ->
         scan_binding_op(next_token(parser), 1)
 
+      :identifier ->
+        # If the first token is an identifier and the next is also an identifier,
+        # this is a no-parens function call. Skip call args without detecting
+        # binding ops (they may contain \\, when, :: inside the call).
+        case peek_token_type(parser) do
+          :identifier ->
+            parser = next_token(parser)
+            skip_call_args(parser, 0)
+
+          _ ->
+            scan_binding_op(parser, 0)
+        end
+
       _ ->
         scan_binding_op(parser, 0)
     end
@@ -1614,8 +1627,45 @@ defmodule Spitfire do
       token == :do ->
         skip_do_end_for_binding_op(next_token(parser), 1, nesting)
 
+      # When an identifier at nesting 0 is followed by another identifier,
+      # it's a no-parens function call. Skip the call args without detecting
+      # binding ops (they may contain \\, when, :: inside the call).
+      token_type == :identifier and nesting == 0 ->
+        parser = next_token(parser)
+
+        case peek_token_type(parser) do
+          :identifier ->
+            skip_call_args(parser, nesting)
+
+          _ ->
+            scan_binding_op(parser, nesting)
+        end
+
       true ->
         scan_binding_op(next_token(parser), nesting)
+    end
+  end
+
+  defp skip_call_args(parser, nesting) do
+    token = peek_token(parser)
+    token_type = peek_token_type(parser)
+
+    cond do
+      nesting == 0 and
+          (token_type == :assoc_op or token == :"," or token == :"}" or token == :eof) ->
+        scan_binding_op(parser, nesting)
+
+      token in [:"(", :"[", :"{", :"<<"] ->
+        skip_call_args(next_token(parser), nesting + 1)
+
+      token in [:")", :"]", :"}", :">>"] ->
+        skip_call_args(next_token(parser), max(nesting - 1, 0))
+
+      token == :do ->
+        skip_do_end_for_binding_op(next_token(parser), 1, nesting)
+
+      true ->
+        skip_call_args(next_token(parser), nesting)
     end
   end
 

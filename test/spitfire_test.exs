@@ -2419,6 +2419,10 @@ defmodule SpitfireTest do
     test "semicolon separated arrows in case clause with arg in second" do
       assert Spitfire.parse("case x do 1 -> ;e-> end") == s2q("case x do 1 -> ;e-> end")
     end
+
+    test "map update with ternary operator and no parens func call" do
+      assert Spitfire.parse("%{x | o d\\\\i => 1}") == s2q("%{x | o d\\\\i => 1}")
+    end
   end
 
   describe "code with errors" do
