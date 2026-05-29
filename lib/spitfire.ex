@@ -3048,10 +3048,11 @@ defmodule Spitfire do
             if peek_token(parser) == :"(" do
               parser = next_token(parser)
 
-              if current_token(parser) == :")" do
+              if peek_token(parser) == :")" do
+                parser = next_token(parser)
                 closing = current_meta(parser)
                 ast = {{token, meta, [lhs, rhs_name]}, [{:closing, closing}] ++ ident_meta, []}
-                {ast, next_token(parser)}
+                {ast, parser}
               else
                 # Shouldn't happen in valid syntax, but handle gracefully
                 ast = {{token, meta, [lhs, rhs_name]}, [no_parens: true] ++ ident_meta, []}
