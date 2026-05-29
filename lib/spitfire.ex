@@ -2140,7 +2140,14 @@ defmodule Spitfire do
           {{:__aliases__, ameta, aliases}, parser} = parse_alias(parser)
 
           last = ameta[:last]
-          {{:__aliases__, [{:last, last} | meta], [lhs | aliases]}, parser}
+
+          {lhs_aliases, lhs_meta} =
+            case lhs do
+              {:__aliases__, lhs_meta, lhs_aliases} -> {lhs_aliases, Keyword.delete(lhs_meta, :last)}
+              _ -> {[lhs], meta}
+            end
+
+          {{:__aliases__, [{:last, last} | lhs_meta], lhs_aliases ++ aliases}, parser}
 
         # if the next token is a bracket_identifier, then we know that the whole dot expression needs to be used as an argument for the access expression. eg, foo.bar[:baz]
         :bracket_identifier ->
@@ -2689,27 +2696,8 @@ defmodule Spitfire do
   defp parse_alias(%{current_token: {:alias, _, alias}} = parser) do
     trace "parse_alias", trace_meta(parser) do
       meta = current_meta(parser)
-      Process.put(:alias_last_meta, meta)
-
-      {aliases, parser} =
-        while2 peek_token(parser) == :. && peek_token(next_token(parser)) == :alias <- parser do
-          parser = next_token(parser)
-
-          case parser.peek_token do
-            {:alias, _, alias} ->
-              parser = next_token(parser)
-              meta = current_meta(parser)
-              Process.put(:alias_last_meta, meta)
-              {alias, parser}
-          end
-        end
-
-      aliases = [alias | aliases]
-
-      {{:__aliases__, [{:last, Process.get(:alias_last_meta)} | meta], aliases}, parser}
+      {{:__aliases__, [{:last, meta} | meta], [alias]}, parser}
     end
-  after
-    Process.delete(:alias_last_meta)
   end
 
   defp parse_bitstring(%{current_token: {:"<<", _}} = parser) do
@@ -3035,7 +3023,14 @@ defmodule Spitfire do
             parser = next_token(parser)
             {{:__aliases__, ameta, aliases}, parser} = parse_alias(parser)
             last = ameta[:last]
-            {{:__aliases__, [{:last, last} | meta], [lhs | aliases]}, parser}
+
+            {lhs_aliases, lhs_meta} =
+              case lhs do
+                {:__aliases__, lhs_meta, lhs_aliases} -> {lhs_aliases, Keyword.delete(lhs_meta, :last)}
+                _ -> {[lhs], meta}
+              end
+
+            {{:__aliases__, [{:last, last} | lhs_meta], lhs_aliases ++ aliases}, parser}
 
           type when type in [:identifier, :do_identifier, :op_identifier] ->
             parser = next_token(parser)

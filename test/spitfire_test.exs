@@ -2423,6 +2423,10 @@ defmodule SpitfireTest do
     test "map update with ternary operator and no parens func call" do
       assert Spitfire.parse("%{x | o d\\\\i => 1}") == s2q("%{x | o d\\\\i => 1}")
     end
+
+    test "at with alias dot alias" do
+      assert Spitfire.parse("@A.A") == s2q("@A.A")
+    end
   end
 
   describe "code with errors" do
