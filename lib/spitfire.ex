@@ -2959,15 +2959,40 @@ defmodule Spitfire do
               token when token in [:., :dot_call_op] ->
                 {new_left, parser} = parse_dot_for_struct_type(next_token(parser), left)
                 # Check if next token is ( for zero-arity calls
-                if peek_token(parser) == :"(" do
+                if current_token(parser) == :"(" do
                   parser = next_token(parser)
 
                   if current_token(parser) == :")" do
                     closing = current_meta(parser)
-                    new_left = {new_left, [{:closing, closing}, {:line, 1}, {:column, 3}], []}
+                    {{:., fun_meta, fun_args}, old_meta, _} = new_left
+
+                    new_left =
+                      {{:., fun_meta, fun_args}, [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]), []}
+
                     {new_left, next_token(parser)}
                   else
-                    {new_left, parser}
+                    parser = eat_eoe(parser)
+
+                    if current_token(parser) == :")" do
+                      closing = current_meta(parser)
+                      {{:., fun_meta, fun_args}, old_meta, _} = new_left
+
+                      new_left =
+                        {{:., fun_meta, fun_args}, [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]), []}
+
+                      {new_left, next_token(parser)}
+                    else
+                      {args, parser} = parse_comma_list(parser)
+                      parser = next_token(parser)
+                      closing = current_meta(parser)
+                      {{:., fun_meta, fun_args}, old_meta, _} = new_left
+
+                      new_left =
+                        {{:., fun_meta, fun_args}, [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]),
+                         args}
+
+                      {new_left, parser}
+                    end
                   end
                 else
                   {new_left, parser}

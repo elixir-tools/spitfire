@@ -2325,6 +2325,10 @@ defmodule SpitfireTest do
       # Struct type with remote call via regular dot: %0.b(){}
       assert Spitfire.parse("%0.b(){}") == s2q("%0.b(){}")
 
+      # Struct type with remote call arguments: %e.l(u){}
+      assert Spitfire.parse("%e.l(u){}") == s2q("%e.l(u){}")
+      assert Spitfire.parse("%e.l(){}") == s2q("%e.l(){}")
+
       # with/else stab body with leading semicolon after newline
       assert Spitfire.parse("with x <- 1 do :ok else _ -> \n;a end") ==
                s2q("with x <- 1 do :ok else _ -> \n;a end")
