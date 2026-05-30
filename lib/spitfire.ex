@@ -3125,6 +3125,35 @@ defmodule Spitfire do
             ast = {{token, meta, [lhs, rhs_name]}, [no_parens: true] ++ ident_meta, []}
             {ast, parser}
 
+          :"{" ->
+            dot_meta = meta
+            parser = next_token(parser)
+            parser = parser |> next_token() |> eat_eoe()
+
+            old_nesting = parser.nesting
+            parser = Map.put(parser, :nesting, 0)
+
+            {items, parser} =
+              if current_token(parser) == :"}" do
+                {[], parser}
+              else
+                {items, parser} = parse_comma_list(parser, @list_comma, false, false)
+                parser = parser |> next_token() |> eat_eoe()
+                {items, parser}
+              end
+
+            parser = Map.put(parser, :nesting, old_nesting)
+
+            outer_meta =
+              if items == [] do
+                dot_meta
+              else
+                [{:closing, current_meta(parser)} | dot_meta]
+              end
+
+            ast = {{token, dot_meta, [lhs, :{}]}, outer_meta, items}
+            {ast, parser}
+
           _ ->
             parser = next_token(parser)
             next_meta = current_meta(parser)

@@ -754,7 +754,8 @@ defmodule SpitfireTest do
         ~S'''
         %Foo{"ok": 1}
         ''',
-        ~S'%@{}{}'
+        ~S'%@{}{}',
+        "%e.{}{}"
       ]
 
       for code <- codes do
