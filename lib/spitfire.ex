@@ -1104,16 +1104,20 @@ defmodule Spitfire do
     end
   end
 
-  # Parse ... followed by a lone identifier for struct types
-  defp parse_ellipsis_lone_identifier(parser) do
-    trace "parse_ellipsis_lone_identifier", trace_meta(parser) do
+  # Parse ... followed by a struct type expression for struct types
+  defp parse_struct_ellipsis(parser) do
+    trace "parse_struct_ellipsis", trace_meta(parser) do
       meta = current_meta(parser)
-      parser = parser |> next_token() |> eat_eoe()
 
-      {rhs, parser} = parse_lone_identifier(parser)
+      case peek_token(parser) do
+        :"{" ->
+          {{:..., meta, []}, parser}
 
-      ast = {:..., meta, [rhs]}
-      {ast, parser}
+        _ ->
+          parser = parser |> next_token() |> eat_eoe()
+          {rhs, parser} = parse_struct_type(parser)
+          {{:..., meta, [rhs]}, parser}
+      end
     end
   end
 
@@ -2897,7 +2901,7 @@ defmodule Spitfire do
             parse_ternary_prefix_lone_identifier(parser)
 
           :ellipsis_op ->
-            parse_ellipsis_lone_identifier(parser)
+            parse_struct_ellipsis(parser)
 
           :range_op ->
             parse_range_expression(parser)
@@ -2946,6 +2950,21 @@ defmodule Spitfire do
 
           :"[" ->
             parse_list_literal(parser)
+
+          :fn ->
+            parse_anon_function(parser)
+
+          :"<<" ->
+            parse_bitstring(parser)
+
+          :bin_heredoc ->
+            parse_string(parser)
+
+          :list_heredoc ->
+            parse_string(parser)
+
+          :"{" ->
+            parse_tuple_literal(parser)
 
           _ ->
             nil
@@ -3740,6 +3759,21 @@ defmodule Spitfire do
 
           :"{" ->
             parse_tuple_literal(parser)
+
+          :fn ->
+            parse_anon_function(parser)
+
+          :"<<" ->
+            parse_bitstring(parser)
+
+          :bin_heredoc ->
+            parse_string(parser)
+
+          :list_heredoc ->
+            parse_string(parser)
+
+          :ellipsis_op ->
+            parse_struct_ellipsis(parser)
 
           _ ->
             parse_lone_identifier(parser)

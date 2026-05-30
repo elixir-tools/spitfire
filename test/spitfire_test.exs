@@ -751,6 +751,26 @@ defmodule SpitfireTest do
       end
     end
 
+    test "struct type: standalone ellipsis %...{}" do
+      assert Spitfire.parse("%...{}") == s2q("%...{}")
+    end
+
+    test "struct type: bitstring %<<1>>{}" do
+      assert Spitfire.parse("%<<1>>{}") == s2q("%<<1>>{}")
+    end
+
+    test "struct type: anonymous fn %fn x -> x end{}" do
+      assert Spitfire.parse("%fn x -> x end{}") == s2q("%fn x -> x end{}")
+    end
+
+    test "struct type: module attr with bitstring %@<<1>>{}" do
+      assert Spitfire.parse("%@<<1>>{}") == s2q("%@<<1>>{}")
+    end
+
+    test "struct type: module attr with ellipsis %@...foo{}" do
+      assert Spitfire.parse("%@...foo{}") == s2q("%@...foo{}")
+    end
+
     test "parses operators" do
       codes = [
         ~s'''
@@ -2306,6 +2326,8 @@ defmodule SpitfireTest do
       # Boolean literals in struct types
       assert Spitfire.parse("%false{}") == s2q("%false{}")
       assert Spitfire.parse("%true{}") == s2q("%true{}")
+
+      assert Spitfire.parse("%+{}{}") == s2q("%+{}{}")
 
       # Struct arg inside struct arg
       assert Spitfire.parse("%%{}{}") == s2q("%%{}{}")
