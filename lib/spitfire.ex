@@ -3040,12 +3040,14 @@ defmodule Spitfire do
                 parse_access_expression(next_token(parser), left)
 
               :"(" ->
-                # Handle () after a dot expression
+                # Handle () after a struct type expression (e.g., %@foo(){})
                 parser = next_token(parser)
 
-                if current_token(parser) == :")" do
-                  closing = current_meta(parser)
-                  {{:., current_meta(parser), [left]}, [{:closing, closing}], []}
+                if peek_token(parser) == :")" do
+                  parser = next_token(parser)
+                  closing_meta = current_meta(parser)
+                  new_left = add_call_parens_to_struct_type(left, closing_meta)
+                  {new_left, parser}
                 else
                   {left, parser}
                 end
@@ -3247,6 +3249,19 @@ defmodule Spitfire do
   end
 
   defp format_struct_type(_), do: nil
+
+  defp add_call_parens_to_struct_type({:@, meta, [inner]}, closing_meta) do
+    {inner_type, inner_meta, inner_args} = inner
+    {:@, meta, [{inner_type, [closing: closing_meta] ++ inner_meta, inner_args || []}]}
+  end
+
+  defp add_call_parens_to_struct_type({type, meta, nil}, closing_meta) do
+    {type, [{:closing, closing_meta} | meta], []}
+  end
+
+  defp add_call_parens_to_struct_type({type, meta, args}, closing_meta) when is_list(args) do
+    {type, [{:closing, closing_meta} | meta], args}
+  end
 
   defp parse_struct_literal(%{current_token: {:%, _}} = parser) do
     trace "parse_struct_literal", trace_meta(parser) do
