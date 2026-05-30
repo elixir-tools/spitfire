@@ -231,6 +231,17 @@ defmodule SpitfireTest do
       assert Spitfire.parse(code) == s2q(code)
     end
 
+    test "charlist interpolation with line continuation after dot" do
+      code = "'foo\#{s.\\\\\n\nr}'"
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = "'foo\#{s.\\\\\nr}'"
+      assert Spitfire.parse(code) == s2q(code)
+
+      code = "'foo\#{s.\\\n\nr}'"
+      assert Spitfire.parse(code) == s2q(code)
+    end
+
     test "parses atoms" do
       code = ~s'''
       :foobar

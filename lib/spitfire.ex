@@ -2102,6 +2102,11 @@ defmodule Spitfire do
       precedence = current_precedence(parser)
       meta = current_meta(parser)
 
+      parser =
+        while peek_token(parser) in [:eol, :";"] <- parser do
+          next_token(parser)
+        end
+
       case peek_token_type(parser) do
         # if the next token is an open brace, we are in a multi alias situation `alias Foo.{Bar, Baz}`
         # technically the contents of the braces can be anything, so we parse them as anything
