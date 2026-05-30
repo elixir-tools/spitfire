@@ -1151,8 +1151,8 @@ defmodule Spitfire do
       meta = current_meta(parser)
 
       newlines =
-        case current_newlines(parser) do
-          nil -> get_newlines(parser)
+        case current_newlines(parser) || peek_newlines(parser) do
+          nil -> []
           nl -> [newlines: nl]
         end
 
@@ -1220,8 +1220,8 @@ defmodule Spitfire do
           meta = current_meta(parser)
 
           newlines =
-            case current_newlines(parser) do
-              nil -> get_newlines(parser)
+            case current_newlines(parser) || peek_newlines(parser) do
+              nil -> []
               nl -> [newlines: nl]
             end
 
@@ -1402,18 +1402,10 @@ defmodule Spitfire do
       # we save this in case the next expression is an error
       pre_parser = parser
 
-      nl_base = current_newlines(parser) || peek_newlines(parser, :eol)
-
-      after_nl = peek_newlines(parser)
-
       newlines =
-        case nl_base do
-          nil ->
-            []
-
-          nl ->
-            cap = if is_nil(after_nl), do: nl, else: min(nl, after_nl)
-            [newlines: cap]
+        case peek_newlines(parser) || current_newlines(parser) do
+          nil -> []
+          nl -> [newlines: nl]
         end
 
       parser = parser |> next_token() |> eat_eoe()
@@ -1549,7 +1541,7 @@ defmodule Spitfire do
       meta = current_meta(parser)
 
       newlines =
-        case current_newlines(parser) || peek_newlines(parser, :eol) do
+        case current_newlines(parser) || peek_newlines(parser) do
           nil -> []
           nl -> [newlines: nl]
         end
@@ -1857,7 +1849,7 @@ defmodule Spitfire do
       precedence = current_precedence(parser)
 
       newlines =
-        case current_newlines(parser) || peek_newlines(parser, :eol) do
+        case current_newlines(parser) || peek_newlines(parser) do
           nil -> []
           nl -> [newlines: nl]
         end
@@ -2113,7 +2105,16 @@ defmodule Spitfire do
         :"{" ->
           dot_meta = current_meta(parser)
           parser = next_token(parser)
-          newlines = get_newlines(parser)
+          before_nl = current_newlines(parser)
+          after_nl = peek_newlines(parser)
+
+          newlines =
+            case {before_nl, after_nl} do
+              {nil, nil} -> []
+              {nl, nil} -> [newlines: nl]
+              {nil, nl} -> [newlines: nl]
+              {b, a} -> [newlines: max(b, a)]
+            end
 
           parser = parser |> next_token() |> eat_eoe()
 

@@ -2476,6 +2476,30 @@ defmodule SpitfireTest do
     test "struct with dynamic module via call + access" do
       assert Spitfire.parse("%x.l[a]{}") == s2q("%x.l[a]{}")
     end
+
+    test "multiline match with range step operator" do
+      assert Spitfire.parse("e\n=\n\ne..x//y") == s2q("e\n=\n\ne..x//y")
+    end
+
+    test "multiline pipe operator with more newlines after than before" do
+      assert Spitfire.parse("x\n|>\n\ny") == s2q("x\n|>\n\ny")
+    end
+
+    test "multiline pipe operator in complex pipeline" do
+      assert Spitfire.parse("x\n|>\n\ny\n|>\n\nz") == s2q("x\n|>\n\ny\n|>\n\nz")
+    end
+
+    test "multiline when guard with more newlines after than before" do
+      assert Spitfire.parse("fn x\nwhen\n\ny -> z end") == s2q("fn x\nwhen\n\ny -> z end")
+    end
+
+    test "multiline left arrow with more newlines after than before" do
+      assert Spitfire.parse("x\n<-\n\ny") == s2q("x\n<-\n\ny")
+    end
+
+    test "multiline plus operator with more newlines after than before" do
+      assert Spitfire.parse("x\n+\n\ny") == s2q("x\n+\n\ny")
+    end
   end
 
   describe "code with errors" do
