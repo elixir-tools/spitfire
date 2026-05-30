@@ -1157,14 +1157,23 @@ defmodule Spitfire do
         end
 
       has_leading_semicolon = peek_token_skip_eol(parser) == :";"
-      parser = eat_at(parser, [:eol, :";"], 1)
+
+      parser =
+        while peek_token_type(parser) in [:eol, :";"] <- parser do
+          eat_at(parser, [:eol, :";"], 1)
+        end
+
       old_nesting = parser.nesting
       parser = Map.put(parser, :nesting, 0)
 
       {exprs, parser} =
         while2 peek_token(parser) not in [:end, :eof, :")", :block_identifier, :->] <- parser do
           parser = parser |> next_token() |> eat_eoe()
-          {ast, parser} = parse_expression(parser, @lowest, false, false, true)
+
+          {ast, parser} =
+            with_context(parser, %{stop_before_stab_op?: true}, fn parser ->
+              parse_expression(parser, @lowest, false, false, true)
+            end)
 
           eoe = peek_eoe(parser)
 
@@ -1172,7 +1181,11 @@ defmodule Spitfire do
 
           ast = push_eoe(ast, eoe)
 
-          {ast, parser}
+          if has_leading_semicolon and Map.get(parser, :stab_state) do
+            {:filter, {nil, parser}}
+          else
+            {ast, parser}
+          end
         end
 
       exprs = if has_leading_semicolon, do: [nil | exprs], else: exprs
