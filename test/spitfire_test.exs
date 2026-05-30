@@ -788,6 +788,14 @@ defmodule SpitfireTest do
       assert Spitfire.parse("%@...foo{}") == s2q("%@...foo{}")
     end
 
+    test "struct type: module attr with call args %@t(o){}" do
+      assert Spitfire.parse("%@t(o){}") == s2q("%@t(o){}")
+    end
+
+    test "struct type: module attr with multi call args %@t(a, b){}" do
+      assert Spitfire.parse("%@t(a, b){}") == s2q("%@t(a, b){}")
+    end
+
     test "parses operators" do
       codes = [
         ~s'''

@@ -3049,7 +3049,21 @@ defmodule Spitfire do
                   new_left = add_call_parens_to_struct_type(left, closing_meta)
                   {new_left, parser}
                 else
-                  {left, parser}
+                  parser = parser |> next_token() |> eat_eoe()
+
+                  if current_token(parser) == :")" do
+                    closing = current_meta(parser)
+                    parser = next_token(parser)
+                    new_left = add_call_parens_to_struct_type(left, closing)
+                    {new_left, parser}
+                  else
+                    {args, parser} = parse_comma_list(parser)
+                    parser = eat_eoe_at(parser, 1)
+                    parser = next_token(parser)
+                    closing = current_meta(parser)
+                    new_left = add_call_parens_to_struct_type(left, closing, args)
+                    {new_left, parser}
+                  end
                 end
             end
           end
@@ -3260,6 +3274,15 @@ defmodule Spitfire do
   end
 
   defp add_call_parens_to_struct_type({type, meta, args}, closing_meta) when is_list(args) do
+    {type, [{:closing, closing_meta} | meta], args}
+  end
+
+  defp add_call_parens_to_struct_type({:@, meta, [inner]}, closing_meta, args) do
+    {inner_type, inner_meta, _inner_args} = inner
+    {:@, meta, [{inner_type, [closing: closing_meta] ++ inner_meta, args}]}
+  end
+
+  defp add_call_parens_to_struct_type({type, meta, _args}, closing_meta, args) do
     {type, [{:closing, closing_meta} | meta], args}
   end
 
