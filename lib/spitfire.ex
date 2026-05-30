@@ -3838,6 +3838,9 @@ defmodule Spitfire do
           :ellipsis_op ->
             parse_struct_ellipsis(parser)
 
+          :sigil ->
+            parse_sigil(parser)
+
           _ ->
             parse_lone_identifier(parser)
         end

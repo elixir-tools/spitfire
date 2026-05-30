@@ -764,6 +764,10 @@ defmodule SpitfireTest do
       end
     end
 
+    test "@ with sigil as struct name" do
+      assert Spitfire.parse(~S'%@~t""{}') == s2q(~S'%@~t""{}')
+    end
+
     test "struct type: standalone ellipsis %...{}" do
       assert Spitfire.parse("%...{}") == s2q("%...{}")
     end
