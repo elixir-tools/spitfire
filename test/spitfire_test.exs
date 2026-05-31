@@ -20,7 +20,8 @@ defmodule SpitfireTest do
         ~S'''
         foo do: IO.inspect("bob"); "bob"
         ''',
-        "(b;e\n;)"
+        "(b;e\n;)",
+        "foo do ->_;c end"
       ]
 
       for code <- codes do
@@ -3637,18 +3638,22 @@ defmodule SpitfireTest do
                {:error,
                 [
                   {:->, [line: 1, column: 3], [[{:a, [line: 1, column: 1], nil}], nil]},
-                  {:->, [line: 1, column: 13],
+                  {:->, [line: 1, column: 13], [[], nil]},
+                  {:d, [line: 1, column: 16],
                    [
-                     [],
-                     {:d, [line: 1, column: 16],
+                     {:fn,
                       [
-                        {:fn, [closing: [line: 1, column: 30], line: 1, column: 18],
+                        closing: [line: 1, column: 30],
+                        line: 1,
+                        column: 18
+                      ],
+                      [
+                        {:->, [line: 1, column: 25],
                          [
-                           {:->, [line: 1, column: 25],
-                            [
-                              [{:e, [line: 1, column: 21], [{:f, [line: 1, column: 23], nil}]}],
-                              {:g, [line: 1, column: 28], nil}
-                            ]}
+                           [
+                             {:e, [line: 1, column: 21], [{:f, [line: 1, column: 23], nil}]}
+                           ],
+                           {:g, [line: 1, column: 28], nil}
                          ]}
                       ]}
                    ]},
@@ -3657,6 +3662,7 @@ defmodule SpitfireTest do
                 ],
                 [
                   {[line: 1, column: 11], "syntax error"},
+                  {[line: 1, column: 16], "syntax error"},
                   {[line: 1, column: 30], "unknown token: end"},
                   {[line: 1, column: 34], "unknown token: end"}
                 ]}
@@ -3716,19 +3722,14 @@ defmodule SpitfireTest do
                {:error,
                 [
                   {:->, [line: 1, column: 3], [[{:a, [line: 1, column: 1], nil}], nil]},
-                  {:->, [line: 1, column: 8],
-                   [
-                     [],
-                     {:fn, [line: 1, column: 11],
-                      [
-                        {:__block__, [error: true, line: 1, column: 13], []},
-                        {:->, [line: 1, column: 15], [[], {:c, [line: 1, column: 18], nil}]}
-                      ]}
-                   ]}
+                  {:->, [line: 1, column: 8], [[], nil]},
+                  {:__block__, [error: true, line: 1, column: 13], []},
+                  {:->, [line: 1, column: 15], [[], nil]}
                 ],
                 [
+                  {[line: 1, column: 11], "syntax error"},
                   {[line: 1, column: 13], "unknown token: }"},
-                  {[line: 1, column: 11], "missing closing end for anonymous function"}
+                  {[line: 1, column: 18], "syntax error"}
                 ]}
     end
   end
