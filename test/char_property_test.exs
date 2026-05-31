@@ -1727,6 +1727,17 @@ defmodule Spitfire.CharPropertyTest do
   end
 
   defp run_comparison(context, code, mode) do
+    gc_interval = Application.get_env(:spitfire, :property_gc_interval, 1000)
+
+    case Process.get(:spitfire_property_count, 0) do
+      n when n >= gc_interval ->
+        Process.put(:spitfire_property_count, 0)
+        :erlang.garbage_collect()
+
+      n ->
+        Process.put(:spitfire_property_count, n + 1)
+    end
+
     elixir_result = elixir_parse(code)
 
     case {mode, elixir_result} do
