@@ -625,7 +625,7 @@ defmodule Spitfire do
                 {exprs, parser} =
                   while2 (current_token(parser) == :-> and peek_token(parser) != :")") ||
                            stab_state_set?(parser) || peek_token(parser) == :-> ||
-                           (peek_token(parser) in [:eol, :";"] && parser |> next_token() |> peek_token() != :")") <-
+                           (peek_token(parser) in [:eol, :";"] && peek_token_skip_eoe(parser) != :")") <-
                            parser do
                     {ast, parser} =
                       case Map.get(parser, :stab_state) do

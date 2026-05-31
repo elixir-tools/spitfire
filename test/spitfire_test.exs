@@ -33,6 +33,10 @@ defmodule SpitfireTest do
       '''
 
       assert Spitfire.parse(code) == s2q(code)
+
+      code = "(b;e\n;)"
+
+      assert Spitfire.parse(code) == s2q(code)
     end
 
     test "parses valid elixir" do
