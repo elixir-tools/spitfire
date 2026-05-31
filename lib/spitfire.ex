@@ -3756,7 +3756,6 @@ defmodule Spitfire do
 
           if current_token(parser) == :")" do
             closing = current_meta(parser)
-            parser = next_token(parser)
 
             {{lhs, newlines ++ [{:closing, closing} | meta], []}, parser}
           else

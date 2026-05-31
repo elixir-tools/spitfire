@@ -113,7 +113,8 @@ defmodule SpitfireTest do
         ~S'''
         @typep versioned_vars :: %{optional(variable) => var_version :: non_neg_integer}
         ''',
-        "@spec with(t(), (() -> x)) :: x when x: var"
+        "@spec with(t(), (() -> x)) :: x when x: var",
+        "foo()(\n)|b"
       ]
 
       for code <- codes do
