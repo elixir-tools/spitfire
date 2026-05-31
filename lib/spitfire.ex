@@ -1167,7 +1167,7 @@ defmodule Spitfire do
       parser = Map.put(parser, :nesting, 0)
 
       {exprs, parser} =
-        while2 peek_token(parser) not in [:end, :eof, :")", :block_identifier, :->] <- parser do
+        while2 peek_token(parser) not in [:end, :eof, :")", :block_identifier, :->, :";"] <- parser do
           parser = parser |> next_token() |> eat_eoe()
 
           {ast, parser} =
@@ -1175,16 +1175,19 @@ defmodule Spitfire do
               parse_expression(parser, @lowest, false, false, true)
             end)
 
-          eoe = peek_eoe(parser)
-
-          parser = eat_eoe_at(parser, 1)
-
-          ast = push_eoe(ast, eoe)
-
-          if has_leading_semicolon and Map.get(parser, :stab_state) do
-            {:filter, {nil, parser}}
-          else
+          if peek_token(parser) == :";" do
+            ast = push_eoe(ast, peek_eoe(parser))
             {ast, parser}
+          else
+            eoe = peek_eoe(parser)
+            parser = eat_eoe_at(parser, 1)
+            ast = push_eoe(ast, eoe)
+
+            if has_leading_semicolon and Map.get(parser, :stab_state) do
+              {:filter, {nil, parser}}
+            else
+              {ast, parser}
+            end
           end
         end
 

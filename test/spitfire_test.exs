@@ -1462,7 +1462,8 @@ defmodule SpitfireTest do
              :bar
          end
         ''',
-        "cond do ->;1 -> :ok end"
+        "cond do ->;1 -> :ok end",
+        "cond do ->n;s -> :ok end"
       ]
 
       for code <- codes do
