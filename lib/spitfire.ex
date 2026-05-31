@@ -3005,12 +3005,18 @@ defmodule Spitfire do
                 if current_token(parser) == :"(" do
                   parser = next_token(parser)
 
+                  newlines =
+                    case current_newlines(parser) do
+                      nil -> []
+                      nl -> [newlines: nl]
+                    end
+
                   if current_token(parser) == :")" do
                     closing = current_meta(parser)
                     {{:., fun_meta, fun_args}, old_meta, _} = new_left
 
                     new_left =
-                      {{:., fun_meta, fun_args}, [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]), []}
+                      {{:., fun_meta, fun_args}, newlines ++ [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]), []}
 
                     {new_left, next_token(parser)}
                   else
@@ -3021,7 +3027,7 @@ defmodule Spitfire do
                       {{:., fun_meta, fun_args}, old_meta, _} = new_left
 
                       new_left =
-                        {{:., fun_meta, fun_args}, [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]), []}
+                        {{:., fun_meta, fun_args}, newlines ++ [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]), []}
 
                       {new_left, next_token(parser)}
                     else
@@ -3031,7 +3037,7 @@ defmodule Spitfire do
                       {{:., fun_meta, fun_args}, old_meta, _} = new_left
 
                       new_left =
-                        {{:., fun_meta, fun_args}, [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]),
+                        {{:., fun_meta, fun_args}, newlines ++ [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]),
                          args}
 
                       {new_left, parser}
@@ -3132,13 +3138,26 @@ defmodule Spitfire do
             if peek_token(parser) == :"(" do
               parser = next_token(parser)
 
-              if peek_token(parser) == :")" do
+              has_empty_parens? =
+                peek_token(parser) == :")" ||
+                  (peek_token(parser) in [:eol, :";"] and
+                     peek_token_skip_eoe(parser) == :")")
+
+              if has_empty_parens? do
                 parser = next_token(parser)
+
+                newlines =
+                  case current_newlines(parser) do
+                    nil -> []
+                    nl -> [newlines: nl]
+                  end
+
+                parser = eat_eoe(parser)
                 closing = current_meta(parser)
-                ast = {{token, meta, [lhs, rhs_name]}, [{:closing, closing}] ++ ident_meta, []}
+                ast = {{token, meta, [lhs, rhs_name]}, newlines ++ [{:closing, closing}] ++ ident_meta, []}
                 {ast, parser}
               else
-                # Shouldn't happen in valid syntax, but handle gracefully
+                # Has arguments - let while loop handle it
                 ast = {{token, meta, [lhs, rhs_name]}, [no_parens: true] ++ ident_meta, []}
                 {ast, parser}
               end
