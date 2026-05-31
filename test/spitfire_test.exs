@@ -21,7 +21,8 @@ defmodule SpitfireTest do
         foo do: IO.inspect("bob"); "bob"
         ''',
         "(b;e\n;)",
-        "foo do ->_;c end"
+        "foo do ->_;c end",
+        "foo do ->a; end"
       ]
 
       for code <- codes do

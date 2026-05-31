@@ -1179,6 +1179,7 @@ defmodule Spitfire do
 
           if peek_token(parser) == :";" do
             ast = push_eoe(ast, peek_eoe(parser))
+            parser = eat_eoe_at(parser, 1)
             {ast, parser}
           else
             eoe = peek_eoe(parser)
