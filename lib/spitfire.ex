@@ -2096,15 +2096,43 @@ defmodule Spitfire do
           {token, meta, nil} ->
             {token, [do: do_meta, end: end_meta] ++ meta, [exprs]}
 
-          {token, meta, args} when is_list(args) ->
-            # Remove no_parens when attaching do-block
-            meta = Keyword.delete(meta, :no_parens)
-            {token, [do: do_meta, end: end_meta] ++ meta, args ++ [exprs]}
+          {_token, _meta, args} when is_list(args) ->
+            attach_do_block(lhs, do_meta, end_meta, exprs)
         end
 
       parser = Map.put(parser, :nesting, old_nesting)
       {ast, parser}
     end
+  end
+
+  @binary_operators [
+    :+, :-, :*, :/, :**,
+    :==, :!=, :=~, :===, :!==,
+    :<, :>, :<=, :>=,
+    :&&, :&&&, :and, :||, :|||, :or,
+    :++, :--, :<>, :+++, :---,
+    :.., :"//", :"^^^",
+    :in, :"<-", :"\\",
+    :"::", :|, :|>, :<<<, :>>>,
+    :~>>, :<<~, :<~>, :"<|>",
+    :=, :when
+  ]
+
+  @unary_operators [:!, :not, :+, :-, :"~~~", :"^", :@]
+
+  defp attach_do_block({op, meta, [left, right]}, do_meta, end_meta, exprs)
+       when is_atom(op) and op in @binary_operators do
+    {op, meta, [left, attach_do_block(right, do_meta, end_meta, exprs)]}
+  end
+
+  defp attach_do_block({op, meta, [arg]}, do_meta, end_meta, exprs)
+       when is_atom(op) and op in @unary_operators and is_tuple(arg) do
+    {op, meta, [attach_do_block(arg, do_meta, end_meta, exprs)]}
+  end
+
+  defp attach_do_block({token, meta, args}, do_meta, end_meta, exprs) do
+    {token, [do: do_meta, end: end_meta] ++ (meta |> Keyword.delete(:no_parens)),
+     (args || []) ++ [exprs]}
   end
 
   defp parse_dot_expression(parser, lhs) do

@@ -1069,7 +1069,93 @@ defmodule SpitfireTest do
         rescue
           :error
         end
-        '''
+        ''',
+        "n*e.() do :ok end",
+        # Arithmetic operators with do-block on rightmost call
+        "n+e.() do :ok end",
+        "n-e.() do :ok end",
+        "n/e.() do :ok end",
+        "n**e.() do :ok end",
+        # Comparison operators
+        "n==e.() do :ok end",
+        "n!=e.() do :ok end",
+        "n<e.() do :ok end",
+        "n>e.() do :ok end",
+        "n<=e.() do :ok end",
+        "n>=e.() do :ok end",
+        "n != e.() do :ok end",
+        "n !== e.() do :ok end",
+        "n =~ e.() do :ok end",
+        # Boolean operators
+        "n&&e.() do :ok end",
+        "n||e.() do :ok end",
+        "n and e.() do :ok end",
+        "n or e.() do :ok end",
+        # String/list operators
+        "n<>e.() do :ok end",
+        "n++e.() do :ok end",
+        "n--e.() do :ok end",
+        "n+++e.() do :ok end",
+        "n---e.() do :ok end",
+        # Pipe operator
+        "n|>e.() do :ok end",
+        "n |> e.() do :ok end",
+        # Match operator
+        "n=e.() do :ok end",
+        # Arrow/pipe operators
+        "n|e.() do :ok end",
+        # Range / ternary / xor
+        "n..e.() do :ok end",
+        "n^^^e.() do :ok end",
+        # in / not in
+        "n in e.() do :ok end",
+        "n not in e.() do :ok end",
+        # Type operator
+        "n::e.() do :ok end",
+        # in_match operators
+        "n <- e.() do :ok end",
+        # Arrow operators
+        "n<<<e.() do :ok end",
+        "n>>>e.() do :ok end",
+        "n~>>e.() do :ok end",
+        "n<<~e.() do :ok end",
+        "n<~>e.() do :ok end",
+        "n<|>e.() do :ok end",
+        # Multiple chained operators
+        "a+b*c.() do :ok end",
+        "a*b+c.() do :ok end",
+        # Do-block with body (multiple expressions)
+        ~S'''
+        n*e.() do
+          :ok
+        end
+        ''',
+        # Do-block with else/rescue
+        ~S'''
+        n*e.() do
+          :ok
+        else
+          :error
+        end
+        ''',
+        # Remote call target
+        "n*e.f() do :ok end",
+        # Pipe chain with remote call
+        "n|>e.f() do :ok end",
+        # Nested operators with different precedences
+        "a|>b*c.() do :ok end",
+        # Anonymous function target
+        "n*fn() -> :ok end.() do :ok end",
+        # Unary operators with do-block on rightmost call
+        "!e.() do :ok end",
+        "not e.() do :ok end",
+        "~~~e.() do :ok end",
+        # Unary plus/minus (dual_op) with do-block
+        "+e.() do :ok end",
+        "-e.() do :ok end",
+        # Unary wrapping binary operator
+        "!n*e.() do :ok end",
+        "not n*e.() do :ok end"
       ]
 
       for code <- codes do
