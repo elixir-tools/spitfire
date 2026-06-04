@@ -61,7 +61,12 @@ defmodule SpitfireTest do
           :bar
         ]
         ''',
-        ~S'foo[bar["baz"]]'
+        ~S'foo[bar["baz"]]',
+        "@@a[s]",
+        "@@a[:x][:y]",
+        "@@a.b",
+        "@@a.b[:x]",
+        "@@a[s].b"
       ]
 
       for code <- codes do

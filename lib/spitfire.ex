@@ -998,6 +998,9 @@ defmodule Spitfire do
       token = current_token(parser)
       meta = current_meta(parser)
 
+      # Detect @@ (outer @ followed by inner @) before advancing
+      is_outer_at = token == :@ and peek_token_type(parser) == :at_op
+
       # Capture precedence before advancing
       precedence =
         if current_token_type(parser) == :dual_op do
@@ -1021,6 +1024,15 @@ defmodule Spitfire do
         end
 
       {rhs, parser} = parse_expression(parser, effective_precedence, false, false, false)
+
+      # For @@expr, consume one bracket access ([]) as part of the outer @'s argument.
+      # e.g. @@a[s] == @((@a)[s]), not (@@a)[s]
+      {rhs, parser} =
+        if is_outer_at and peek_token_type(parser) == :"[" do
+          parse_access_expression(next_token(parser), rhs)
+        else
+          {rhs, parser}
+        end
 
       {rhs, parser} =
         if unparenthesized_do_end_block?(rhs) do
