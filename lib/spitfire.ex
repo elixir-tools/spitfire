@@ -3974,6 +3974,15 @@ defmodule Spitfire do
           :sigil ->
             parse_sigil(parser)
 
+          nil ->
+            parse_nil_literal(parser)
+
+          true ->
+            parse_boolean(parser)
+
+          false ->
+            parse_boolean(parser)
+
           _ ->
             parse_lone_identifier(parser)
         end

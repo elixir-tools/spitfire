@@ -784,7 +784,10 @@ defmodule SpitfireTest do
         ~S'%@{}{}',
         "%e.{}{}",
         "%@e(){}",
-        "%t.!(\n){}"
+        "%t.!(\n){}",
+        "%@nil{}",
+        "%@true{}",
+        "%@false{}"
       ]
 
       for code <- codes do
