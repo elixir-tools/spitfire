@@ -2125,19 +2125,51 @@ defmodule Spitfire do
   end
 
   @binary_operators [
-    :+, :-, :*, :/, :**,
-    :==, :!=, :=~, :===, :!==,
-    :<, :>, :<=, :>=,
-    :&&, :&&&, :and, :||, :|||, :or,
-    :++, :--, :<>, :+++, :---,
-    :.., :"//", :"^^^",
-    :in, :"<-", :"\\",
-    :"::", :|, :|>, :<<<, :>>>,
-    :~>>, :<<~, :<~>, :"<|>",
-    :=, :when
+    :+,
+    :-,
+    :*,
+    :/,
+    :**,
+    :==,
+    :!=,
+    :=~,
+    :===,
+    :!==,
+    :<,
+    :>,
+    :<=,
+    :>=,
+    :&&,
+    :&&&,
+    :and,
+    :||,
+    :|||,
+    :or,
+    :++,
+    :--,
+    :<>,
+    :+++,
+    :---,
+    :..,
+    :"//",
+    :"^^^",
+    :in,
+    :<-,
+    :"\\",
+    :"::",
+    :|,
+    :|>,
+    :<<<,
+    :>>>,
+    :~>>,
+    :<<~,
+    :<~>,
+    :"<|>",
+    :=,
+    :when
   ]
 
-  @unary_operators [:!, :not, :+, :-, :"~~~", :"^", :@]
+  @unary_operators [:!, :not, :+, :-, :"~~~", :^, :@]
 
   defp attach_do_block({op, meta, [left, right]}, do_meta, end_meta, exprs)
        when is_atom(op) and op in @binary_operators do
@@ -2150,8 +2182,7 @@ defmodule Spitfire do
   end
 
   defp attach_do_block({token, meta, args}, do_meta, end_meta, exprs) do
-    {token, [do: do_meta, end: end_meta] ++ (meta |> Keyword.delete(:no_parens)),
-     (args || []) ++ [exprs]}
+    {token, [do: do_meta, end: end_meta] ++ Keyword.delete(meta, :no_parens), (args || []) ++ [exprs]}
   end
 
   defp parse_dot_expression(parser, lhs) do
@@ -3064,7 +3095,8 @@ defmodule Spitfire do
                     {{:., fun_meta, fun_args}, old_meta, _} = new_left
 
                     new_left =
-                      {{:., fun_meta, fun_args}, newlines ++ [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]), []}
+                      {{:., fun_meta, fun_args},
+                       newlines ++ [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]), []}
 
                     {new_left, next_token(parser)}
                   else
@@ -3075,7 +3107,8 @@ defmodule Spitfire do
                       {{:., fun_meta, fun_args}, old_meta, _} = new_left
 
                       new_left =
-                        {{:., fun_meta, fun_args}, newlines ++ [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]), []}
+                        {{:., fun_meta, fun_args},
+                         newlines ++ [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]), []}
 
                       {new_left, next_token(parser)}
                     else
@@ -3085,8 +3118,8 @@ defmodule Spitfire do
                       {{:., fun_meta, fun_args}, old_meta, _} = new_left
 
                       new_left =
-                        {{:., fun_meta, fun_args}, newlines ++ [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]),
-                         args}
+                        {{:., fun_meta, fun_args},
+                         newlines ++ [{:closing, closing}] ++ Keyword.take(old_meta, [:line, :column]), args}
 
                       {new_left, parser}
                     end
