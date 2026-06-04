@@ -1613,8 +1613,15 @@ defmodule Spitfire do
             parser = next_token(parser)
             skip_call_args(parser, 0)
 
+          type when type in [:capture_op, :unary_op, :at_op] ->
+            # Followed by a unary operator, so this is also a no-parens
+            # function call (e.g. `t &t \\ o`). Advance past the identifier
+            # and skip call args.
+            parser = next_token(parser)
+            skip_call_args(parser, 0)
+
           _ ->
-            scan_binding_op(parser, 0)
+            scan_binding_op(next_token(parser), 0)
         end
 
       _ ->

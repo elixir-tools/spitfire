@@ -686,7 +686,8 @@ defmodule SpitfireTest do
           a: a,
           b: b,
         }
-        '''
+        ''',
+        "%{i|t&t\\\\o => 1}"
       ]
 
       for code <- codes do
