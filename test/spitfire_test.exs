@@ -687,7 +687,48 @@ defmodule SpitfireTest do
           b: b,
         }
         ''',
-        "%{i|t&t\\\\o => 1}"
+        "%{i|t&t\\\\o => 1}",
+        "%{n|t\\\\e => 1}",
+        "%{n|t :: integer => 1}",
+        "%{n|a when b => 1}",
+        "%{n|a <- b => 1}",
+        "%{n|a: b :: c}",
+        # binding ops in key, multiple pairs
+        "%{a | b :: c => d, e :: f => g}",
+        "%{a | b when c => d, e when f => g}",
+        "%{a | b <- c => d, e <- f => g}",
+        "%{a | b \\\\ c => d, e \\\\ f => g}",
+        # binding ops in key mixed with kw syntax
+        "%{a | b :: c => d, e: f}",
+        "%{a | b when c => d, e: f}",
+        "%{a | b <- c => d, e: f}",
+        "%{a | b \\\\ c => d, e: f}",
+        # binding ops in value pair (regression)
+        "%{x | key => a :: b}",
+        "%{x | key: a :: b}",
+        "%{x | key => a when b}",
+        "%{x | key: a when b}",
+        "%{x | key => a \\\\ b}",
+        "%{x | key: a \\\\ b}",
+        "%{x | key => a <- b}",
+        "%{x | key: a <- b}",
+        # various key types in map update
+        "%{x | :key => value}",
+        "%{x | \"key\" => value}",
+        "%{x | 1 => value}",
+        "%{x | {a, b} => value}",
+        "%{x | [a, b] => value}",
+        "%{x | %{a: b} => value}",
+        "%{x | <<a, b>> => value}",
+        "%{x | a.b => value}",
+        "%{x | a(b) => value}",
+        "%{x | a + b => value}",
+        "%{x | a ++ b => value}",
+        "%{x | a -- b => value}",
+        "%{x | a <> b => value}",
+        "%{x | a..b => value}",
+        # nested map update
+        "%{%{x | a: 1} | b: 2}"
       ]
 
       for code <- codes do

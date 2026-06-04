@@ -1634,6 +1634,12 @@ defmodule Spitfire do
     token_type = peek_token_type(parser)
 
     cond do
+      current_token_type(parser) == :assoc_op and nesting == 0 ->
+        false
+
+      MapSet.member?(@low_prec_map_op_types, current_token_type(parser)) and nesting == 0 ->
+        true
+
       MapSet.member?(@low_prec_map_op_types, token_type) and nesting == 0 ->
         true
 
