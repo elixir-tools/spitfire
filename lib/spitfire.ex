@@ -2287,6 +2287,27 @@ defmodule Spitfire do
           {{rhs, next_meta, args}, parser} = parse_expression(parser, precedence, false, false, false)
 
           args = if args == nil, do: [], else: args
+
+          {next_meta, args} =
+            if rhs in @unary_operators and length(args) == 1 and is_tuple(hd(args)) do
+              arg = hd(args)
+              arg_meta = elem(arg, 1)
+
+              if is_list(arg_meta) and Keyword.has_key?(arg_meta, :do) do
+                do_meta = arg_meta[:do]
+                end_meta = arg_meta[:end]
+                rest_meta = Keyword.drop(arg_meta, [:do, :end])
+                arg_inner_args = elem(arg, 2)
+                {body_exprs, inner_args} = arg_inner_args |> List.pop_at(-1)
+                inner_args = if inner_args == [], do: nil, else: inner_args
+                {[{:do, do_meta}, {:end, end_meta} | next_meta], [{elem(arg, 0), rest_meta, inner_args}, body_exprs]}
+              else
+                {next_meta, args}
+              end
+            else
+              {next_meta, args}
+            end
+
           ast = {{token, meta, [lhs, rhs]}, next_meta, args}
           {ast, parser}
 

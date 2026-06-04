@@ -1205,7 +1205,29 @@ defmodule SpitfireTest do
         "-e.() do :ok end",
         # Unary wrapping binary operator
         "!n*e.() do :ok end",
-        "not n*e.() do :ok end"
+        "not n*e.() do :ok end",
+        # Unary operator as function name in dot call
+        "s.^(r) do :ok end",
+        # All unary operators as function names
+        "s.!(r) do :ok end",
+        "s.@(r) do :ok end",
+        "s.not(r) do :ok end",
+        "s.~~~(r) do :ok end",
+        "s.+(r) do :ok end",
+        "s.-(r) do :ok end",
+        # Empty parens with unary function name
+        "s.^() do :ok end",
+        # Binary operators as function names
+        "s.=(r) do :ok end",
+        "s.when(r) do :ok end",
+        # Chained dot calls with unary function name
+        "a.b.^(r) do :ok end",
+        # Default arguments with do-block
+        ~S'''
+        s.^(r \\ :default) do :ok end
+        ''',
+        # Keyword args (not do-block)
+        "s.^(r, do: :ok)"
       ]
 
       for code <- codes do
