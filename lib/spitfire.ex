@@ -87,8 +87,8 @@ defmodule Spitfire do
   @dual_op {:left, 48}
   @mult_op {:left, 50}
   @power_op {:left, 52}
-  @left_paren {:left, 54}
   @unary_op {:left, 56}
+  @left_paren {:left, 58}
   @left_bracket {:left, 58}
   @dot_call_op {:left, 60}
   @dot_op {:left, 62}

@@ -2498,7 +2498,10 @@ defmodule SpitfireTest do
         # stab_state widening through infix operators with no-parens calls as RHS
         "case x do ->;c>a?e -> :ok end",
         "case x do ->;c != a?e -> :ok end",
-        "case x do ->;c + a?e -> :ok end"
+        "case x do ->;c + a?e -> :ok end",
+        "+f()()-n",
+        # Postfix () calls after unary prefix
+        "+a.b()()"
       ]
 
       for code <- codes do
