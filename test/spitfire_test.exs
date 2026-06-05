@@ -1318,7 +1318,8 @@ defmodule SpitfireTest do
           _ ->
             infix.(next_token(parser), left)
         end
-        '''
+        ''',
+        "case x do ->;c>a?e -> :ok end"
       ]
 
       for code <- codes do
@@ -2431,88 +2432,78 @@ defmodule SpitfireTest do
     # These were found by property tests but were not triggering reliably
     # We have them here to make sure they don't regress
     test "property test regression cases" do
-      # Prefix operators in struct types
-      assert Spitfire.parse("%?0{}") == s2q("%?0{}")
-      assert Spitfire.parse("%^@_{}") == s2q("%^@_{}")
-      assert Spitfire.parse("%-..{}") == s2q("%-..{}")
-      assert Spitfire.parse("%!:c{}") == s2q("%!:c{}")
-      assert Spitfire.parse("%~a<>{}") == s2q("%~a<>{}")
-      assert Spitfire.parse("%!A{}") == s2q("%!A{}")
-      assert Spitfire.parse("%@A{}") == s2q("%@A{}")
-      assert Spitfire.parse("%@:rd{}") == s2q("%@:rd{}")
-      assert Spitfire.parse("%!0{}") == s2q("%!0{}")
+      codes = [
+        # Prefix operators in struct types
+        "%?0{}",
+        "%^@_{}",
+        "%-..{}",
+        "%!:c{}",
+        "%~a<>{}",
+        "%!A{}",
+        "%@A{}",
+        "%@:rd{}",
+        "%!0{}",
+        # Nested module attributes
+        "%@@u{}",
+        # Quoted atoms
+        ~s(%:""{}),
+        # Range operator in struct types
+        "%..{}",
+        # Char tokens after module attributes in struct types
+        "%@?w{}",
+        # Empty char list after module attributes in struct types
+        ~s(%@''{}),
+        # Float in struct types
+        "%0.0{}",
+        # Bin strings after module attributes in struct types
+        ~s(%@"foo"{}),
+        # Capture operator in struct types
+        "%&0{}",
+        # Boolean literals in struct types
+        "%false{}",
+        "%true{}",
+        "%+{}{}",
+        # Struct arg inside struct arg
+        "%%{}{}",
+        "%+[]{}",
+        # In-match operator (<-) in map keys - should be part of key, not wrap it
+        "%{s\\\\r => 1}",
+        # Fn args with semicolon/newline trivia
+        "fn ;\n -> :ok end",
+        "fn ; -> :ok end",
+        # Struct type with dot-call target
+        "%e.(){}",
+        "%e.(1){}",
+        "%e.(a, b){}",
+        # Struct type with remote call via regular dot: %0.b(){}
+        "%0.b(){}",
+        # Struct type with remote call arguments: %e.l(u){}
+        "%e.l(u){}",
+        "%e.l(){}",
+        # with/else stab body with leading semicolon after newline
+        "with x <- 1 do :ok else _ -> \n;a end",
+        # Ellipsis + ternary edge cases (newline and semicolon-separated)
+        "x...\n//y",
+        "x...;//y",
+        "x...\n;//y",
+        "x...\n;\n//y",
+        "x...\n;\n# comment\n//y",
+        # Ellipsis followed by infix operators that should not be consumed as RHS
+        "x...<-y",
+        "x...::y",
+        "x... when y",
+        # Capture operator with dot-call and do/end block
+        "&n.() do 1 end",
+        "def foo() when r\n&n.() do 1 end",
+        # stab_state widening through infix operators with no-parens calls as RHS
+        "case x do ->;c>a?e -> :ok end",
+        "case x do ->;c != a?e -> :ok end",
+        "case x do ->;c + a?e -> :ok end"
+      ]
 
-      # Nested module attributes
-      assert Spitfire.parse("%@@u{}") == s2q("%@@u{}")
-
-      # Quoted atoms
-      assert Spitfire.parse(~s(%:""{})) == s2q(~s(%:""{}))
-
-      # Range operator in struct types
-      assert Spitfire.parse("%..{}") == s2q("%..{}")
-
-      # Char tokens after module attributes in struct types
-      assert Spitfire.parse("%@?w{}") == s2q("%@?w{}")
-
-      # Empty char list after module attributes in struct types
-      assert Spitfire.parse("%@''{}") == s2q(~s(%@''{}))
-
-      # Float in struct types
-      assert Spitfire.parse("%0.0{}") == s2q("%0.0{}")
-
-      # Bin strings after module attributes in struct types
-      assert Spitfire.parse(~s(%@"foo"{})) == s2q(~s(%@"foo"{}))
-
-      # Capture operator in struct types
-      assert Spitfire.parse("%&0{}") == s2q("%&0{}")
-
-      # Boolean literals in struct types
-      assert Spitfire.parse("%false{}") == s2q("%false{}")
-      assert Spitfire.parse("%true{}") == s2q("%true{}")
-
-      assert Spitfire.parse("%+{}{}") == s2q("%+{}{}")
-
-      # Struct arg inside struct arg
-      assert Spitfire.parse("%%{}{}") == s2q("%%{}{}")
-      assert Spitfire.parse("%+[]{}") == s2q("%+[]{}")
-
-      # In-match operator (<-) in map keys - should be part of key, not wrap it
-      assert Spitfire.parse("%{s\\\\r => 1}") == s2q("%{s\\\\r => 1}")
-
-      # Fn args with semicolon/newline trivia
-      assert Spitfire.parse("fn ;\n -> :ok end") == s2q("fn ;\n -> :ok end")
-      assert Spitfire.parse("fn ; -> :ok end") == s2q("fn ; -> :ok end")
-
-      # Struct type with dot-call target
-      assert Spitfire.parse("%e.(){}") == s2q("%e.(){}")
-      assert Spitfire.parse("%e.(1){}") == s2q("%e.(1){}")
-      assert Spitfire.parse("%e.(a, b){}") == s2q("%e.(a, b){}")
-
-      # Struct type with remote call via regular dot: %0.b(){}
-      assert Spitfire.parse("%0.b(){}") == s2q("%0.b(){}")
-
-      # Struct type with remote call arguments: %e.l(u){}
-      assert Spitfire.parse("%e.l(u){}") == s2q("%e.l(u){}")
-      assert Spitfire.parse("%e.l(){}") == s2q("%e.l(){}")
-
-      # with/else stab body with leading semicolon after newline
-      assert Spitfire.parse("with x <- 1 do :ok else _ -> \n;a end") ==
-               s2q("with x <- 1 do :ok else _ -> \n;a end")
-
-      # Ellipsis + ternary edge cases (newline and semicolon-separated)
-      assert Spitfire.parse("x...\n//y") == s2q("x...\n//y")
-      assert Spitfire.parse("x...;//y") == s2q("x...;//y")
-      assert Spitfire.parse("x...\n;//y") == s2q("x...\n;//y")
-      assert Spitfire.parse("x...\n;\n//y") == s2q("x...\n;\n//y")
-      assert Spitfire.parse("x...\n;\n# comment\n//y") == s2q("x...\n;\n# comment\n//y")
-      # Ellipsis followed by infix operators that should not be consumed as RHS
-      assert Spitfire.parse("x...<-y") == s2q("x...<-y")
-      assert Spitfire.parse("x...::y") == s2q("x...::y")
-      assert Spitfire.parse("x... when y") == s2q("x... when y")
-
-      # Capture operator with dot-call and do/end block
-      assert Spitfire.parse("&n.() do 1 end") == s2q("&n.() do 1 end")
-      assert Spitfire.parse("def foo() when r\n&n.() do 1 end") == s2q("def foo() when r\n&n.() do 1 end")
+      for code <- codes do
+        assert Spitfire.parse(code) == s2q(code)
+      end
     end
 
     test "caret inside match in lhs of left stab as righs of => op" do
