@@ -1665,7 +1665,8 @@ defmodule SpitfireTest do
         fn x when c<-c ->
           1
         end
-        '''
+        ''',
+        "def foo() when r\n&n.() do 1 end"
       ]
 
       for code <- codes do
@@ -2508,6 +2509,10 @@ defmodule SpitfireTest do
       assert Spitfire.parse("x...<-y") == s2q("x...<-y")
       assert Spitfire.parse("x...::y") == s2q("x...::y")
       assert Spitfire.parse("x... when y") == s2q("x... when y")
+
+      # Capture operator with dot-call and do/end block
+      assert Spitfire.parse("&n.() do 1 end") == s2q("&n.() do 1 end")
+      assert Spitfire.parse("def foo() when r\n&n.() do 1 end") == s2q("def foo() when r\n&n.() do 1 end")
     end
 
     test "caret inside match in lhs of left stab as righs of => op" do

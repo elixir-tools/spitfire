@@ -2544,20 +2544,32 @@ defmodule Spitfire do
 
       parser = eat_eoe(parser)
 
-      if peek_token(parser) == :")" ||
-           (peek_token(parser) in [:eol, :";"] and
-              peek_token_skip_eoe(parser) == :")") do
-        parser = parser |> next_token() |> eat_eoe()
-        closing = [closing: current_meta(parser)]
-        ast = {{:., meta, [lhs]}, newlines ++ closing ++ meta, []}
-        {ast, parser}
-      else
-        {pairs, parser} = parse_comma_list(parser |> next_token() |> eat_eoe())
-        parser = parser |> next_token() |> eat_eoe()
-        closing = [closing: current_meta(parser)]
-        ast = {{:., meta, [lhs]}, newlines ++ closing ++ meta, pairs}
+      {ast, parser} =
+        if peek_token(parser) == :")" ||
+             (peek_token(parser) in [:eol, :";"] and
+                peek_token_skip_eoe(parser) == :")") do
+          parser = parser |> next_token() |> eat_eoe()
+          closing = [closing: current_meta(parser)]
+          ast = {{:., meta, [lhs]}, newlines ++ closing ++ meta, []}
+          {ast, parser}
+        else
+          {pairs, parser} = parse_comma_list(parser |> next_token() |> eat_eoe())
+          parser = parser |> next_token() |> eat_eoe()
+          closing = [closing: current_meta(parser)]
+          ast = {{:., meta, [lhs]}, newlines ++ closing ++ meta, pairs}
 
-        {ast, parser}
+          {ast, parser}
+        end
+
+      cond do
+        parser.nesting == 0 && current_token(parser) == :do ->
+          parse_do_block(parser, ast)
+
+        parser.nesting == 0 && peek_token(parser) == :do ->
+          parse_do_block(next_token(parser), ast)
+
+        true ->
+          {ast, parser}
       end
     end
   end
