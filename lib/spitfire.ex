@@ -1625,7 +1625,11 @@ defmodule Spitfire do
             skip_call_args(parser, 0)
 
           _ ->
-            scan_binding_op(next_token(parser), 0)
+            if peek_token(parser) in [:")", :"]", :"}", :">>"] do
+              false
+            else
+              scan_binding_op(next_token(parser), 0)
+            end
         end
 
       _ ->

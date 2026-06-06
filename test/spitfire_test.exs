@@ -2501,7 +2501,8 @@ defmodule SpitfireTest do
         "case x do ->;c + a?e -> :ok end",
         "+f()()-n",
         # Postfix () calls after unary prefix
-        "+a.b()()"
+        "+a.b()()",
+        "%{x | n}<-?}"
       ]
 
       for code <- codes do
