@@ -2306,7 +2306,7 @@ defmodule Spitfire do
                 end_meta = arg_meta[:end]
                 rest_meta = Keyword.drop(arg_meta, [:do, :end])
                 arg_inner_args = elem(arg, 2)
-                {body_exprs, inner_args} = arg_inner_args |> List.pop_at(-1)
+                {body_exprs, inner_args} = List.pop_at(arg_inner_args, -1)
                 inner_args = if inner_args == [], do: nil, else: inner_args
                 {[{:do, do_meta}, {:end, end_meta} | next_meta], [{elem(arg, 0), rest_meta, inner_args}, body_exprs]}
               else
