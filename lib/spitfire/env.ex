@@ -217,7 +217,7 @@ defmodule Spitfire.Env do
 
     if is_atom(arg) do
       # An actual compiler would raise if the module is not defined or if the import fails.
-      with true <- is_atom(arg) and Code.ensure_loaded?(arg),
+      with true <- Code.ensure_loaded?(arg),
            {:ok, env} <- Macro.Env.define_import(env, meta, arg, [trace: false] ++ opts) do
         {arg, state, env}
       else
