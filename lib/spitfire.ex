@@ -1703,7 +1703,7 @@ defmodule Spitfire do
         false
 
       nesting == 0 and
-          (token_type == :assoc_op or token == :"," or token == :"}" or token == :eof) ->
+          (token_type == :assoc_op or token == :"," or token == :"}") ->
         scan_binding_op(parser, nesting)
 
       token in [:"(", :"[", :"{", :"<<"] ->
