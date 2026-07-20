@@ -17,19 +17,19 @@ jobs:
         otp: [27.0]
         elixir: [1.17.x]
     steps:
-      - uses: googleapis/release-please-action@v4.1
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         if: ${{ steps.release.outputs.release_created }}
 
-      - uses: erlef/setup-beam@v1
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
         with:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
         if: ${{ steps.release.outputs.release_created }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: cache
         if: ${{ steps.release.outputs.release_created }}
         with:
