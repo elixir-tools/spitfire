@@ -2,6 +2,7 @@ defmodule Spitfire.Env do
   @moduledoc """
   Environment querying
   """
+
   @env (if function_exported?(Macro.Env, :prune_compile_info, 1) do
           %{
             Macro.Env.prune_compile_info(__ENV__)
@@ -50,6 +51,12 @@ defmodule Spitfire.Env do
   @typedoc "The environment at the cursor position"
   @type cursor_env :: env()
 
+  @typedoc "An identifier read from a cursor node's `:cursor_id` metadata"
+  @type cursor_id :: term()
+
+  @typedoc "Environments at tagged cursor positions"
+  @type cursor_envs :: %{optional(cursor_id()) => cursor_env()}
+
   @typedoc "The environment after expanding the entire syntax tree"
   @type final_env :: env()
 
@@ -66,43 +73,73 @@ defmodule Spitfire.Env do
   @spec expand(Macro.t(), String.t()) ::
           {ast :: ast(), final_state :: state(), final_env :: final_env(), cursor_env :: cursor_env()}
   def expand(ast, file) do
+    {ast, state, final_env, reversed_cursor_envs} = do_expand(ast, file, Macro.Env)
+    {_, cursor_state, cursor_env} = List.first(reversed_cursor_envs, {:default, %{}, env()})
+    {ast, state, final_env, normalize_cursor_env(cursor_state, cursor_env, state)}
+  end
+
+  @doc """
+  Expands the environment of the given AST and returns an environment for every
+  tagged `__cursor__()` node.
+
+  Cursor IDs come from the node's `:cursor_id` metadata. Untagged cursors use
+  `:default`, and duplicate IDs use the last cursor encountered.
+
+  The third argument may provide a module implementing the `Macro.Env` expansion API.
+  """
+  @spec expand_with_cursor_envs(ast(), String.t(), module()) ::
+          {ast(), state(), final_env(), cursor_envs()}
+  def expand_with_cursor_envs(ast, file, macro_env \\ Macro.Env) do
+    {ast, state, final_env, reversed_cursor_envs} = do_expand(ast, file, macro_env)
+
+    cursor_envs =
+      for {id, cursor_state, cursor_env} <- Enum.reverse(reversed_cursor_envs), into: %{} do
+        {id, normalize_cursor_env(cursor_state, cursor_env, state)}
+      end
+
+    {ast, state, final_env, cursor_envs}
+  end
+
+  defp do_expand(ast, file, macro_env) do
     env = env()
 
-    {ast, state, env} =
+    {ast, state, final_env} =
       expand(
         ast,
-        %{functions: %{}, macros: %{}, attrs: []},
+        %{functions: %{}, macros: %{}, attrs: [], cursor_envs: [], macro_env: macro_env},
         %{env | file: file}
       )
 
-    {cursor_state, cursor_env} =
-      Process.get(:cursor_env, {Map.new(), env()})
-
-    cursor_env =
-      Map.merge(
-        Map.from_struct(cursor_env),
-        %{
-          functions:
-            Enum.filter(Map.get(state, :functions, []), fn {m, _} -> m == cursor_env.module end) ++
-              cursor_env.functions,
-          macros: Enum.filter(Map.get(state, :macros, []), fn {m, _} -> m == cursor_env.module end) ++ cursor_env.macros,
-          attrs: Enum.uniq(Map.get(cursor_state, :attrs, [])),
-          variables: for({name, nil} <- cursor_env.versioned_vars, do: name)
-        }
-      )
-
-    {ast, state, env, cursor_env}
-  after
-    Process.delete(:cursor_env)
+    {reversed_cursor_envs, state} = Map.pop!(state, :cursor_envs)
+    {_macro_env, state} = Map.pop!(state, :macro_env)
+    {ast, state, final_env, reversed_cursor_envs}
   end
 
-  defp expand({:__cursor__, _meta, _} = node, state, env) do
-    Process.put(:cursor_env, {state, env})
+  defp normalize_cursor_env(cursor_state, cursor_env, final_state) do
+    Map.merge(
+      Map.from_struct(cursor_env),
+      %{
+        functions:
+          Enum.filter(Map.get(final_state, :functions, []), fn {module, _} -> module == cursor_env.module end) ++
+            cursor_env.functions,
+        macros:
+          Enum.filter(Map.get(final_state, :macros, []), fn {module, _} -> module == cursor_env.module end) ++
+            cursor_env.macros,
+        attrs: Enum.uniq(Map.get(cursor_state, :attrs, [])),
+        variables: for({name, nil} <- cursor_env.versioned_vars, do: name)
+      }
+    )
+  end
+
+  defp expand({:__cursor__, meta, _} = node, state, env) do
+    id = Keyword.get(meta, :cursor_id, :default)
+    cursor_state = Map.drop(state, [:cursor_envs, :macro_env])
+    state = update_in(state.cursor_envs, &[{id, cursor_state, env} | &1])
     {node, state, env}
   end
 
-  defp expand({:@, _, [{:__cursor__, _, _}]} = node, state, env) do
-    Process.put(:cursor_env, {state, env})
+  defp expand({:@, _, [{:__cursor__, meta, args}]} = node, state, env) do
+    {_, state, env} = expand({:__cursor__, meta, args}, state, env)
     {node, state, env}
   end
 
@@ -146,7 +183,7 @@ defmodule Spitfire.Env do
   ## __aliases__
 
   defp expand({:__aliases__, meta, [head | tail] = list}, state, env) do
-    case Macro.Env.expand_alias(env, meta, list, trace: false) do
+    case state.macro_env.expand_alias(env, meta, list, trace: false) do
       {:alias, alias} ->
         # A compiler may want to emit a :local_function trace in here.
         # Elixir also warns on easy to confuse aliases, such as True/False/Nil.
@@ -187,7 +224,7 @@ defmodule Spitfire.Env do
 
     if is_atom(arg) do
       # An actual compiler would raise if the alias fails.
-      case Macro.Env.define_alias(env, meta, arg, [trace: false] ++ opts) do
+      case state.macro_env.define_alias(env, meta, arg, [trace: false] ++ opts) do
         {:ok, env} -> {arg, state, env}
         {:error, _} -> {arg, state, env}
       end
@@ -202,7 +239,7 @@ defmodule Spitfire.Env do
 
     if is_atom(arg) do
       # An actual compiler would raise if the module is not defined or if the require fails.
-      case Macro.Env.define_require(env, meta, arg, [trace: false] ++ opts) do
+      case state.macro_env.define_require(env, meta, arg, [trace: false] ++ opts) do
         {:ok, env} -> {arg, state, env}
         {:error, _} -> {arg, state, env}
       end
@@ -218,7 +255,7 @@ defmodule Spitfire.Env do
     if is_atom(arg) do
       # An actual compiler would raise if the module is not defined or if the import fails.
       with true <- Code.ensure_loaded?(arg),
-           {:ok, env} <- Macro.Env.define_import(env, meta, arg, [trace: false] ++ opts) do
+           {:ok, env} <- state.macro_env.define_import(env, meta, arg, [trace: false] ++ opts) do
         {arg, state, env}
       else
         _ -> {arg, state, env}
@@ -283,7 +320,7 @@ defmodule Spitfire.Env do
     arity = length(args)
 
     if is_atom(module) do
-      case Macro.Env.expand_require(env, meta, module, fun, arity,
+      case state.macro_env.expand_require(env, meta, module, fun, arity,
              trace: false,
              check_deprecations: false
            ) do
@@ -317,7 +354,7 @@ defmodule Spitfire.Env do
 
     # For language servers, we don't want to emit traces, nor expand local macros,
     # nor print deprecation warnings. Compilers likely want those set to true.
-    case Macro.Env.expand_import(env, meta, fun, arity,
+    case state.macro_env.expand_import(env, meta, fun, arity,
            trace: false,
            allow_locals: false,
            check_deprecations: false
@@ -380,7 +417,7 @@ defmodule Spitfire.Env do
     {expanded, state, env} = expand(alias, state, env)
 
     if is_atom(expanded) do
-      {full, env} = alias_defmodule(alias, expanded, env)
+      {full, env} = alias_defmodule(alias, expanded, env, state.macro_env)
       env = %{env | context_modules: [full | env.context_modules]}
 
       # The env inside the block is discarded.
@@ -478,16 +515,16 @@ defmodule Spitfire.Env do
   # defmodule automatically defines aliases, we need to mirror this feature here.
 
   # defmodule Elixir.Alias
-  defp alias_defmodule({:__aliases__, _, [:"Elixir", _ | _]}, module, env), do: {module, env}
+  defp alias_defmodule({:__aliases__, _, [:"Elixir", _ | _]}, module, env, _macro_env), do: {module, env}
 
   # defmodule Alias in root
-  defp alias_defmodule({:__aliases__, _, _}, module, %{module: nil} = env), do: {module, env}
+  defp alias_defmodule({:__aliases__, _, _}, module, %{module: nil} = env, _macro_env), do: {module, env}
 
   # defmodule Alias nested
-  defp alias_defmodule({:__aliases__, meta, [h | t]}, _module, env) when is_atom(h) do
+  defp alias_defmodule({:__aliases__, meta, [h | t]}, _module, env, macro_env) when is_atom(h) do
     module = Module.concat([env.module, h])
     alias = String.to_atom("Elixir." <> Atom.to_string(h))
-    {:ok, env} = Macro.Env.define_alias(env, meta, module, as: alias, trace: false)
+    {:ok, env} = macro_env.define_alias(env, meta, module, as: alias, trace: false)
 
     case t do
       [] -> {module, env}
@@ -496,7 +533,7 @@ defmodule Spitfire.Env do
   end
 
   # defmodule _
-  defp alias_defmodule(_raw, module, env) do
+  defp alias_defmodule(_raw, module, env, _macro_env) do
     {module, env}
   end
 
