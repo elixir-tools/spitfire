@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/elixir-tools/spitfire/compare/v0.3.13...v0.4.0) (2026-08-04)
+
+
+### Features
+
+* add Spitfire.Env.expand_with_cursor_envs/3 ([#140](https://github.com/elixir-tools/spitfire/issues/140)) ([5f10ec2](https://github.com/elixir-tools/spitfire/commit/5f10ec223043dcd7712388e5b15a23a556c4b673))
+
+
+### Bug Fixes
+
+* remove redundant type checks flagged by compiler ([#138](https://github.com/elixir-tools/spitfire/issues/138)) ([89ee841](https://github.com/elixir-tools/spitfire/commit/89ee841f7fb343fbc2edb8d317d3b3b17abd94c6))
+
 ## [0.3.13](https://github.com/elixir-tools/spitfire/compare/v0.3.12...v0.3.13) (2026-06-06)
 
 
