@@ -1322,7 +1322,10 @@ defmodule Spitfire do
               {:when, [{:parens, _parens} = paren_meta | _], _} ->
                 [paren_meta | meta]
 
-              {type, [{:parens, _parens} = paren_meta | _], _} when type in [:__block__, :comma, :when] ->
+              {:__block__, [{:parens, _parens} = paren_meta], _} ->
+                [paren_meta | meta]
+
+              {type, [{:parens, _parens} = paren_meta | _], _} when type in [:comma, :when] ->
                 [paren_meta | meta]
 
               _ ->
@@ -1345,6 +1348,9 @@ defmodule Spitfire do
 
               {:when, [{:parens, _} | when_meta], when_args} ->
                 [{:when, when_meta, when_args}]
+
+              {:__block__, [{:parens, _}, _ | _] = block_meta, [expr]} ->
+                [{:__block__, block_meta, [expr]}]
 
               {:__block__, [{:parens, _} = paren_meta | _], exprs} ->
                 case exprs do
