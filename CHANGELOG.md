@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/elixir-tools/spitfire/compare/v0.4.0...v0.4.1) (2026-09-03)
+
+
+### Bug Fixes
+
+* correctly parse parentheses around anonymous function arguments ([#141](https://github.com/elixir-tools/spitfire/issues/141)) ([ca12cb4](https://github.com/elixir-tools/spitfire/commit/ca12cb49d0e55bf45940d76cccd66c4e715adab6))
+
 ## [0.4.0](https://github.com/elixir-tools/spitfire/compare/v0.3.13...v0.4.0) (2026-08-04)
 
 
