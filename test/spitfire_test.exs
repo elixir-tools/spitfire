@@ -2154,6 +2154,23 @@ defmodule SpitfireTest do
       end
     end
 
+    test "literal encoder preserves metadata for grouped patterns in anonymous functions" do
+      encoder = fn literal, meta -> {:ok, {:__block__, meta, [literal]}} end
+
+      for code <- [
+            ~S'fn ({code, _index}) -> code end',
+            ~S'fn ([code, index]) -> code end'
+          ] do
+        assert Spitfire.parse(code, literal_encoder: encoder) ==
+                 Code.string_to_quoted(code,
+                   literal_encoder: encoder,
+                   columns: true,
+                   token_metadata: true,
+                   emit_warnings: false
+                 )
+      end
+    end
+
     test "sigils" do
       codes = [
         ~S'~s"foo"',
