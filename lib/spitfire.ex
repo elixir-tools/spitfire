@@ -4660,6 +4660,10 @@ defmodule Spitfire do
     [token: "?" <> List.to_string([token])]
   end
 
+  defp additional_meta(literal, %{current_token: {:atom, _, _}}) when literal in [true, false, nil] do
+    [format: :atom]
+  end
+
   defp additional_meta(literal, _) when is_atom(literal) do
     []
   end
