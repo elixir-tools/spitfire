@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/elixir-tools/spitfire/compare/v0.4.1...v0.4.2) (2026-09-17)
+
+
+### Bug Fixes
+
+* add :format metadata to atoms ([#143](https://github.com/elixir-tools/spitfire/issues/143)) ([aab8309](https://github.com/elixir-tools/spitfire/commit/aab8309b4a92a5bb1472421c79e763f93975fc50))
+
 ## [0.4.1](https://github.com/elixir-tools/spitfire/compare/v0.4.0...v0.4.1) (2026-09-03)
 
 
