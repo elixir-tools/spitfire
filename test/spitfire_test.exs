@@ -2171,6 +2171,38 @@ defmodule SpitfireTest do
       end
     end
 
+    test "literal encoder for booleans and nil" do
+      codes = [
+        "true",
+        "false",
+        "nil",
+        ":true",
+        ":false",
+        ":nil",
+        ":foo",
+        ~S':"true"',
+        ~S':"false"',
+        ~S':"nil"',
+        "[true: :true, false: :false, nil: :nil]",
+        "[true, :true, false, :false, nil, :nil]",
+        "\n  :true",
+        "\n  :false",
+        "\n  :nil"
+      ]
+
+      encoder = fn l, m -> {:ok, {:__literal__, m, [l]}} end
+
+      for code <- codes do
+        assert Spitfire.parse(code, literal_encoder: encoder) ==
+                 Code.string_to_quoted(code,
+                   literal_encoder: encoder,
+                   columns: true,
+                   token_metadata: true,
+                   emit_warnings: false
+                 )
+      end
+    end
+
     test "sigils" do
       codes = [
         ~S'~s"foo"',
