@@ -2130,13 +2130,20 @@ defmodule Spitfire do
           {type, build_block_nr(expr)}
         end
 
-      ast =
-        case lhs do
-          {token, meta, nil} ->
-            {token, [do: do_meta, end: end_meta] ++ meta, [exprs]}
+      {ast, parser} =
+        if match?({:__aliases__, _meta, _segments}, do_block_target(lhs)) do
+          {lhs, put_error(parser, {do_meta, "syntax error"})}
+        else
+          ast =
+            case lhs do
+              {token, meta, nil} ->
+                {token, [do: do_meta, end: end_meta] ++ meta, [exprs]}
 
-          {_token, _meta, args} when is_list(args) ->
-            attach_do_block(lhs, do_meta, end_meta, exprs)
+              {_token, _meta, args} when is_list(args) ->
+                attach_do_block(lhs, do_meta, end_meta, exprs)
+            end
+
+          {ast, parser}
         end
 
       parser = Map.put(parser, :nesting, old_nesting)
@@ -2204,6 +2211,14 @@ defmodule Spitfire do
   defp attach_do_block({token, meta, args}, do_meta, end_meta, exprs) do
     {token, [do: do_meta, end: end_meta] ++ Keyword.delete(meta, :no_parens), (args || []) ++ [exprs]}
   end
+
+  defp do_block_target({op, _meta, [_left, right]}) when is_atom(op) and op in @binary_operators,
+    do: do_block_target(right)
+
+  defp do_block_target({op, _meta, [arg]}) when is_atom(op) and op in @unary_operators and is_tuple(arg),
+    do: do_block_target(arg)
+
+  defp do_block_target(ast), do: ast
 
   defp parse_dot_expression(parser, lhs) do
     trace "parse_dot_expression", trace_meta(parser) do
@@ -2991,12 +3006,12 @@ defmodule Spitfire do
               parse_comma_list(parser, @list_comma, false, true)
             end)
 
-          parser = eat_eol_at(parser, 1)
+          closing_parser = eat_eol_at(parser, 1)
 
           parser =
-            case peek_token(parser) do
+            case peek_token(closing_parser) do
               :"}" ->
-                next_token(parser)
+                next_token(closing_parser)
 
               _ ->
                 put_error(parser, {current_meta(parser), "missing closing brace for map"})
@@ -3444,6 +3459,15 @@ defmodule Spitfire do
     {type, [{:closing, closing_meta} | meta], args}
   end
 
+  defp parse_struct_literal(%{current_token: {:%, _}, peek_token: {:eol, _}} = parser) do
+    trace "parse_struct_literal (missing type)", trace_meta(parser) do
+      meta = current_meta(parser)
+      parser = put_error(parser, {current_meta(next_token(parser)), "unknown token: eol"})
+
+      {{:%, meta, [{:__block__, [], []}, {:%{}, [], []}]}, parser}
+    end
+  end
+
   defp parse_struct_literal(%{current_token: {:%, _}} = parser) do
     trace "parse_struct_literal", trace_meta(parser) do
       meta = current_meta(parser)
@@ -3480,11 +3504,11 @@ defmodule Spitfire do
                 parse_comma_list(parser, @list_comma, false, true)
               end)
 
-            parser = eat_eol_at(parser, 1)
+            closing_parser = eat_eol_at(parser, 1)
 
             parser =
-              case peek_token(parser) do
-                :"}" -> next_token(parser)
+              case peek_token(closing_parser) do
+                :"}" -> next_token(closing_parser)
                 _ -> put_error(parser, {current_meta(parser), "missing closing brace for struct %#{struct_name}"})
               end
 
