@@ -2815,6 +2815,157 @@ defmodule SpitfireTest do
                 [{[line: 1, column: 14], "missing closing brace for map"}]}
     end
 
+    test "missing closing map brace keeps the expression on the next line" do
+      code = """
+      foo do
+        %{1
+        bar baz
+      end
+      """
+
+      assert Spitfire.parse(code) ==
+               {:error,
+                {:foo,
+                 [
+                   end_of_expression: [newlines: 1, line: 4, column: 4],
+                   do: [line: 1, column: 5],
+                   end: [line: 4, column: 1],
+                   line: 1,
+                   column: 1
+                 ],
+                 [
+                   [
+                     do:
+                       {:__block__, [],
+                        [
+                          {:%{},
+                           [
+                             end_of_expression: [newlines: 1, line: 2, column: 6],
+                             closing: [line: 2, column: 5],
+                             line: 2,
+                             column: 3
+                           ], [1]},
+                          {:bar, [end_of_expression: [newlines: 1, line: 3, column: 10], line: 3, column: 3],
+                           [{:baz, [line: 3, column: 7], nil}]}
+                        ]}
+                   ]
+                 ]}, [{[line: 2, column: 5], "missing closing brace for map"}]}
+    end
+
+    test "missing closing struct brace keeps the expression on the next line" do
+      code = """
+      foo do
+        %S{a: 1
+        bar baz
+      end
+      """
+
+      assert Spitfire.parse(code) ==
+               {:error,
+                {:foo,
+                 [
+                   end_of_expression: [newlines: 1, line: 4, column: 4],
+                   do: [line: 1, column: 5],
+                   end: [line: 4, column: 1],
+                   line: 1,
+                   column: 1
+                 ],
+                 [
+                   [
+                     do:
+                       {:__block__, [],
+                        [
+                          {:%, [end_of_expression: [newlines: 1, line: 2, column: 10], line: 2, column: 3],
+                           [
+                             {:__aliases__, [last: [line: 2, column: 4], line: 2, column: 4], [:S]},
+                             {:%{}, [closing: [line: 2, column: 9], line: 2, column: 5], [a: 1]}
+                           ]},
+                          {:bar, [end_of_expression: [newlines: 1, line: 3, column: 10], line: 3, column: 3],
+                           [{:baz, [line: 3, column: 7], nil}]}
+                        ]}
+                   ]
+                 ]}, [{[line: 2, column: 9], "missing closing brace for struct %S"}]}
+    end
+
+    test "do block after an alias" do
+      code = """
+      Foo.Bar do
+        :ok
+      end
+      """
+
+      assert Spitfire.parse(code) ==
+               {:error,
+                {:__aliases__,
+                 [
+                   end_of_expression: [newlines: 1, line: 3, column: 4],
+                   last: [line: 1, column: 5],
+                   line: 1,
+                   column: 1
+                 ], [:Foo, :Bar]}, [{[line: 1, column: 9], "syntax error"}]}
+
+      code = """
+      x = Foo do
+        :ok
+      end
+      """
+
+      assert Spitfire.parse(code) ==
+               {:error,
+                {:=, [end_of_expression: [newlines: 1, line: 3, column: 4], line: 1, column: 3],
+                 [
+                   {:x, [line: 1, column: 1], nil},
+                   {:__aliases__, [last: [line: 1, column: 5], line: 1, column: 5], [:Foo]}
+                 ]}, [{[line: 1, column: 9], "syntax error"}]}
+    end
+
+    test "missing struct type keeps the expression on the next line" do
+      code = """
+      defmodule Foo do
+        a = %
+        defmodule Bar do
+        end
+      end
+      """
+
+      assert Spitfire.parse(code) ==
+               {:error,
+                {:defmodule,
+                 [
+                   end_of_expression: [newlines: 1, line: 5, column: 4],
+                   do: [line: 1, column: 15],
+                   end: [line: 5, column: 1],
+                   line: 1,
+                   column: 1
+                 ],
+                 [
+                   {:__aliases__, [last: [line: 1, column: 11], line: 1, column: 11], [:Foo]},
+                   [
+                     do:
+                       {:__block__, [],
+                        [
+                          {:=, [end_of_expression: [newlines: 1, line: 2, column: 8], line: 2, column: 5],
+                           [
+                             {:a, [line: 2, column: 3], nil},
+                             {:%, [line: 2, column: 7], [{:__block__, [], []}, {:%{}, [], []}]}
+                           ]},
+                          {:defmodule,
+                           [
+                             end_of_expression: [newlines: 1, line: 4, column: 6],
+                             do: [line: 3, column: 17],
+                             end: [line: 4, column: 3],
+                             line: 3,
+                             column: 3
+                           ],
+                           [
+                             {:__aliases__, [last: [line: 3, column: 13], line: 3, column: 13], [:Bar]},
+                             [do: {:__block__, [], []}]
+                           ]}
+                        ]}
+                   ]
+                 ]}, [{[line: 2, column: 8], "unknown token: eol"}]}
+    end
+
     test "map update with malformed nested tuples does not hang" do
       code = ~S(%{x | +@s ul{l{0})
 
@@ -3309,7 +3460,13 @@ defmodule SpitfireTest do
                {:error,
                 {:__block__, [],
                  [
-                   {:%{}, [closing: [line: 2, column: 8], line: 1, column: 1],
+                   {:%{},
+                    [
+                      end_of_expression: [newlines: 1, line: 2, column: 9],
+                      closing: [line: 2, column: 8],
+                      line: 1,
+                      column: 1
+                    ],
                     [
                       {:|, [newlines: 1, line: 1, column: 9],
                        [
@@ -3317,8 +3474,13 @@ defmodule SpitfireTest do
                          [foo: {:s, [line: 2, column: 8], nil}]
                        ]}
                     ]},
-                   {:s, [end_of_expression: [newlines: 1, line: 3, column: 13], line: 2, column: 8],
-                    [{:__cursor__, [closing: [line: 3, column: 12], line: 3, column: 1], []}]},
+                   {:__cursor__,
+                    [
+                      end_of_expression: [newlines: 1, line: 3, column: 13],
+                      closing: [line: 3, column: 12],
+                      line: 3,
+                      column: 1
+                    ], []},
                    {:__block__, [error: true, line: 4, column: 1], []},
                    {{:., [line: 5, column: 15],
                      [
@@ -4136,6 +4298,68 @@ defmodule SpitfireTest do
                   ]
                 ]
               }} = Spitfire.container_cursor_to_quoted(code)
+    end
+
+    test "cursor on a new line after a pair in an unclosed nested map" do
+      code = """
+      %{a: %{b: 1
+      """
+
+      assert {:error,
+              {:__block__, [],
+               [
+                 {:%{},
+                  [
+                    end_of_expression: [newlines: 1, line: 1, column: 12],
+                    closing: [line: 1, column: 11],
+                    line: 1,
+                    column: 1
+                  ], [a: {:%{}, [closing: [line: 1, column: 11], line: 1, column: 6], [b: 1]}]},
+                 {:__cursor__, [closing: [line: 2, column: 12], line: 2, column: 1], []},
+                 {:__block__, [error: true, line: 2, column: 13], []},
+                 {:__block__, [error: true, line: 2, column: 14], []}
+               ]},
+              [
+                {[line: 1, column: 11], "missing closing brace for map"},
+                {[line: 1, column: 11], "missing closing brace for map"},
+                {[line: 2, column: 13], "unknown token: }"},
+                {[line: 2, column: 14], "unknown token: }"}
+              ]} = Spitfire.container_cursor_to_quoted(code)
+    end
+
+    test "cursor on a new line after a pair in an unclosed nested struct" do
+      code = """
+      %{a: %S{b: 1
+      """
+
+      assert {:error,
+              {:__block__, [],
+               [
+                 {:%{},
+                  [
+                    end_of_expression: [newlines: 1, line: 1, column: 13],
+                    closing: [line: 1, column: 12],
+                    line: 1,
+                    column: 1
+                  ],
+                  [
+                    a:
+                      {:%, [line: 1, column: 6],
+                       [
+                         {:__aliases__, [last: [line: 1, column: 7], line: 1, column: 7], [:S]},
+                         {:%{}, [closing: [line: 1, column: 12], line: 1, column: 8], [b: 1]}
+                       ]}
+                  ]},
+                 {:__cursor__, [closing: [line: 2, column: 12], line: 2, column: 1], []},
+                 {:__block__, [error: true, line: 2, column: 13], []},
+                 {:__block__, [error: true, line: 2, column: 14], []}
+               ]},
+              [
+                {[line: 1, column: 12], "missing closing brace for struct %S"},
+                {[line: 1, column: 12], "missing closing brace for map"},
+                {[line: 2, column: 13], "unknown token: }"},
+                {[line: 2, column: 14], "unknown token: }"}
+              ]} = Spitfire.container_cursor_to_quoted(code)
     end
   end
 
