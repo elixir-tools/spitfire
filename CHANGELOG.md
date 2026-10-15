@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/elixir-tools/spitfire/compare/v0.4.2...v0.4.3) (2026-10-15)
+
+
+### Bug Fixes
+
+* keep newline after unclosed map or struct ([#145](https://github.com/elixir-tools/spitfire/issues/145)) ([e18d0ef](https://github.com/elixir-tools/spitfire/commit/e18d0ef3ce914844b55bac45f0f17b2d71bda99a))
+
 ## [0.4.2](https://github.com/elixir-tools/spitfire/compare/v0.4.1...v0.4.2) (2026-09-17)
 
 
